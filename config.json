@@ -1,0 +1,10 @@
+{
+  "backend": "azure",
+  "azure": {
+    "voice": "de-DE-GiselaNeural",
+    "region": "germanywestcentral",
+    "key_env": "AZURE_SPEECH_KEY",
+    "rate": "-5%",
+    "pitch": "0%"
+  }
+}
