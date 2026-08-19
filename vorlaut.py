@@ -11,6 +11,7 @@ Aufruf:
     python3 vorlaut.py add "Nochmal!"  # Satz aufnehmen
     python3 vorlaut.py build           # nur Neues/Geaendertes rendern
     python3 vorlaut.py build --all     # alles neu rendern (nach Stimmwechsel)
+    python3 vorlaut.py delete <id>     # Satz und seine Dateien loeschen
     python3 vorlaut.py backends        # zeigt, welche Backends nutzbar sind
 
 Keine pip-Abhaengigkeiten. Gebraucht werden nur ffmpeg und ein TTS-Backend.
@@ -237,6 +238,53 @@ def build(force=False):
     print(f"Dateien liegen in {OUT}/anybook und {OUT}/esp32")
 
 
+def phrase_state(item, cfg):
+    """ok = passt, fehlt = nie gerendert, alt = andere Stimme oder anderer Text."""
+    if not all((OUT / prof / f"{item['id']}.wav").exists() for prof in PROFILES):
+        return "fehlt"
+    if item.get("fingerprint") != fingerprint(item["text"], cfg):
+        return "alt"
+    return "ok"
+
+
+def voice_label(cfg):
+    """Stimmname fuer die Oberflaeche, z.B. de-DE-GiselaNeural -> Gisela."""
+    opt = cfg.get(cfg["backend"], {})
+    name = opt.get("voice") or cfg["backend"]
+    return name.split("-")[-1].replace("Neural", "") if name.count("-") >= 2 else name
+
+
+def phrases_with_state():
+    cfg = load_config()
+    items = [dict(i, state=phrase_state(i, cfg)) for i in load_phrases()]
+    return {"items": items, "voice": voice_label(cfg)}
+
+
+def delete_phrase(pid):
+    """Satz aus phrases.json werfen und alle erzeugten WAVs loeschen.
+
+    Gibt (True, geloeschte_dateien) zurueck, oder (False, []) wenn es die
+    ID gar nicht gibt. Dateien duerfen fehlen, das ist kein Fehler."""
+    items = load_phrases()
+    rest = [i for i in items if i.get("id") != pid]
+    if len(rest) == len(items):
+        return False, []
+
+    removed = []
+    for profile in PROFILES:
+        f = OUT / profile / f"{pid}.wav"
+        if f.exists():
+            f.unlink()
+            removed.append(f)
+    raw = RAW / f"{pid}.wav"
+    if raw.exists():
+        raw.unlink()
+        removed.append(raw)
+
+    save_phrases(rest)
+    return True, removed
+
+
 # ------------------------------------------------------------------------ UI
 
 PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
@@ -244,37 +292,59 @@ PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
 <title>vorlaut</title>
 <style>
 :root{
-  --ink:#14161c; --panel:#1d212b; --line:#2b3040;
-  --text:#ece9e4; --muted:#868da0; --accent:#f0a202; --accent-ink:#14161c;
+  --ink:#0e1014; --panel:#161920; --line:#242833; --line-soft:#1c202a;
+  --text:#f2efea; --muted:#7c8496; --accent:#f0a202; --accent-ink:#14161c;
+  --ok:#3fb96b; --warn:#f0a202; --miss:#5b6377; --danger:#e5484d;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--ink);color:var(--text);
   font:16px/1.55 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
-  padding:clamp(20px,5vw,56px)}
-main{max-width:760px;margin:0 auto}
-h1{font-size:clamp(28px,6vw,44px);font-weight:800;letter-spacing:-.03em;
-  margin:0 0 4px}
-.sub{color:var(--muted);margin:0 0 32px;font-size:15px}
-.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;
-  padding:20px;margin-bottom:14px}
-label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
-textarea{width:100%;min-height:96px;resize:vertical;background:var(--ink);
-  color:var(--text);border:1px solid var(--line);border-radius:9px;padding:14px;
+  padding:clamp(20px,5vw,64px);-webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:0 auto}
+h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0}
+.sub{color:var(--muted);margin:6px 0 36px;font-size:15px}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 22px 16px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}
+textarea{width:100%;min-height:132px;resize:vertical;background:var(--ink);
+  color:var(--text);border:1px solid var(--line);border-radius:11px;padding:14px;
   font:inherit;font-size:19px}
+textarea::placeholder{color:#4d5464}
 textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
-button{font:inherit;font-weight:600;border-radius:9px;padding:11px 18px;
+button{font:inherit;font-weight:600;border-radius:10px;padding:11px 18px;
   border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+button:hover{background:#1e222c}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button:disabled{opacity:.45;cursor:default}
-.status{color:var(--muted);font-size:14px;min-height:20px;margin:6px 2px 26px}
-.item{display:flex;gap:14px;align-items:flex-start;padding:14px 2px;
-  border-top:1px solid var(--line)}
-.item .txt{flex:1;font-size:18px}
+button.primary:hover{background:#ffb01a}
+button.quiet{border-color:transparent;color:var(--muted);padding:11px 12px}
+button.quiet:hover{color:var(--text)}
+.status{color:var(--muted);font-size:14px;min-height:20px;margin:12px 2px 0}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.bar .count{font-weight:650;font-size:15px}
+.bar .spacer{flex:1}
+.voice{color:var(--muted);font-size:13px;white-space:nowrap}
+.voice b{color:var(--text);font-weight:600}
+.item{display:flex;gap:14px;align-items:center;padding:15px 2px;
+  border-bottom:1px solid var(--line-soft)}
+.item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
+.item.ok .dot{background:var(--ok)}
+.item.alt .dot{background:var(--warn)}
+.item .txt{flex:1;min-width:0}
+.item .line{font-size:18px;letter-spacing:-.01em}
+.item .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
 .item .id{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
   color:var(--muted);word-break:break-all}
-.item audio{height:34px}
-.empty{color:var(--muted);border-top:1px solid var(--line);padding:28px 2px}
+.item .state{font-size:12px;color:var(--muted)}
+.item.alt .state{color:var(--warn)}
+.item audio{height:32px;flex:none;filter:invert(.92) hue-rotate(180deg);opacity:.85}
+.item .del{background:transparent;border:1px solid transparent;border-radius:9px;
+  padding:7px 9px;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
+.item .del:hover{color:var(--danger);border-color:rgba(229,72,77,.35);
+  background:rgba(229,72,77,.1)}
+.empty{color:var(--muted);padding:32px 2px;font-size:15px}
+.foot{margin-top:28px;color:var(--muted);font-size:13px}
 </style>
 <main>
 <h1>vorlaut</h1>
@@ -285,32 +355,62 @@ button:disabled{opacity:.45;cursor:default}
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
   <div class="row">
     <button class="primary" id="add">Satz anlegen</button>
-    <button id="build">Neue rendern</button>
-    <button id="rebuild">Alles neu rendern</button>
+    <button class="quiet" id="build">Fehlende nachholen</button>
   </div>
+  <p class="status" id="s">&nbsp;</p>
 </div>
-<p class="status" id="s">&nbsp;</p>
+
+<div class="bar">
+  <span class="count" id="count">&nbsp;</span>
+  <span class="spacer"></span>
+  <span class="voice">Stimme <b id="voice">\u2026</b></span>
+</div>
 
 <div id="list"></div>
+
+<div class="foot">
+  <button class="quiet" id="rebuild">Alle Saetze neu aufnehmen</button>
+</div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
+const LABEL={ok:'aufgenommen',fehlt:'noch nicht aufgenommen',alt:'noch mit alter Stimme'};
 
 async function load(){
-  const r=await fetch('/api/phrases');const items=await r.json();
+  const data=await (await fetch('/api/phrases')).json();
+  // Neueste zuerst. phrases.json bleibt chronologisch, nur die Anzeige dreht.
+  const items=(data.items||[]).slice().reverse();
+  $('voice').textContent=data.voice||'\\u2014';
+
+  const offen=items.filter(i=>i.state!=='ok').length;
+  $('count').textContent = !items.length ? 'Noch keine Saetze'
+    : items.length+(items.length===1?' Satz':' Saetze')+
+      (offen? ', '+offen+' noch offen' : ', alle aufgenommen');
+
   $('list').innerHTML = items.length ? '' :
     '<p class="empty">Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
     'jede Zeile wird ein eigener Satz.</p>';
   for(const it of items){
-    const d=document.createElement('div');d.className='item';
-    d.innerHTML='<div class="txt"></div>'+
-      '<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>';
-    d.querySelector('.txt').textContent=it.text;
-    const id=document.createElement('div');id.className='id';id.textContent=it.id;
-    d.querySelector('.txt').appendChild(id);
+    const d=document.createElement('div');d.className='item '+it.state;
+    d.innerHTML='<span class="dot"></span>'+
+      '<div class="txt"><div class="line"></div>'+
+      '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
+      (it.state==='fehlt'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
+      '<button class="del" title="Satz loeschen" aria-label="Satz loeschen">\\uD83D\\uDDD1\\uFE0F</button>';
+    d.querySelector('.line').textContent=it.text;
+    d.querySelector('.id').textContent=it.id;
+    d.querySelector('.state').textContent=LABEL[it.state];
+    d.querySelector('.del').onclick=()=>del(it);
     $('list').appendChild(d);
   }
+}
+async function del(it){
+  if(!confirm('\\u201E'+it.text+'\\u201C wirklich loeschen?\\n\\nDer Satz und seine Audiodateien '+
+              'werden entfernt. Das laesst sich nicht rueckgaengig machen.'))return;
+  say('Loesche \\u2026');
+  const r=await post('/api/delete',{id:it.id});
+  if(r){say('Geloescht: '+r.id);load()}
 }
 async function post(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -321,18 +421,18 @@ async function post(url,body){
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
   if(!lines.length){say('Erst etwas eintippen.');return}
-  say('Lege an und rendere \\u2026');
+  say('Nehme auf \\u2026');
   const res=await post('/api/phrases',{lines});
-  if(res){$('t').value='';say(res.added+' angelegt, '+res.rendered+' gerendert.');load()}
+  if(res){$('t').value='';say(res.added+' angelegt, '+res.rendered+' aufgenommen.');load()}
 };
-$('build').onclick=async()=>{say('Rendere \\u2026');
+$('build').onclick=async()=>{say('Hole fehlende Aufnahmen nach \\u2026');
   const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered+' gerendert.');load()}};
+  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es war nichts nachzuholen.');load()}};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Alle Saetze mit der aktuellen Stimme neu rendern?'))return;
-  say('Rendere alles neu, das dauert \\u2026');
+  if(!confirm('Alle Saetze mit der aktuellen Stimme neu aufnehmen?'))return;
+  say('Nehme alle neu auf, das dauert \\u2026');
   const r=await post('/api/build',{force:true});
-  if(r){say(r.rendered+' neu gerendert.');load()}};
+  if(r){say(r.rendered+' neu aufgenommen.');load()}};
 load();
 </script>
 </html>"""
@@ -360,7 +460,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(404, b"", "text/plain")
             return self._send(200, f.read_bytes(), "audio/wav")
         if self.path == "/api/phrases":
-            return self._send(200, json.dumps(load_phrases(), ensure_ascii=False))
+            return self._send(200, json.dumps(phrases_with_state(),
+                                              ensure_ascii=False))
         self._send(404, b"", "text/plain")
 
     def do_POST(self):
@@ -399,6 +500,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             save_phrases(items)
             return self._send(200, json.dumps({"rendered": rendered}))
 
+        if self.path == "/api/delete":
+            pid = (data.get("id") or "").strip()
+            if not pid:
+                return self._send(400, "Keine ID uebergeben.", "text/plain")
+            ok, _ = delete_phrase(pid)
+            if not ok:
+                return self._send(404, f"Kein Satz mit der ID '{pid}'.", "text/plain")
+            return self._send(200, json.dumps({"ok": True, "id": pid},
+                                              ensure_ascii=False))
+
         self._send(404, b"", "text/plain")
 
 
@@ -436,6 +547,22 @@ def main():
         save_phrases(items)
         print(f"angelegt: {sid}")
         build()
+    elif cmd == "delete":
+        if len(args) < 2:
+            sys.exit("Aufruf: vorlaut.py delete <id>")
+        pid = args[1]
+        ok, removed = delete_phrase(pid)
+        if not ok:
+            ids = [i["id"] for i in load_phrases()]
+            print(f"Kein Satz mit der ID '{pid}'.", file=sys.stderr)
+            if ids:
+                print("Vorhanden sind: " + ", ".join(ids), file=sys.stderr)
+            sys.exit(1)
+        print(f"geloescht: {pid}")
+        for f in removed:
+            print(f"  entfernt   {f.relative_to(ROOT)}")
+        if not removed:
+            print("  (keine Audiodateien vorhanden)")
     elif cmd == "build":
         build(force="--all" in args)
     elif cmd == "backends":

@@ -7,5 +7,11 @@ __pycache__/
 *.pyc
 .venv/
 
+# Zugangsdaten - gehoeren nie ins Repo
+.env
+
+# Aufraeum-Ordner der Cowork-Sandbox
+_to_delete/
+
 # System
 .DS_Store

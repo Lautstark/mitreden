@@ -18,12 +18,6 @@
     "backend": "azure"
   },
   {
-    "id": "hoer-auf",
-    "text": "Hör auf.",
-    "fingerprint": "cb13ef5b2258",
-    "backend": "azure"
-  },
-  {
     "id": "ich-brauche-hilfe",
     "text": "Ich brauche Hilfe.",
     "fingerprint": "89f9db937dda",
@@ -48,9 +42,21 @@
     "backend": "azure"
   },
   {
-    "id": "stop",
-    "text": "Stop!",
-    "fingerprint": "978d6a52b15b",
+    "id": "stopp",
+    "text": "Stopp!",
+    "fingerprint": "fde09201c1a7",
+    "backend": "azure"
+  },
+  {
+    "id": "hallo",
+    "text": "Hallo",
+    "fingerprint": "c655cb4982a6",
+    "backend": "azure"
+  },
+  {
+    "id": "hoer-auf",
+    "text": "Hör auf!",
+    "fingerprint": "57c70f434edc",
     "backend": "azure"
   }
 ]
