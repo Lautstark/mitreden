@@ -1,0 +1,11 @@
+# Generierte Audiodateien - reproduzierbar aus phrases.json + config.json
+out/
+build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# System
+.DS_Store

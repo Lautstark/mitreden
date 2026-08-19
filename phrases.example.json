@@ -1,0 +1,10 @@
+[
+  { "id": "nochmal",        "text": "Nochmal!" },
+  { "id": "ich-bin-dran",   "text": "Ich bin dran." },
+  { "id": "du-bist-dran",   "text": "Du bist dran." },
+  { "id": "hoer-auf",       "text": "Hör auf." },
+  { "id": "ich-brauche-hilfe", "text": "Ich brauche Hilfe." },
+  { "id": "komm-mal-her",   "text": "Komm mal her." },
+  { "id": "das-mag-ich-nicht", "text": "Das mag ich nicht." },
+  { "id": "guck-mal",       "text": "Guck mal!" }
+]
