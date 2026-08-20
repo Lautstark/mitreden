@@ -195,6 +195,13 @@ Lokale. So kommst du an einen Schlüssel:
 export AZURE_SPEECH_KEY="dein-schluessel"
 ```
 
+Dauerhafter geht es mit einer `.env` neben `mitreden.py`, die beim Start
+gelesen wird. Sie steht in `.gitignore` und bleibt lokal:
+
+```
+AZURE_SPEECH_KEY=dein-schluessel
+```
+
 `rate` und `pitch` gelten für die erzeugten Dateien und wirken erst nach einem
 `build --all`. Das Tempo, mit dem der Browser beim Vorhören abspielt, hat damit
 nichts zu tun — deshalb bietet die Oberfläche es gar nicht erst an.

@@ -82,6 +82,23 @@ DEFAULT_CONFIG = {
 
 # --------------------------------------------------------------- Persistence
 
+def load_env():
+    """Read .env if it is there, without touching what the shell already set.
+
+    Keys never belong in config.json, so they live in the environment — and a
+    .env next to the script saves exporting them by hand in every new shell.
+    An explicit export still wins over the file."""
+    f = ROOT / ".env"
+    if not f.exists():
+        return
+    for line in f.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
 def load_config():
     if not CONFIG.exists():
         CONFIG.write_text(json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False))
@@ -949,6 +966,7 @@ def check_backends():
 
 
 def main():
+    load_env()
     args = sys.argv[1:]
     cmd = args[0] if args else "ui"
 
