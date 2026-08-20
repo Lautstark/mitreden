@@ -80,11 +80,68 @@ Dann auf <http://localhost:8770>: Sätze eintippen — eine Zeile pro Satz —,
 Ohne Oberfläche geht es genauso:
 
 ```
-python3 mitreden.py add "Ich brauche Hilfe."
+python3 mitreden.py add "Ich brauche Hilfe." --tags kindergarten,notfall
 python3 mitreden.py build        # nur Neues/Geändertes rendern
 python3 mitreden.py build --all  # alles neu, nach einem Stimmwechsel
 python3 mitreden.py delete ich-brauche-hilfe
 ```
+
+## Gruppen, Suche, Download
+
+Ab ein paar Dutzend Sätzen willst du Ordnung. mitreden nimmt dafür **Gruppen,
+keine Ordner** — und das ist Absicht: „Ich brauche Hilfe." gehört in den
+Kindergarten *und* nach Hause *und* zu den Notfällen. In einem Ordnerbaum
+müsstest du dich entscheiden oder den Satz doppelt anlegen.
+
+Eine Gruppe ist einfach ein Etikett am Satz:
+
+```json
+{ "id": "ich-brauche-hilfe", "text": "Ich brauche Hilfe.",
+  "tags": ["kindergarten", "zuhause", "notfall"] }
+```
+
+In der Oberfläche steht über der Liste eine Reihe Gruppen zum Anklicken, daneben
+ein Suchfeld. Beides greift zusammen: erst suchen, dann auf eine Gruppe
+einschränken. Die Suche läuft im Browser, ohne Warten, über Text *und*
+Gruppennamen — und sie ist tolerant, was Umlaute angeht: `hor auf`,
+`hoer auf` und `Hör auf` finden alle denselben Satz.
+
+Solange eine Gruppe ausgewählt ist, landen neu angelegte Sätze automatisch in
+ihr. Die Gruppen eines vorhandenen Satzes änderst du über „edit" neben seinen
+Etiketten.
+
+**Ein Text, eine Datei.** Legst du einen Satz an, den es schon gibt, entsteht
+kein zweiter Eintrag — der vorhandene bekommt nur die neue Gruppe dazu. Egal in
+wie vielen Gruppen ein Satz steckt, in `out/` liegt er genau einmal. Groß- und
+Kleinschreibung und zusätzliche Leerzeichen sind dabei egal, Satzzeichen nicht:
+„Nochmal!" und „Nochmal." klingen verschieden, also sind es zwei Sätze.
+
+Für Bestände, die vor den Gruppen entstanden sind:
+
+```
+python3 mitreden.py dedupe   # führt doppelte Sätze zusammen, räumt die Dateien weg
+```
+
+**Rausholen, was du gerade siehst.** Der Knopf „Download" packt genau die Sätze
+zusammen, die die Liste gerade zeigt — nach einer Suche also die Treffer, in
+einer Gruppe deren Sätze. Im ZIP liegt ein Ordner pro Geräteformat (`anybook/`
+und `esp32/`), du musst dich also vorher für nichts entscheiden: du nimmst den
+Ordner, der zum Gerät passt, vor dem du gerade sitzt.
+
+Auf der Kommandozeile geht dasselbe gezielter:
+
+```
+python3 mitreden.py export kindergarten ~/Desktop/kiga
+python3 mitreden.py export all ~/Desktop/alles --format esp32
+```
+
+`out/` bleibt dabei immer flach und ohne Dubletten; die exportierte Kopie ist
+der Teil zum Wegwerfen, den du in Anybook Studio ziehst oder auf LittleFS legst.
+
+**Wenn es viele werden.** Die Liste zeichnet höchstens 200 Sätze und bietet den
+Rest per Knopfdruck an — Suche und Gruppen sind der eigentliche Weg durch einen
+großen Bestand, nicht das Scrollen. Zähler und Download beziehen sich immer auf
+alle Treffer, nicht nur auf das Sichtbare.
 
 ## Die Stimme wählen
 
@@ -145,6 +202,10 @@ dessen Stimme du klonst. Schlüssel wie bei Azure über
 | `out/anybook/` | 44,1 kHz mono WAV | rein in Anybook Studio |
 | `out/esp32/` | 16 kHz mono 16 bit WAV | auf LittleFS, für I2S/MAX98357A |
 | `out/preview/` | 44,1 kHz | nur für die Weboberfläche |
+
+`out/` ist flach — keine Unterordner pro Gruppe, jeder Text genau einmal.
+Was zu einer Gruppe gehört, sagt `phrases.json`; zum Übertragen holst du dir
+eine Kopie mit `export` oder dem Download-Knopf.
 
 Jede Datei ist stillebereinigt und auf −16 LUFS normalisiert. Ohne das ist ein
 Satz kaum hörbar und der nächste brüllt — im Alltag der häufigste Grund, warum

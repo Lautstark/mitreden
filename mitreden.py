@@ -6,12 +6,18 @@ phrases.json is the source of truth. Every entry is rendered into one audio
 file per target device. Change the voice = change the backend in config.json
 + `python3 mitreden.py build --all` = everything sounds alike again.
 
+Phrases can belong to groups ("kindergarten", "spiel"). Groups are labels, not
+folders: one phrase can be in several of them, and out/ stays flat — one text,
+one audio file, no matter how many groups point at it.
+
 Usage:
     python3 mitreden.py ui              # web interface at http://localhost:8770
-    python3 mitreden.py add "Nochmal!"  # record a phrase
+    python3 mitreden.py add "Nochmal!" --tags spiel,zuhause
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
+    python3 mitreden.py dedupe          # merge phrases that say the same thing
+    python3 mitreden.py export <group> <folder>   # copy one group out for transfer
     python3 mitreden.py backends        # show which backends are usable
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
@@ -22,6 +28,7 @@ config.json). Only the tooling around it is in English.
 
 import hashlib
 import http.server
+import io
 import json
 import os
 import shutil
@@ -29,6 +36,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -92,7 +100,7 @@ def save_phrases(items):
     PHRASES.write_text(json.dumps(items, indent=2, ensure_ascii=False))
 
 
-def slug(text):
+def slug(text, fallback="phrase"):
     """Filename-safe id. The substitutions are German because the phrases are."""
     keep = "abcdefghijklmnopqrstuvwxyz0123456789"
     sub = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e"}
@@ -103,7 +111,83 @@ def slug(text):
     s = "".join(out).strip("-")
     while "--" in s:
         s = s.replace("--", "-")
-    return s[:40] or "phrase"
+    return s[:40] or fallback
+
+
+def norm_tag(text):
+    """Groups get the same treatment as ids, so "Kindergarten" and
+    "kindergarten " are one group and not two.
+
+    Without a name there is no group — hence no filename fallback here."""
+    return slug(text, "")[:24]
+
+
+def norm_text(text):
+    """Two phrases are the same phrase when this matches.
+
+    Punctuation stays in on purpose: "Nochmal!" and "Nochmal." are spoken
+    differently, so they are two phrases, not a duplicate."""
+    return " ".join(text.split()).casefold()
+
+
+def find_twin(items, text):
+    """The existing phrase that already says this, or None."""
+    key = norm_text(text)
+    return next((i for i in items if norm_text(i["text"]) == key), None)
+
+
+def add_tags(item, tags):
+    """Union, order kept. True if anything was actually new."""
+    cur = list(item.get("tags") or [])
+    new = [t for t in tags if t not in cur]
+    if not new:
+        return False
+    item["tags"] = cur + new
+    return True
+
+
+def add_lines(items, lines, tags=()):
+    """Append phrases to `items`, in place.
+
+    A line whose text already exists does not become a second entry — the
+    existing phrase just picks up the new groups. That is what keeps one text
+    at one audio file, however many groups it belongs to.
+
+    Returns (new items, phrases that were already there)."""
+    tags = [t for t in (norm_tag(x) for x in tags) if t]
+    existing = {i["id"] for i in items}
+    fresh, twins = [], []
+    for raw in lines:
+        line = " ".join(str(raw).split())
+        if not line:
+            continue
+        twin = find_twin(items, line)
+        if twin:
+            add_tags(twin, tags)
+            twins.append(twin)
+            continue
+        base = sid = slug(line)
+        n = 2
+        while sid in existing:            # different texts can still slug alike
+            sid, n = f"{base}-{n}", n + 1
+        item = {"id": sid, "text": line, "tags": list(tags)}
+        items.append(item)
+        existing.add(sid)
+        fresh.append(item)
+    return fresh, twins
+
+
+def set_tags(pid, tags):
+    """Replace the groups of one phrase. Returns the new list, or None if the
+    id does not exist."""
+    items = load_phrases()
+    for i in items:
+        if i.get("id") == pid:
+            clean = [t for t in dict.fromkeys(norm_tag(x) for x in tags) if t]
+            i["tags"] = clean
+            save_phrases(items)
+            return clean
+    return None
 
 
 def fingerprint(text, cfg):
@@ -261,33 +345,119 @@ def voice_label(cfg):
 
 def phrases_with_state():
     cfg = load_config()
-    items = [dict(i, state=phrase_state(i, cfg)) for i in load_phrases()]
+    items = [dict(i, tags=i.get("tags") or [], state=phrase_state(i, cfg))
+             for i in load_phrases()]
     return {"items": items, "voice": voice_label(cfg)}
+
+
+def remove_files(pid):
+    """Every file this phrase produced. Missing ones are fine, not an error."""
+    removed = []
+    for f in [OUT / p / f"{pid}.wav" for p in PROFILES] + [RAW / f"{pid}.wav"]:
+        if f.exists():
+            f.unlink()
+            removed.append(f)
+    return removed
 
 
 def delete_phrase(pid):
     """Drop a phrase from phrases.json and delete every WAV it produced.
 
-    Returns (True, deleted_files), or (False, []) if the id does not exist.
-    Missing files are fine, that is not an error."""
+    Returns (True, deleted_files), or (False, []) if the id does not exist."""
     items = load_phrases()
     rest = [i for i in items if i.get("id") != pid]
     if len(rest) == len(items):
         return False, []
-
-    removed = []
-    for profile in PROFILES:
-        f = OUT / profile / f"{pid}.wav"
-        if f.exists():
-            f.unlink()
-            removed.append(f)
-    raw = RAW / f"{pid}.wav"
-    if raw.exists():
-        raw.unlink()
-        removed.append(raw)
-
+    removed = remove_files(pid)
     save_phrases(rest)
     return True, removed
+
+
+def dedupe():
+    """Merge phrases that say the same thing.
+
+    Groups make duplicates easy to create by hand, and phrase sets that grew
+    before groups existed have them anyway. The oldest entry wins, takes over
+    the groups of the others, and their audio files go away.
+
+    Returns (kept, dropped)."""
+    keep, dropped, seen = [], [], {}
+    for it in load_phrases():
+        twin = seen.get(norm_text(it["text"]))
+        if twin:
+            add_tags(twin, it.get("tags") or [])
+            dropped.append(it)
+        else:
+            seen[norm_text(it["text"])] = it
+            keep.append(it)
+    if dropped:
+        for it in dropped:
+            remove_files(it["id"])
+        save_phrases(keep)
+    return keep, dropped
+
+
+def in_group(item, tag):
+    return not tag or tag in (item.get("tags") or [])
+
+
+def selected_ids(ids):
+    """Only ids that really exist — never build a path out of raw input."""
+    known = {i["id"] for i in load_phrases()}
+    return [pid for pid in ids if pid in known]
+
+
+def zip_phrases(ids):
+    """The current selection as one download.
+
+    One folder per device format, so nobody has to know up front whether the
+    Anybook or the ESP32 version is the one they need — both are in there. The
+    files keep their ids as names and stay recognisable in Anybook Studio.
+
+    Returns the zip bytes and how many phrases went in."""
+    buf = io.BytesIO()
+    n = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for pid in selected_ids(ids):
+            found = False
+            for profile in exportable():
+                f = OUT / profile / f"{pid}.wav"
+                if f.exists():
+                    z.write(f, f"{profile}/{pid}.wav")
+                    found = True
+            n += found
+    return buf.getvalue(), n
+
+
+def exportable():
+    """preview only feeds this interface — it is nothing to hand to a device."""
+    return [p for p in PROFILES if p != "preview"]
+
+
+def export_group(tag, dest, profile):
+    """Copy one group into a folder for transfer.
+
+    out/ itself stays flat and free of duplicates; this copy is the disposable
+    part you hand to Anybook Studio or drop onto LittleFS.
+
+    Returns (copied names, ids that are not recorded yet)."""
+    if profile not in exportable():
+        raise RuntimeError(f"Unknown format '{profile}'. Available: "
+                           f"{', '.join(exportable())}")
+    tag = norm_tag(tag) if tag else ""
+    dest = Path(dest).expanduser()
+    dest.mkdir(parents=True, exist_ok=True)
+    copied, missing = [], []
+    for item in load_phrases():
+        if not in_group(item, tag):
+            continue
+        f = OUT / profile / f"{item['id']}.wav"
+        if f.exists():
+            shutil.copy2(f, dest / f.name)
+            copied.append(f.name)
+        else:
+            missing.append(item["id"])
+    return copied, missing
 
 
 # ------------------------------------------------------------------------ UI
@@ -311,15 +481,21 @@ h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:
 .hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;
   padding:22px 22px 16px}
 label{display:block;font-size:13px;color:var(--muted);margin-bottom:10px}
+label.tight{margin-top:14px}
 textarea{width:100%;min-height:132px;resize:vertical;background:var(--ink);
   color:var(--text);border:1px solid var(--line);border-radius:11px;padding:14px;
   font:inherit;font-size:19px}
-textarea::placeholder{color:#4d5464}
-textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+textarea::placeholder,input::placeholder{color:#4d5464}
+textarea:focus,input:focus,button:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=search]{width:100%;background:var(--ink);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:15px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
 button{font:inherit;font-weight:600;border-radius:10px;padding:11px 18px;
   border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
 button:hover{background:#1e222c}
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{background:transparent}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 button.primary:hover{background:#ffb01a}
 button.quiet{border-color:transparent;color:var(--muted);padding:11px 12px}
@@ -331,6 +507,17 @@ button.quiet:hover{color:var(--text)}
 .bar .spacer{flex:1}
 .voice{color:var(--muted);font-size:13px;white-space:nowrap}
 .voice b{color:var(--text);font-weight:600}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
+.tools input[type=search]{flex:1;min-width:200px}
+.tools button{padding:11px 15px;font-size:14px;white-space:nowrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:16px 2px 0}
+.chip{font:inherit;font-size:13px;font-weight:500;padding:6px 13px;border-radius:999px;
+  border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.chip:hover{background:#1e222c;color:var(--text)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
+  font-weight:650}
+.chip.on:hover{background:#ffb01a}
+.chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .item{display:flex;gap:14px;align-items:center;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
@@ -338,18 +525,33 @@ button.quiet:hover{color:var(--text)}
 .item.stale .dot{background:var(--warn)}
 .item .txt{flex:1;min-width:0}
 .item .line{font-size:18px;letter-spacing:-.01em}
-.item .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+.item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .item .id{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
   color:var(--muted);word-break:break-all}
 .item .state{font-size:12px;color:var(--muted)}
 .item.stale .state{color:var(--warn)}
+.item .tag{font:inherit;font-size:12px;font-weight:500;color:var(--muted);
+  background:var(--line-soft);border:1px solid var(--line);border-radius:999px;
+  padding:2px 10px;cursor:pointer}
+.item .tag:hover{background:#1e222c;color:var(--text)}
+.item .tag.edit{background:transparent;border-style:dashed;opacity:.65}
 .item audio{height:32px;flex:none;filter:invert(.92) hue-rotate(180deg);opacity:.85}
 .item .del{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:7px 9px;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
 .item .del:hover{color:var(--danger);border-color:rgba(229,72,77,.35);
   background:rgba(229,72,77,.1)}
 .empty{color:var(--muted);padding:32px 2px;font-size:15px}
+.more{width:100%;margin-top:18px;color:var(--muted);font-size:14px}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
+/* On a phone the player is wider than the room left over, and it used to push
+   the delete button off the screen. Give it a line of its own instead. */
+@media (max-width:560px){
+  .item{flex-wrap:wrap;gap:10px}
+  .item .dot{order:1}
+  .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
+  .item .del{order:3}
+  .item audio{order:4;flex:1 1 100%;width:100%}
+}
 </style>
 <main>
 <h1>mitreden</h1>
@@ -358,6 +560,8 @@ button.quiet:hover{color:var(--text)}
 <div class="hero">
   <label for="t">What should she be able to say?</label>
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
+  <label class="tight" for="nt">Groups — optional, comma separated</label>
+  <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
     <button class="primary" id="add">Add phrase</button>
     <button class="quiet" id="build">Render missing</button>
@@ -371,6 +575,13 @@ button.quiet:hover{color:var(--text)}
   <span class="voice">Voice <b id="voice">…</b></span>
 </div>
 
+<div class="tools">
+  <input id="q" type="search" placeholder="Search phrases and groups…" autocomplete="off">
+  <button id="dl" title="Everything the list shows right now, as one zip">Download</button>
+</div>
+
+<div class="chips" id="chips"></div>
+
 <div id="list"></div>
 
 <div class="foot">
@@ -381,22 +592,76 @@ button.quiet:hover{color:var(--text)}
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
 const LABEL={ok:'recorded',missing:'not recorded yet',stale:'still in the old voice'};
+let ALL=[], TAG='', SHOW_ALL=false;
 
-async function load(){
-  const data=await (await fetch('/api/phrases')).json();
-  // Newest first. phrases.json stays chronological, only the display flips.
-  const items=(data.items||[]).slice().reverse();
-  $('voice').textContent=data.voice||'\\u2014';
+// Rendering thousands of rows makes the page crawl, and nobody reads that far
+// anyway — search and groups are the real answer to a big phrase set. So the
+// list stops here and offers the rest on request. Counts and downloads always
+// cover everything that matches, not just what is drawn.
+const CAP=200;
+
+// Searching German without a German keyboard: "hor auf", "hoer auf" and
+// "Hör auf" all have to find the same phrase. So every phrase is indexed in
+// both spellings and the query is tried in both, too.
+const bare=s=>s.toLowerCase().replace(/ß/g,'ss')
+  .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');
+const umlaut=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe')
+  .replace(/ü/g,'ue').replace(/ß/g,'ss');
+const hay=i=>bare(i.text)+' | '+umlaut(i.text)+' | '+(i.tags||[]).join(' ');
+
+function found(){
+  const q=$('q').value.trim();
+  if(!q)return ALL;
+  const a=bare(q), b=umlaut(q);
+  return ALL.filter(i=>{const h=hay(i);return h.includes(a)||h.includes(b)});
+}
+// What the list shows: search first, then the group filter on top.
+const shown=()=>{const f=found();return TAG?f.filter(i=>(i.tags||[]).includes(TAG)):f};
+
+function chip(label,n,tag){
+  const b=document.createElement('button');
+  b.className='chip'+(TAG===tag?' on':'');
+  b.textContent=label;
+  const s=document.createElement('span');s.className='n';s.textContent=n;
+  b.appendChild(s);
+  b.onclick=()=>{TAG=(tag&&TAG===tag)?'':tag;draw()};
+  $('chips').appendChild(b);
+}
+
+function draw(){
+  const hits=found(), items=shown().slice().reverse();  // newest first
+
+  // Group chips count within the current search, so they stay useful while typing.
+  const counts={};
+  for(const i of hits)for(const t of (i.tags||[]))counts[t]=(counts[t]||0)+1;
+  const names=Object.keys(counts).sort();
+  $('chips').innerHTML='';
+  if(names.length){
+    chip('All',hits.length,'');
+    for(const n of names)chip(n,counts[n],n);
+  }
 
   const pending=items.filter(i=>i.state!=='ok').length;
-  $('count').textContent = !items.length ? 'No phrases yet'
-    : items.length+(items.length===1?' phrase':' phrases')+
-      (pending? ', '+pending+' pending' : ', all recorded');
+  $('count').textContent = !ALL.length ? 'No phrases yet'
+    : items.length===ALL.length
+      ? ALL.length+(ALL.length===1?' phrase':' phrases')+
+        (pending?', '+pending+' pending':', all recorded')
+      : items.length+' of '+ALL.length+' phrases'+(pending?', '+pending+' pending':'');
 
-  $('list').innerHTML = items.length ? '' :
-    '<p class="empty">Nothing here yet. Several lines at once work too \\u2014 '+
-    'each line becomes its own phrase.</p>';
-  for(const it of items){
+  const ready=items.filter(i=>i.state!=='missing').length;
+  $('dl').textContent=ready?'Download '+ready:'Download';
+  $('dl').disabled=!ready;
+  $('nt').placeholder=TAG?TAG+' — the group you are in':'kindergarten, spiel';
+
+  $('list').innerHTML='';
+  if(!items.length){
+    const p=document.createElement('p');p.className='empty';
+    p.textContent=ALL.length?'No phrase matches.'
+      :'Nothing here yet. Several lines at once work too — each line becomes its own phrase.';
+    $('list').appendChild(p);
+    return;
+  }
+  for(const it of (SHOW_ALL?items:items.slice(0,CAP))){
     const d=document.createElement('div');d.className='item '+it.state;
     d.innerHTML='<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
@@ -406,14 +671,46 @@ async function load(){
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=LABEL[it.state];
+    const meta=d.querySelector('.meta');
+    for(const t of (it.tags||[])){
+      const b=document.createElement('button');
+      b.className='tag';b.textContent=t;b.title='Show only this group';
+      b.onclick=()=>{TAG=t;draw()};
+      meta.appendChild(b);
+    }
+    const e=document.createElement('button');
+    e.className='tag edit';e.textContent=(it.tags||[]).length?'edit':'+ group';
+    e.onclick=()=>editTags(it);
+    meta.appendChild(e);
     d.querySelector('.del').onclick=()=>del(it);
     $('list').appendChild(d);
   }
+  if(!SHOW_ALL&&items.length>CAP){
+    const b=document.createElement('button');
+    b.className='more';b.textContent='Show all '+items.length+' phrases';
+    b.onclick=()=>{SHOW_ALL=true;draw()};
+    $('list').appendChild(b);
+  }
+}
+
+async function load(){
+  const data=await (await fetch('/api/phrases')).json();
+  ALL=data.items||[];
+  $('voice').textContent=data.voice||'—';
+  if(TAG&&!ALL.some(i=>(i.tags||[]).includes(TAG)))TAG='';
+  draw();
+}
+async function editTags(it){
+  const v=prompt('Groups for “'+it.text+'”\\n\\nComma separated. Empty removes every group.',
+                 (it.tags||[]).join(', '));
+  if(v===null)return;
+  const r=await post('/api/tags',{id:it.id,tags:v.split(',')});
+  if(r){say(r.tags.length?'Now in: '+r.tags.join(', '):'No groups any more.');load()}
 }
 async function del(it){
-  if(!confirm('Really delete \\u201C'+it.text+'\\u201D?\\n\\nThe phrase and its audio files '+
+  if(!confirm('Really delete “'+it.text+'”?\\n\\nThe phrase and its audio files '+
               'will be removed. This cannot be undone.'))return;
-  say('Deleting \\u2026');
+  say('Deleting …');
   const r=await post('/api/delete',{id:it.id});
   if(r){say('Deleted: '+r.id);load()}
 }
@@ -423,19 +720,43 @@ async function post(url,body){
   if(!r.ok){say('Failed: '+await r.text());return null}
   return r.json();
 }
+$('q').oninput=draw;
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
   if(!lines.length){say('Type something first.');return}
-  say('Recording \\u2026');
-  const res=await post('/api/phrases',{lines});
-  if(res){$('t').value='';say(res.added+' added, '+res.rendered+' recorded.');load()}
+  let tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!tags.length&&TAG)tags=[TAG];          // adding inside a group stays in it
+  say('Recording …');
+  const res=await post('/api/phrases',{lines,tags});
+  if(res){
+    $('t').value='';
+    say(res.added+' added, '+res.rendered+' recorded'+
+        (res.merged?', '+res.merged+' already there':'')+'.');
+    load();
+  }
 };
-$('build').onclick=async()=>{say('Rendering what is missing \\u2026');
+$('dl').onclick=async()=>{
+  const vis=shown(), ids=vis.filter(i=>i.state!=='missing').map(i=>i.id);
+  if(!ids.length){say('Nothing recorded to download yet.');return}
+  say('Packing '+ids.length+' phrases …');
+  const r=await fetch('/api/download',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
+  if(!r.ok){say('Failed: '+await r.text());return}
+  const url=URL.createObjectURL(await r.blob());
+  const a=document.createElement('a');
+  a.href=url;a.download='mitreden-'+(TAG||'all')+'.zip';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  const skipped=vis.length-ids.length;
+  say(ids.length+' phrase'+(ids.length===1?'':'s')+' downloaded, one folder per '+
+      'device format'+(skipped?'. '+skipped+' not recorded yet':'')+'.');
+};
+$('build').onclick=async()=>{say('Rendering what is missing …');
   const r=await post('/api/build',{force:false});
   if(r){say(r.rendered?r.rendered+' recorded.':'Nothing was missing.');load()}};
 $('rebuild').onclick=async()=>{
   if(!confirm('Re-record all phrases with the current voice?'))return;
-  say('Re-recording everything, this takes a while \\u2026');
+  say('Re-recording everything, this takes a while …');
   const r=await post('/api/build',{force:true});
   if(r){say(r.rendered+' re-recorded.');load()}};
 load();
@@ -476,22 +797,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
         items = load_phrases()
 
         if self.path == "/api/phrases":
-            existing = {i["id"] for i in items}
-            added, rendered = 0, 0
-            for line in data.get("lines", []):
-                base, sid, n2 = slug(line), slug(line), 2
-                while sid in existing:
-                    sid, n2 = f"{base}-{n2}", n2 + 1
-                item = {"id": sid, "text": line}
-                items.append(item)
-                existing.add(sid)
-                added += 1
+            fresh, twins = add_lines(items, data.get("lines", []),
+                                     data.get("tags", []))
+            rendered = 0
+            for item in fresh:
                 try:
                     rendered += 1 if render(item, cfg) else 0
                 except Exception as e:
+                    save_phrases(items)          # keep what already worked
                     return self._send(500, str(e), "text/plain")
             save_phrases(items)
-            return self._send(200, json.dumps({"added": added, "rendered": rendered}))
+            return self._send(200, json.dumps({"added": len(fresh),
+                                               "rendered": rendered,
+                                               "merged": len(twins)}))
+
+        if self.path == "/api/tags":
+            pid = (data.get("id") or "").strip()
+            tags = set_tags(pid, data.get("tags", []))
+            if tags is None:
+                return self._send(404, f"No phrase with the id '{pid}'.", "text/plain")
+            return self._send(200, json.dumps({"ok": True, "id": pid, "tags": tags},
+                                              ensure_ascii=False))
+
+        if self.path == "/api/download":
+            blob, n = zip_phrases(data.get("ids", []))
+            if not n:
+                return self._send(404, "Nothing recorded to download.", "text/plain")
+            return self._send(200, blob, "application/zip")
 
         if self.path == "/api/build":
             force = bool(data.get("force"))
@@ -541,16 +873,28 @@ def main():
         print(f"mitreden is running at http://localhost:{port}  (Ctrl-C to stop)")
         http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
     elif cmd == "add":
-        if len(args) < 2:
-            sys.exit('Usage: mitreden.py add "The phrase"')
+        text, tags, rest, i = None, [], args[1:], 0
+        while i < len(rest):
+            a = rest[i]
+            if a in ("--tag", "--tags") and i + 1 < len(rest):
+                i += 1
+                tags = rest[i].split(",")
+            elif a.startswith("--tag=") or a.startswith("--tags="):
+                tags = a.split("=", 1)[1].split(",")
+            elif text is None:
+                text = a
+            i += 1
+        if not text:
+            sys.exit('Usage: mitreden.py add "The phrase" [--tags kindergarten,spiel]')
         items = load_phrases()
-        existing = {i["id"] for i in items}
-        base, sid, n = slug(args[1]), slug(args[1]), 2
-        while sid in existing:
-            sid, n = f"{base}-{n}", n + 1
-        items.append({"id": sid, "text": args[1]})
+        fresh, twins = add_lines(items, [text], tags)
         save_phrases(items)
-        print(f"added: {sid}")
+        for item in fresh:
+            print(f"added: {item['id']}" +
+                  (f"  [{', '.join(item['tags'])}]" if item["tags"] else ""))
+        for item in twins:
+            print(f"already there: {item['id']} — \"{item['text']}\"" +
+                  (f"  [{', '.join(item['tags'])}]" if item.get("tags") else ""))
         build()
     elif cmd == "delete":
         if len(args) < 2:
@@ -568,6 +912,32 @@ def main():
             print(f"  removed    {f.relative_to(ROOT)}")
         if not removed:
             print("  (no audio files present)")
+    elif cmd == "dedupe":
+        keep, dropped = dedupe()
+        if not dropped:
+            print(f"No duplicates. {len(keep)} phrases, all different.")
+            return
+        for item in dropped:
+            print(f"  merged     {item['id']} — \"{item['text']}\"")
+        print(f"\n{len(dropped)} merged away, {len(keep)} phrases left.")
+    elif cmd == "export":
+        if len(args) < 3:
+            sys.exit("Usage: mitreden.py export <group|all> <folder> "
+                     "[--format anybook|esp32]")
+        tag = "" if args[1] in ("all", "*") else args[1]
+        profile = "anybook"
+        for i, a in enumerate(args):
+            if a == "--format" and i + 1 < len(args):
+                profile = args[i + 1]
+            elif a.startswith("--format="):
+                profile = a.split("=", 1)[1]
+        try:
+            copied, missing = export_group(tag, args[2], profile)
+        except RuntimeError as e:
+            sys.exit(str(e))
+        print(f"exported {len(copied)} {profile} files to {args[2]}")
+        for pid in missing:
+            print(f"  not recorded yet   {pid}", file=sys.stderr)
     elif cmd == "build":
         build(force="--all" in args)
     elif cmd == "backends":
