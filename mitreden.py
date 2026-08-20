@@ -16,8 +16,9 @@ Usage:
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
 
-Note: the spoken content is German (see phrases.json and the voice settings in
-config.json). Only the tooling around it is in English.
+Note: everything a person reads is German — the web interface, the README and
+the spoken content itself (phrases.json, the voice settings in config.json).
+English is for the code only: identifiers, comments, docstrings, CLI output.
 """
 
 import hashlib
@@ -293,7 +294,7 @@ def delete_phrase(pid):
 
 # ------------------------------------------------------------------------ UI
 
-PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>mitreden</title>
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -357,14 +358,14 @@ button.quiet:hover{color:var(--text)}
 </style>
 <main>
 <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
-<p class="sub">One phrase, one voice, files for Anybook and ESP32.</p>
+<p class="sub">Ein Satz, eine Stimme, Dateien für Anybook und ESP32.</p>
 
 <div class="hero">
-  <label for="t">What should she be able to say?</label>
+  <label for="t">Was soll sie sagen können?</label>
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
   <div class="row">
-    <button class="primary" id="add">Add phrase</button>
-    <button class="quiet" id="build">Render missing</button>
+    <button class="primary" id="add">Satz hinzufügen</button>
+    <button class="quiet" id="build">Fehlende aufnehmen</button>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
@@ -372,19 +373,20 @@ button.quiet:hover{color:var(--text)}
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
   <span class="spacer"></span>
-  <span class="voice">Voice <b id="voice">…</b></span>
+  <span class="voice">Stimme <b id="voice">…</b></span>
 </div>
 
 <div id="list"></div>
 
 <div class="foot">
-  <button class="quiet" id="rebuild">Re-record all phrases</button>
+  <button class="quiet" id="rebuild">Alle Sätze neu aufnehmen</button>
 </div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
-const LABEL={ok:'recorded',missing:'not recorded yet',stale:'still in the old voice'};
+const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
+             stale:'noch in der alten Stimme'};
 
 async function load(){
   const data=await (await fetch('/api/phrases')).json();
@@ -393,20 +395,20 @@ async function load(){
   $('voice').textContent=data.voice||'\\u2014';
 
   const pending=items.filter(i=>i.state!=='ok').length;
-  $('count').textContent = !items.length ? 'No phrases yet'
-    : items.length+(items.length===1?' phrase':' phrases')+
-      (pending? ', '+pending+' pending' : ', all recorded');
+  $('count').textContent = !items.length ? 'Noch keine S\\u00e4tze'
+    : items.length+(items.length===1?' Satz':' S\\u00e4tze')+
+      (pending? ', '+pending+' offen' : ', alle aufgenommen');
 
   $('list').innerHTML = items.length ? '' :
-    '<p class="empty">Nothing here yet. Several lines at once work too \\u2014 '+
-    'each line becomes its own phrase.</p>';
+    '<p class="empty">Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
+    'jede Zeile wird ein eigener Satz.</p>';
   for(const it of items){
     const d=document.createElement('div');d.className='item '+it.state;
     d.innerHTML='<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
       '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
       (it.state==='missing'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
-      '<button class="del" title="Delete phrase" aria-label="Delete phrase">\\uD83D\\uDDD1\\uFE0F</button>';
+      '<button class="del" title="Satz l\\u00f6schen" aria-label="Satz l\\u00f6schen">\\uD83D\\uDDD1\\uFE0F</button>';
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=LABEL[it.state];
@@ -415,33 +417,34 @@ async function load(){
   }
 }
 async function del(it){
-  if(!confirm('Really delete \\u201C'+it.text+'\\u201D?\\n\\nThe phrase and its audio files '+
-              'will be removed. This cannot be undone.'))return;
-  say('Deleting \\u2026');
+  if(!confirm('\\u201E'+it.text+'\\u201C wirklich l\\u00f6schen?\\n\\nDer Satz und seine '+
+              'Audiodateien werden entfernt. Das l\\u00e4sst sich nicht r\\u00fcckg\\u00e4ngig machen.'))return;
+  say('Wird gel\\u00f6scht \\u2026');
   const r=await post('/api/delete',{id:it.id});
-  if(r){say('Deleted: '+r.id);load()}
+  if(r){say('Gel\\u00f6scht: '+r.id);load()}
 }
 async function post(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body||{})});
-  if(!r.ok){say('Failed: '+await r.text());return null}
+  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return null}
   return r.json();
 }
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
-  if(!lines.length){say('Type something first.');return}
-  say('Recording \\u2026');
+  if(!lines.length){say('Erst etwas eintippen.');return}
+  say('Wird aufgenommen \\u2026');
   const res=await post('/api/phrases',{lines});
-  if(res){$('t').value='';say(res.added+' added, '+res.rendered+' recorded.');load()}
+  if(res){$('t').value='';
+    say(res.added+' hinzugef\\u00fcgt, '+res.rendered+' aufgenommen.');load()}
 };
-$('build').onclick=async()=>{say('Rendering what is missing \\u2026');
+$('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
   const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered?r.rendered+' recorded.':'Nothing was missing.');load()}};
+  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Re-record all phrases with the current voice?'))return;
-  say('Re-recording everything, this takes a while \\u2026');
+  if(!confirm('Alle S\\u00e4tze mit der aktuellen Stimme neu aufnehmen?'))return;
+  say('Alles wird neu aufgenommen, das dauert \\u2026');
   const r=await post('/api/build',{force:true});
-  if(r){say(r.rendered+' re-recorded.');load()}};
+  if(r){say(r.rendered+' neu aufgenommen.');load()}};
 load();
 </script>
 </html>"""

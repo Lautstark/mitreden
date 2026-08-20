@@ -20,7 +20,8 @@ python3 mitreden.py build --all
 
 Wenn du etwas Ähnliches für dein Kind bauen willst: Das Repo ist absichtlich
 klein und ohne Abhängigkeiten. Eine Datei Python, ein bisschen ffmpeg. Der
-Code und die Oberfläche sind auf Englisch, gesprochen wird Deutsch.
+Code ist auf Englisch, alles zum Lesen und Hören auf Deutsch — Oberfläche,
+README, Sätze. Nur was das Terminal ausgibt, ist englisch geblieben.
 
 ## Was du brauchst
 
