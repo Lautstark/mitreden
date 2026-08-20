@@ -6,5 +6,10 @@
     "key_env": "AZURE_SPEECH_KEY",
     "rate": "-5%",
     "pitch": "0%"
+  },
+  "output": {
+    "format": "wav",
+    "sample_rate": 44100,
+    "channels": 1
   }
 }

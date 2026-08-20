@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-mitreden — one voice for every device.
+mitreden — one voice for everything that speaks for you.
 
 phrases.json is the source of truth. Every entry is rendered into one audio
-file per target device. Change the voice = change the backend in config.json
+file in out/. Change the voice = change the backend in config.json
 + `python3 mitreden.py build --all` = everything sounds alike again.
+
+The output format lives in config.json too: wav by default, anything ffmpeg
+can write if you need something else.
 
 Phrases can belong to groups ("kindergarten", "spiel"). Groups are labels, not
 folders: one phrase can be in several of them, and out/ stays flat — one text,
@@ -17,7 +20,7 @@ Usage:
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
     python3 mitreden.py dedupe          # show duplicates (--apply to merge them)
-    python3 mitreden.py export <group> <folder>   # copy one group out for transfer
+    python3 mitreden.py export <group> <folder>   # copy one group somewhere else
     python3 mitreden.py backends        # show which backends are usable
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
@@ -47,15 +50,11 @@ ICON = ROOT / "icon.svg"
 RAW = ROOT / "build" / "raw"
 OUT = ROOT / "out"
 
-# Output profiles: target device -> ffmpeg parameters.
-# anybook  : Anybook Studio accepts WAV/MP3, 44.1 kHz mono is plenty.
-# esp32    : I2S with MAX98357A, 16 kHz mono 16 bit saves flash and sounds fine.
-# preview  : for the web interface.
-PROFILES = {
-    "anybook": ["-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le"],
-    "esp32":   ["-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le"],
-    "preview": ["-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le"],
-}
+# Anything ffmpeg can write works as a format; the extension picks the codec.
+# 16000/1 keeps files small for microcontroller flash, 44100/1 is the safe
+# default that plays everywhere.
+MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "ogg": "audio/ogg",
+        "flac": "audio/flac", "m4a": "audio/mp4", "opus": "audio/opus"}
 
 # Strip silence at the start/end, then normalise to a uniform loudness.
 # Without this one phrase is barely audible and the next one shouts.
@@ -77,6 +76,7 @@ DEFAULT_CONFIG = {
                    "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%"},
     "elevenlabs": {"voice_id": "", "model": "eleven_multilingual_v2",
                    "key_env": "ELEVENLABS_API_KEY"},
+    "output":     {"format": "wav", "sample_rate": 44100, "channels": 1},
 }
 
 
@@ -209,10 +209,29 @@ def set_tags(pid, tags):
     return None
 
 
+def out_format(cfg):
+    return (cfg.get("output") or {}).get("format", "wav").lower().lstrip(".")
+
+
+def out_file(pid, cfg):
+    """Where one phrase lands. out/ is flat — one phrase, one file."""
+    return OUT / f"{pid}.{out_format(cfg)}"
+
+
+def output_args(cfg):
+    """ffmpeg settings for the configured format."""
+    out = cfg.get("output") or {}
+    args = ["-ar", str(out.get("sample_rate", 44100)),
+            "-ac", str(out.get("channels", 1))]
+    if out_format(cfg) == "wav":            # otherwise ffmpeg guesses from .wav
+        args += ["-c:a", "pcm_s16le"]
+    return args
+
+
 def fingerprint(text, cfg):
-    """Changes when the text OR the voice changes -> re-render needed."""
+    """Changes when the text, the voice OR the output format changes."""
     backend = cfg["backend"]
-    payload = json.dumps([text, backend, cfg.get(backend, {})],
+    payload = json.dumps([text, backend, cfg.get(backend, {}), cfg.get("output", {})],
                          sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
@@ -296,10 +315,10 @@ def esc(s):
 # ----------------------------------------------------------------- Rendering
 
 def render(item, cfg, force=False):
-    """One phrase -> raw file -> every output profile. Returns True if it worked."""
+    """One phrase -> raw file -> one output file. Returns True if it worked."""
     fp = fingerprint(item["text"], cfg)
-    targets = [OUT / p / f"{item['id']}.wav" for p in PROFILES]
-    if not force and item.get("fingerprint") == fp and all(t.exists() for t in targets):
+    dest = out_file(item["id"], cfg)
+    if not force and item.get("fingerprint") == fp and dest.exists():
         return False
 
     RAW.mkdir(parents=True, exist_ok=True)
@@ -316,15 +335,35 @@ def render(item, cfg, force=False):
                            f"`mitreden.py backends` shows what is available.")
     BACKENDS[backend](item["text"], raw, opt)
 
-    for profile, args in PROFILES.items():
-        dest = OUT / profile / f"{item['id']}.wav"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw),
-                        "-af", FILTERS, *args, str(dest)], check=True)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw),
+                    "-af", FILTERS, *output_args(cfg), str(dest)], check=True)
 
     item["fingerprint"] = fp
     item["backend"] = cfg["backend"]
     return True
+
+
+def prune_out(cfg):
+    """Drop whatever in out/ no phrase claims any more.
+
+    out/ is reproducible from phrases.json and config.json, so leftovers from
+    a deleted phrase or an earlier output format are only clutter. Directories
+    count as leftovers too: out/ is flat now, it used to have one per device.
+
+    Returns what went away."""
+    if not OUT.exists():
+        return []
+    keep = {out_file(i["id"], cfg).name for i in load_phrases()}
+    gone = []
+    for f in sorted(OUT.iterdir()):
+        if f.is_dir():
+            shutil.rmtree(f)
+            gone.append(f)
+        elif f.name not in keep:
+            f.unlink()
+            gone.append(f)
+    return gone
 
 
 def build(force=False):
@@ -342,13 +381,20 @@ def build(force=False):
         except Exception as e:
             print(f"  ERROR      {item['id']}: {e}", file=sys.stderr)
     save_phrases(items)
+    gone = prune_out(cfg)
     print(f"\nRe-rendered {done} of {len(items)} phrases. Voice: {cfg['backend']}")
-    print(f"Files are in {OUT}/anybook and {OUT}/esp32")
+    if gone:
+        print(f"Cleaned up {len(gone)} leftover file(s) in {OUT.name}/:")
+        for f in gone[:5]:
+            print(f"  removed    {f.name}")
+        if len(gone) > 5:
+            print(f"  ... and {len(gone) - 5} more")
+    print(f"Files are in {OUT} as .{out_format(cfg)}")
 
 
 def phrase_state(item, cfg):
     """ok = current, missing = never rendered, stale = other voice or other text."""
-    if not all((OUT / prof / f"{item['id']}.wav").exists() for prof in PROFILES):
+    if not out_file(item["id"], cfg).exists():
         return "missing"
     if item.get("fingerprint") != fingerprint(item["text"], cfg):
         return "stale"
@@ -370,9 +416,11 @@ def phrases_with_state():
 
 
 def remove_files(pid):
-    """Every file this phrase produced. Missing ones are fine, not an error."""
+    """Every file this phrase produced, in whatever format. Missing ones are fine.
+
+    The glob catches leftovers from an earlier output format too."""
     removed = []
-    for f in [OUT / p / f"{pid}.wav" for p in PROFILES] + [RAW / f"{pid}.wav"]:
+    for f in sorted(OUT.glob(f"{pid}.*")) + [RAW / f"{pid}.wav"]:
         if f.exists():
             f.unlink()
             removed.append(f)
@@ -429,43 +477,23 @@ def selected_ids(ids):
     return [pid for pid in ids if pid in known]
 
 
-def zip_phrases(ids):
-    """The current selection as one download.
-
-    One folder per device format, so nobody has to know up front whether the
-    Anybook or the ESP32 version is the one they need — both are in there. The
-    files keep their ids as names and stay recognisable in Anybook Studio.
-
-    Returns the zip bytes and how many phrases went in."""
+def zip_phrases(ids, cfg):
+    """The current selection as one flat download, named by id."""
     buf = io.BytesIO()
     n = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for pid in selected_ids(ids):
-            found = False
-            for profile in exportable():
-                f = OUT / profile / f"{pid}.wav"
-                if f.exists():
-                    z.write(f, f"{profile}/{pid}.wav")
-                    found = True
-            n += found
+            f = out_file(pid, cfg)
+            if f.exists():
+                z.write(f, f.name)
+                n += 1
     return buf.getvalue(), n
 
 
-def exportable():
-    """preview only feeds this interface — it is nothing to hand to a device."""
-    return [p for p in PROFILES if p != "preview"]
-
-
-def export_group(tag, dest, profile):
-    """Copy one group into a folder for transfer.
-
-    out/ itself stays flat and free of duplicates; this copy is the disposable
-    part you hand to Anybook Studio or drop onto LittleFS.
+def export_group(tag, dest, cfg):
+    """Copy one group into a folder, for carrying it somewhere else.
 
     Returns (copied names, ids that are not recorded yet)."""
-    if profile not in exportable():
-        raise RuntimeError(f"Unknown format '{profile}'. Available: "
-                           f"{', '.join(exportable())}")
     tag = norm_tag(tag) if tag else ""
     dest = Path(dest).expanduser()
     dest.mkdir(parents=True, exist_ok=True)
@@ -473,7 +501,7 @@ def export_group(tag, dest, profile):
     for item in load_phrases():
         if not in_group(item, tag):
             continue
-        f = OUT / profile / f"{item['id']}.wav"
+        f = out_file(item["id"], cfg)
         if f.exists():
             shutil.copy2(f, dest / f.name)
             copied.append(f.name)
@@ -589,7 +617,7 @@ button.quiet:hover{color:var(--text)}
 </style>
 <main>
 <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
-<p class="sub">Ein Satz, eine Stimme, Dateien für Anybook und ESP32.</p>
+<p class="sub">Ein Satz, eine Stimme, eine Audiodatei.</p>
 
 <div class="hero">
   <label for="t">Was soll sie sagen können?</label>
@@ -740,7 +768,7 @@ function draw(){
       // listening here, never the rendered file — and a download of the preview
       // rather than the device files. Both mislead, so both are switched off.
       (it.state==='missing'?'':'<audio controls controlsList="nodownload noplaybackrate" '+
-        'disableRemotePlayback preload="none" src="/audio/'+it.id+'.wav"></audio>')+
+        'disableRemotePlayback preload="none" src="/audio/'+it.id+'"></audio>')+
       '<div class="menuwrap"><button class="dots" aria-haspopup="true" '+
       'aria-expanded="false" title="Mehr" aria-label="Mehr">\\u22ee</button></div>';
     d.querySelector('.line').textContent=it.text;
@@ -846,7 +874,7 @@ $('dl').onclick=async()=>{
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
   const skipped=vis.length-ids.length;
-  say(ids.length+' S\\u00e4tze heruntergeladen, ein Ordner pro Ger\\u00e4teformat'+
+  say(ids.length+' S\\u00e4tze heruntergeladen'+
       (skipped?'. '+skipped+' noch nicht aufgenommen':'')+'.');
 };
 $('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
@@ -883,10 +911,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(404, b"", "text/plain")
             return self._send(200, ICON.read_bytes(), "image/svg+xml")
         if self.path.startswith("/audio/"):
-            f = OUT / "preview" / Path(self.path).name
-            if not f.exists() or ".." in self.path:
+            # The id alone is enough — the server knows the configured format,
+            # so the page never has to care what it is.
+            pid = Path(self.path).name
+            f = out_file(pid, load_config())
+            if ".." in self.path or "/" in pid or not f.exists():
                 return self._send(404, b"", "text/plain")
-            return self._send(200, f.read_bytes(), "audio/wav")
+            return self._send(200, f.read_bytes(),
+                              MIME.get(f.suffix.lstrip("."), "application/octet-stream"))
         if self.path == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
@@ -922,7 +954,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                               ensure_ascii=False))
 
         if self.path == "/api/download":
-            blob, n = zip_phrases(data.get("ids", []))
+            blob, n = zip_phrases(data.get("ids", []), cfg)
             if not n:
                 return self._send(404, "Nothing recorded to download.", "text/plain")
             return self._send(200, blob, "application/zip")
@@ -1033,20 +1065,10 @@ def main():
             print("Run `mitreden.py dedupe --apply` to actually do it.")
     elif cmd == "export":
         if len(args) < 3:
-            sys.exit("Usage: mitreden.py export <group|all> <folder> "
-                     "[--format anybook|esp32]")
+            sys.exit("Usage: mitreden.py export <group|all> <folder>")
         tag = "" if args[1] in ("all", "*") else args[1]
-        profile = "anybook"
-        for i, a in enumerate(args):
-            if a == "--format" and i + 1 < len(args):
-                profile = args[i + 1]
-            elif a.startswith("--format="):
-                profile = a.split("=", 1)[1]
-        try:
-            copied, missing = export_group(tag, args[2], profile)
-        except RuntimeError as e:
-            sys.exit(str(e))
-        print(f"exported {len(copied)} {profile} files to {args[2]}")
+        copied, missing = export_group(tag, args[2], load_config())
+        print(f"exported {len(copied)} files to {args[2]}")
         for pid in missing:
             print(f"  not recorded yet   {pid}", file=sys.stderr)
     elif cmd == "build":

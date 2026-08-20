@@ -1,17 +1,23 @@
-# Generated audio files - reproducible from phrases.json + config.json
+# Your own phrases and everything made from them — personal, stays local.
+# Start from phrases.example.json, which is the only phrase file in the repo.
+phrases.json
+phrases.json.*
 out/
 build/
 
-# Your own phrase set - personal, stays local. Start from phrases.example.json
-phrases.json
+# Audio never belongs in here, wherever it turns up.
+*.wav
+*.mp3
+*.aiff
+
+# Credentials
+.env
+.env.*
 
 # Python
 __pycache__/
 *.pyc
 .venv/
-
-# Credentials - never belong in the repo
-.env
 
 # Cleanup folder of the Cowork sandbox
 _to_delete/
