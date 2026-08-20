@@ -22,8 +22,9 @@ Usage:
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
 
-Note: the spoken content is German (see phrases.json and the voice settings in
-config.json). Only the tooling around it is in English.
+Note: everything a person reads is German — the web interface, the README and
+the spoken content itself (phrases.json, the voice settings in config.json).
+English is for the code only: identifiers, comments, docstrings, CLI output.
 """
 
 import hashlib
@@ -42,6 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PHRASES = ROOT / "phrases.json"
 CONFIG = ROOT / "config.json"
+ICON = ROOT / "icon.svg"
 RAW = ROOT / "build" / "raw"
 OUT = ROOT / "out"
 
@@ -462,13 +464,14 @@ def export_group(tag, dest, profile):
 
 # ------------------------------------------------------------------------ UI
 
-PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>mitreden</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
 <style>
 :root{
   --ink:#0e1014; --panel:#161920; --line:#242833; --line-soft:#1c202a;
-  --text:#f2efea; --muted:#7c8496; --accent:#f0a202; --accent-ink:#14161c;
+  --text:#f2efea; --muted:#7c8496; --accent:#ff8bc7; --accent-ink:#14161c;
   --ok:#3fb96b; --warn:#f0a202; --miss:#5b6377; --danger:#e5484d;
 }
 *{box-sizing:border-box}
@@ -476,7 +479,9 @@ body{margin:0;background:var(--ink);color:var(--text);
   font:16px/1.55 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
   padding:clamp(20px,5vw,64px);-webkit-font-smoothing:antialiased}
 main{max-width:720px;margin:0 auto}
-h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0}
+h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
+  display:flex;align-items:center;gap:12px}
+.logo{width:clamp(34px,7vw,52px);height:auto;flex:none}
 .sub{color:var(--muted);margin:6px 0 36px;font-size:15px}
 .hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;
   padding:22px 22px 16px}
@@ -497,7 +502,7 @@ button:hover{background:#1e222c}
 button:disabled{opacity:.4;cursor:default}
 button:disabled:hover{background:transparent}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button.primary:hover{background:#ffb01a}
+button.primary:hover{background:#ffa3d2}
 button.quiet{border-color:transparent;color:var(--muted);padding:11px 12px}
 button.quiet:hover{color:var(--text)}
 .status{color:var(--muted);font-size:14px;min-height:20px;margin:12px 2px 0}
@@ -516,7 +521,7 @@ button.quiet:hover{color:var(--text)}
 .chip:hover{background:#1e222c;color:var(--text)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
   font-weight:650}
-.chip.on:hover{background:#ffb01a}
+.chip.on:hover{background:#ffa3d2}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .item{display:flex;gap:14px;align-items:center;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
@@ -554,17 +559,17 @@ button.quiet:hover{color:var(--text)}
 }
 </style>
 <main>
-<h1>mitreden</h1>
-<p class="sub">One phrase, one voice, files for Anybook and ESP32.</p>
+<h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
+<p class="sub">Ein Satz, eine Stimme, Dateien für Anybook und ESP32.</p>
 
 <div class="hero">
-  <label for="t">What should she be able to say?</label>
+  <label for="t">Was soll sie sagen können?</label>
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
-  <label class="tight" for="nt">Groups — optional, comma separated</label>
+  <label class="tight" for="nt">Gruppen — optional, mit Komma getrennt</label>
   <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
-    <button class="primary" id="add">Add phrase</button>
-    <button class="quiet" id="build">Render missing</button>
+    <button class="primary" id="add">Satz hinzufügen</button>
+    <button class="quiet" id="build">Fehlende aufnehmen</button>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
@@ -572,12 +577,12 @@ button.quiet:hover{color:var(--text)}
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
   <span class="spacer"></span>
-  <span class="voice">Voice <b id="voice">…</b></span>
+  <span class="voice">Stimme <b id="voice">…</b></span>
 </div>
 
 <div class="tools">
-  <input id="q" type="search" placeholder="Search phrases and groups…" autocomplete="off">
-  <button id="dl" title="Everything the list shows right now, as one zip">Download</button>
+  <input id="q" type="search" placeholder="Sätze und Gruppen durchsuchen…" autocomplete="off">
+  <button id="dl" title="Alles, was die Liste gerade zeigt, als ZIP">Herunterladen</button>
 </div>
 
 <div class="chips" id="chips"></div>
@@ -585,13 +590,14 @@ button.quiet:hover{color:var(--text)}
 <div id="list"></div>
 
 <div class="foot">
-  <button class="quiet" id="rebuild">Re-record all phrases</button>
+  <button class="quiet" id="rebuild">Alle Sätze neu aufnehmen</button>
 </div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
-const LABEL={ok:'recorded',missing:'not recorded yet',stale:'still in the old voice'};
+const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
+             stale:'noch in der alten Stimme'};
 let ALL=[], TAG='', SHOW_ALL=false;
 
 // Rendering thousands of rows makes the page crawl, and nobody reads that far
@@ -637,27 +643,28 @@ function draw(){
   const names=Object.keys(counts).sort();
   $('chips').innerHTML='';
   if(names.length){
-    chip('All',hits.length,'');
+    chip('Alle',hits.length,'');
     for(const n of names)chip(n,counts[n],n);
   }
 
   const pending=items.filter(i=>i.state!=='ok').length;
-  $('count').textContent = !ALL.length ? 'No phrases yet'
+  $('count').textContent = !ALL.length ? 'Noch keine S\\u00e4tze'
     : items.length===ALL.length
-      ? ALL.length+(ALL.length===1?' phrase':' phrases')+
-        (pending?', '+pending+' pending':', all recorded')
-      : items.length+' of '+ALL.length+' phrases'+(pending?', '+pending+' pending':'');
+      ? ALL.length+(ALL.length===1?' Satz':' S\\u00e4tze')+
+        (pending?', '+pending+' offen':', alle aufgenommen')
+      : items.length+' von '+ALL.length+' S\\u00e4tzen'+(pending?', '+pending+' offen':'');
 
   const ready=items.filter(i=>i.state!=='missing').length;
-  $('dl').textContent=ready?'Download '+ready:'Download';
+  $('dl').textContent=ready?ready+' herunterladen':'Herunterladen';
   $('dl').disabled=!ready;
-  $('nt').placeholder=TAG?TAG+' — the group you are in':'kindergarten, spiel';
+  $('nt').placeholder=TAG?TAG+' \\u2014 die Gruppe, in der du bist':'kindergarten, spiel';
 
   $('list').innerHTML='';
   if(!items.length){
     const p=document.createElement('p');p.className='empty';
-    p.textContent=ALL.length?'No phrase matches.'
-      :'Nothing here yet. Several lines at once work too — each line becomes its own phrase.';
+    p.textContent=ALL.length?'Kein Satz passt.'
+      :'Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
+       'jede Zeile wird ein eigener Satz.';
     $('list').appendChild(p);
     return;
   }
@@ -667,19 +674,19 @@ function draw(){
       '<div class="txt"><div class="line"></div>'+
       '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
       (it.state==='missing'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
-      '<button class="del" title="Delete phrase" aria-label="Delete phrase">\\uD83D\\uDDD1\\uFE0F</button>';
+      '<button class="del" title="Satz l\\u00f6schen" aria-label="Satz l\\u00f6schen">\\uD83D\\uDDD1\\uFE0F</button>';
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=LABEL[it.state];
     const meta=d.querySelector('.meta');
     for(const t of (it.tags||[])){
       const b=document.createElement('button');
-      b.className='tag';b.textContent=t;b.title='Show only this group';
+      b.className='tag';b.textContent=t;b.title='Nur diese Gruppe zeigen';
       b.onclick=()=>{TAG=t;draw()};
       meta.appendChild(b);
     }
     const e=document.createElement('button');
-    e.className='tag edit';e.textContent=(it.tags||[]).length?'edit':'+ group';
+    e.className='tag edit';e.textContent=(it.tags||[]).length?'\\u00e4ndern':'+ Gruppe';
     e.onclick=()=>editTags(it);
     meta.appendChild(e);
     d.querySelector('.del').onclick=()=>del(it);
@@ -687,7 +694,7 @@ function draw(){
   }
   if(!SHOW_ALL&&items.length>CAP){
     const b=document.createElement('button');
-    b.className='more';b.textContent='Show all '+items.length+' phrases';
+    b.className='more';b.textContent='Alle '+items.length+' S\\u00e4tze zeigen';
     b.onclick=()=>{SHOW_ALL=true;draw()};
     $('list').appendChild(b);
   }
@@ -696,69 +703,69 @@ function draw(){
 async function load(){
   const data=await (await fetch('/api/phrases')).json();
   ALL=data.items||[];
-  $('voice').textContent=data.voice||'—';
+  $('voice').textContent=data.voice||'\\u2014';
   if(TAG&&!ALL.some(i=>(i.tags||[]).includes(TAG)))TAG='';
   draw();
 }
 async function editTags(it){
-  const v=prompt('Groups for “'+it.text+'”\\n\\nComma separated. Empty removes every group.',
-                 (it.tags||[]).join(', '));
+  const v=prompt('Gruppen f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\nMit Komma getrennt. '+
+                 'Leer entfernt alle Gruppen.',(it.tags||[]).join(', '));
   if(v===null)return;
   const r=await post('/api/tags',{id:it.id,tags:v.split(',')});
-  if(r){say(r.tags.length?'Now in: '+r.tags.join(', '):'No groups any more.');load()}
+  if(r){say(r.tags.length?'Jetzt in: '+r.tags.join(', '):'Keine Gruppen mehr.');load()}
 }
 async function del(it){
-  if(!confirm('Really delete “'+it.text+'”?\\n\\nThe phrase and its audio files '+
-              'will be removed. This cannot be undone.'))return;
-  say('Deleting …');
+  if(!confirm('\\u201E'+it.text+'\\u201C wirklich l\\u00f6schen?\\n\\nDer Satz und seine '+
+              'Audiodateien werden entfernt. Das l\\u00e4sst sich nicht r\\u00fcckg\\u00e4ngig machen.'))return;
+  say('Wird gel\\u00f6scht \\u2026');
   const r=await post('/api/delete',{id:it.id});
-  if(r){say('Deleted: '+r.id);load()}
+  if(r){say('Gel\\u00f6scht: '+r.id);load()}
 }
 async function post(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body||{})});
-  if(!r.ok){say('Failed: '+await r.text());return null}
+  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return null}
   return r.json();
 }
 $('q').oninput=draw;
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
-  if(!lines.length){say('Type something first.');return}
+  if(!lines.length){say('Erst etwas eintippen.');return}
   let tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
   if(!tags.length&&TAG)tags=[TAG];          // adding inside a group stays in it
-  say('Recording …');
+  say('Wird aufgenommen \\u2026');
   const res=await post('/api/phrases',{lines,tags});
   if(res){
     $('t').value='';
-    say(res.added+' added, '+res.rendered+' recorded'+
-        (res.merged?', '+res.merged+' already there':'')+'.');
+    say(res.added+' hinzugef\\u00fcgt, '+res.rendered+' aufgenommen'+
+        (res.merged?', '+res.merged+' gab es schon':'')+'.');
     load();
   }
 };
 $('dl').onclick=async()=>{
   const vis=shown(), ids=vis.filter(i=>i.state!=='missing').map(i=>i.id);
-  if(!ids.length){say('Nothing recorded to download yet.');return}
-  say('Packing '+ids.length+' phrases …');
+  if(!ids.length){say('Es ist noch nichts aufgenommen.');return}
+  say(ids.length+' S\\u00e4tze werden gepackt \\u2026');
   const r=await fetch('/api/download',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
-  if(!r.ok){say('Failed: '+await r.text());return}
+  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
   const url=URL.createObjectURL(await r.blob());
   const a=document.createElement('a');
-  a.href=url;a.download='mitreden-'+(TAG||'all')+'.zip';
+  a.href=url;a.download='mitreden-'+(TAG||'alle')+'.zip';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
   const skipped=vis.length-ids.length;
-  say(ids.length+' phrase'+(ids.length===1?'':'s')+' downloaded, one folder per '+
-      'device format'+(skipped?'. '+skipped+' not recorded yet':'')+'.');
+  say(ids.length+' S\\u00e4tze heruntergeladen, ein Ordner pro Ger\\u00e4teformat'+
+      (skipped?'. '+skipped+' noch nicht aufgenommen':'')+'.');
 };
-$('build').onclick=async()=>{say('Rendering what is missing …');
+$('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
   const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered?r.rendered+' recorded.':'Nothing was missing.');load()}};
+  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Re-record all phrases with the current voice?'))return;
-  say('Re-recording everything, this takes a while …');
+  if(!confirm('Alle S\\u00e4tze mit der aktuellen Stimme neu aufnehmen?'))return;
+  say('Alles wird neu aufgenommen, das dauert \\u2026');
   const r=await post('/api/build',{force:true});
-  if(r){say(r.rendered+' re-recorded.');load()}};
+  if(r){say(r.rendered+' neu aufgenommen.');load()}};
 load();
 </script>
 </html>"""
@@ -780,6 +787,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             return self._send(200, PAGE, "text/html; charset=utf-8")
+        if self.path == "/icon.svg":
+            if not ICON.exists():
+                return self._send(404, b"", "text/plain")
+            return self._send(200, ICON.read_bytes(), "image/svg+xml")
         if self.path.startswith("/audio/"):
             f = OUT / "preview" / Path(self.path).name
             if not f.exists() or ".." in self.path:

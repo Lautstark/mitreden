@@ -20,7 +20,8 @@ python3 mitreden.py build --all
 
 Wenn du etwas Ähnliches für dein Kind bauen willst: Das Repo ist absichtlich
 klein und ohne Abhängigkeiten. Eine Datei Python, ein bisschen ffmpeg. Der
-Code und die Oberfläche sind auf Englisch, gesprochen wird Deutsch.
+Code ist auf Englisch, alles zum Lesen und Hören auf Deutsch — Oberfläche,
+README, Sätze. Nur was das Terminal ausgibt, ist englisch geblieben.
 
 ## Was du brauchst
 
@@ -75,7 +76,7 @@ python3 mitreden.py ui
 ```
 
 Dann auf <http://localhost:8770>: Sätze eintippen — eine Zeile pro Satz —,
-„Add phrase“ drücken, fertig. Die Audiodateien landen in `out/`.
+„Satz hinzufügen“ drücken, fertig. Die Audiodateien landen in `out/`.
 
 Ohne Oberfläche geht es genauso:
 
@@ -107,7 +108,7 @@ Gruppennamen — und sie ist tolerant, was Umlaute angeht: `hor auf`,
 `hoer auf` und `Hör auf` finden alle denselben Satz.
 
 Solange eine Gruppe ausgewählt ist, landen neu angelegte Sätze automatisch in
-ihr. Die Gruppen eines vorhandenen Satzes änderst du über „edit" neben seinen
+ihr. Die Gruppen eines vorhandenen Satzes änderst du über „ändern“ neben seinen
 Etiketten.
 
 **Ein Text, eine Datei.** Legst du einen Satz an, den es schon gibt, entsteht
@@ -122,7 +123,7 @@ Für Bestände, die vor den Gruppen entstanden sind:
 python3 mitreden.py dedupe   # führt doppelte Sätze zusammen, räumt die Dateien weg
 ```
 
-**Rausholen, was du gerade siehst.** Der Knopf „Download" packt genau die Sätze
+**Rausholen, was du gerade siehst.** Der Knopf „Herunterladen“ packt genau die Sätze
 zusammen, die die Liste gerade zeigt — nach einer Suche also die Treffer, in
 einer Gruppe deren Sätze. Im ZIP liegt ein Ordner pro Geräteformat (`anybook/`
 und `esp32/`), du musst dich also vorher für nichts entscheiden: du nimmst den
