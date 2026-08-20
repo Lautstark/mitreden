@@ -1,21 +1,21 @@
-# vorlaut
+# mitreden
 
-> vorlaut sein — und wörtlich: Vor-Laut
+> mitreden können — mit derselben Stimme, auf jedem Gerät
 
 Ich baue das für meine dreieinhalbjährige Tochter, die unterstützt
 kommuniziert. Wer über mehrere Geräte spricht, bekommt von jedem eine andere
 Stimme geliehen — derselbe Satz klingt dann wie eine andere Person. Wer
 gerade erst lernt, dass diese Geräte die eigene Stimme sind, merkt das sofort.
 
-vorlaut löst genau das: Text eintippen, Audiodatei rausbekommen — in immer
+mitreden löst genau das: Text eintippen, Audiodatei rausbekommen — in immer
 derselben Stimme, im passenden Format für jedes Gerät. `phrases.json` ist die
 Quelle der Wahrheit. Stimme gewechselt? Ein Befehl, und alles klingt wieder
 gleich.
 
 ```
-python3 vorlaut.py ui        # Weboberfläche auf http://localhost:8770
-python3 vorlaut.py backends  # was ist gerade nutzbar?
-python3 vorlaut.py build --all
+python3 mitreden.py ui        # Weboberfläche auf http://localhost:8770
+python3 mitreden.py backends  # was ist gerade nutzbar?
+python3 mitreden.py build --all
 ```
 
 Wenn du etwas Ähnliches für dein Kind bauen willst: Das Repo ist absichtlich
@@ -44,16 +44,16 @@ siehe [Die Stimme wählen](#die-stimme-wählen).
 - **ESP32 mit MAX98357A** — für selbstgebaute Taster und Rufknöpfe. Die Dateien
   aus `out/esp32/` passen direkt auf LittleFS.
 
-Du brauchst keines von beiden, um vorlaut auszuprobieren. Die Weboberfläche
+Du brauchst keines von beiden, um mitreden auszuprobieren. Die Weboberfläche
 spielt alles auch direkt im Browser ab.
 
 ## Loslegen
 
 ```
-git clone https://github.com/SteffiPeTaffy/vorlaut.git
-cd vorlaut
+git clone https://github.com/SteffiPeTaffy/mitreden.git
+cd mitreden
 cp phrases.example.json phrases.json
-python3 vorlaut.py backends   # zeigt, was auf deinem Rechner nutzbar ist
+python3 mitreden.py backends   # zeigt, was auf deinem Rechner nutzbar ist
 ```
 
 **Beim ersten Start wichtig:** In `config.json` steht `"backend": "azure"` —
@@ -62,7 +62,7 @@ du noch keinen hast, stell zuerst auf eine Stimme um, die auf deinem Rechner
 schon da ist (`say` auf macOS, `espeak` auf Linux):
 
 ```
-python3 vorlaut.py backends   # welche steht bei dir auf "found"?
+python3 mitreden.py backends   # welche steht bei dir auf "found"?
 ```
 
 Dann in `config.json` die erste Zeile auf `"backend": "say"` bzw.
@@ -71,7 +71,7 @@ alles läuft. Eine schöne Stimme suchst du dir danach aus — siehe
 [Die Stimme wählen](#die-stimme-wählen).
 
 ```
-python3 vorlaut.py ui
+python3 mitreden.py ui
 ```
 
 Dann auf <http://localhost:8770>: Sätze eintippen — eine Zeile pro Satz —,
@@ -80,16 +80,16 @@ Dann auf <http://localhost:8770>: Sätze eintippen — eine Zeile pro Satz —,
 Ohne Oberfläche geht es genauso:
 
 ```
-python3 vorlaut.py add "Ich brauche Hilfe."
-python3 vorlaut.py build        # nur Neues/Geändertes rendern
-python3 vorlaut.py build --all  # alles neu, nach einem Stimmwechsel
-python3 vorlaut.py delete ich-brauche-hilfe
+python3 mitreden.py add "Ich brauche Hilfe."
+python3 mitreden.py build        # nur Neues/Geändertes rendern
+python3 mitreden.py build --all  # alles neu, nach einem Stimmwechsel
+python3 mitreden.py delete ich-brauche-hilfe
 ```
 
 ## Die Stimme wählen
 
 Das Backend steht in `config.json`. Umstellen, dann einmal
-`python3 vorlaut.py build --all` — danach ist alles in der neuen Stimme.
+`python3 mitreden.py build --all` — danach ist alles in der neuen Stimme.
 
 **`say` / `espeak`** — schon da (macOS bzw. Linux), kein Setup, kein Konto.
 Klingt roboterhaft, ist aber der schnellste Weg zu prüfen, ob die Kette läuft.

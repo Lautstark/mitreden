@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-vorlaut — one voice for every device.
+mitreden — one voice for every device.
 
 phrases.json is the source of truth. Every entry is rendered into one audio
 file per target device. Change the voice = change the backend in config.json
-+ `python3 vorlaut.py build --all` = everything sounds alike again.
++ `python3 mitreden.py build --all` = everything sounds alike again.
 
 Usage:
-    python3 vorlaut.py ui              # web interface at http://localhost:8770
-    python3 vorlaut.py add "Nochmal!"  # record a phrase
-    python3 vorlaut.py build           # render only new/changed phrases
-    python3 vorlaut.py build --all     # re-render everything (after a voice change)
-    python3 vorlaut.py delete <id>     # delete a phrase and its files
-    python3 vorlaut.py backends        # show which backends are usable
+    python3 mitreden.py ui              # web interface at http://localhost:8770
+    python3 mitreden.py add "Nochmal!"  # record a phrase
+    python3 mitreden.py build           # render only new/changed phrases
+    python3 mitreden.py build --all     # re-render everything (after a voice change)
+    python3 mitreden.py delete <id>     # delete a phrase and its files
+    python3 mitreden.py backends        # show which backends are usable
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
 
@@ -210,7 +210,7 @@ def render(item, cfg, force=False):
     if binary and not shutil.which(binary):
         raise RuntimeError(f"'{binary}' is not installed — backend "
                            f"'{backend}' cannot render. "
-                           f"`vorlaut.py backends` shows what is available.")
+                           f"`mitreden.py backends` shows what is available.")
     BACKENDS[backend](item["text"], raw, opt)
 
     for profile, args in PROFILES.items():
@@ -228,7 +228,7 @@ def build(force=False):
     cfg = load_config()
     items = load_phrases()
     if not items:
-        print("phrases.json is empty. Add phrases first: vorlaut.py add \"Text\"")
+        print("phrases.json is empty. Add phrases first: mitreden.py add \"Text\"")
         return
     done = 0
     for item in items:
@@ -294,7 +294,7 @@ def delete_phrase(pid):
 
 PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>vorlaut</title>
+<title>mitreden</title>
 <style>
 :root{
   --ink:#0e1014; --panel:#161920; --line:#242833; --line-soft:#1c202a;
@@ -352,7 +352,7 @@ button.quiet:hover{color:var(--text)}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
 </style>
 <main>
-<h1>vorlaut</h1>
+<h1>mitreden</h1>
 <p class="sub">One phrase, one voice, files for Anybook and ESP32.</p>
 
 <div class="hero">
@@ -538,11 +538,11 @@ def main():
     if cmd == "ui":
         load_config()
         port = 8770
-        print(f"vorlaut is running at http://localhost:{port}  (Ctrl-C to stop)")
+        print(f"mitreden is running at http://localhost:{port}  (Ctrl-C to stop)")
         http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
     elif cmd == "add":
         if len(args) < 2:
-            sys.exit('Usage: vorlaut.py add "The phrase"')
+            sys.exit('Usage: mitreden.py add "The phrase"')
         items = load_phrases()
         existing = {i["id"] for i in items}
         base, sid, n = slug(args[1]), slug(args[1]), 2
@@ -554,7 +554,7 @@ def main():
         build()
     elif cmd == "delete":
         if len(args) < 2:
-            sys.exit("Usage: vorlaut.py delete <id>")
+            sys.exit("Usage: mitreden.py delete <id>")
         pid = args[1]
         ok, removed = delete_phrase(pid)
         if not ok:
