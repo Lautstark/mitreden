@@ -171,13 +171,20 @@ bleibt.
 
 ## Wie das Repo gedacht ist
 
-`phrases.json` und `config.json` gehören ins Repo — zusammen definieren sie
-jede erzeugte Datei. `out/` und `build/` sind ignoriert, weil sie sich jederzeit
-aus den beiden neu erzeugen lassen. Schlüssel stehen nie in einer Datei,
-sondern immer in einer Umgebungsvariablen.
+`config.json` gehört ins Repo, `phrases.json` nicht: Die Sätze sind persönlich,
+also bleibt deine `phrases.json` lokal und ist in `.gitignore` eingetragen.
+Im Repo liegt nur `phrases.example.json` als Startpunkt.
 
-Die mitgelieferte `phrases.json` ist unser echter Satzbestand — nimm sie als
-Beispiel oder fang mit `phrases.example.json` von vorne an.
+`out/` und `build/` sind ebenfalls ignoriert, weil sie sich jederzeit aus
+`phrases.json` und `config.json` neu erzeugen lassen.
+
+Schlüssel stehen nie in einer Datei, sondern immer in einer Umgebungsvariablen.
+In `config.json` steht mit `key_env` nur der *Name* der Variablen — die
+Datei kann also gefahrlos öffentlich sein.
+
+**Wenn du deine Sätze versioniert sichern willst:** Nimm ein privates Repo
+oder ein Backup außerhalb von git. Sonst sind sie das Einzige an diesem
+Projekt, von dem es keine zweite Kopie gibt.
 
 ## Nächster Schritt, wenn du magst
 
