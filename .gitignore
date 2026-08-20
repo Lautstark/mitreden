@@ -1,4 +1,4 @@
-# Generierte Audiodateien - reproduzierbar aus phrases.json + config.json
+# Generated audio files - reproducible from phrases.json + config.json
 out/
 build/
 
@@ -7,10 +7,10 @@ __pycache__/
 *.pyc
 .venv/
 
-# Zugangsdaten - gehoeren nie ins Repo
+# Credentials - never belong in the repo
 .env
 
-# Aufraeum-Ordner der Cowork-Sandbox
+# Cleanup folder of the Cowork sandbox
 _to_delete/
 
 # System

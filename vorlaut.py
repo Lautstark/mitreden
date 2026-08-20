@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """
-vorlaut — eine Stimme fuer alle Geraete.
+vorlaut — one voice for every device.
 
-Quelle der Wahrheit ist phrases.json. Aus jedem Eintrag wird pro Ziel-
-geraet eine Audiodatei gerendert. Stimme wechseln = Backend in config.json
-aendern + `python3 vorlaut.py build --all` = alles klingt wieder gleich.
+phrases.json is the source of truth. Every entry is rendered into one audio
+file per target device. Change the voice = change the backend in config.json
++ `python3 vorlaut.py build --all` = everything sounds alike again.
 
-Aufruf:
-    python3 vorlaut.py ui              # Weboberflaeche auf http://localhost:8770
-    python3 vorlaut.py add "Nochmal!"  # Satz aufnehmen
-    python3 vorlaut.py build           # nur Neues/Geaendertes rendern
-    python3 vorlaut.py build --all     # alles neu rendern (nach Stimmwechsel)
-    python3 vorlaut.py delete <id>     # Satz und seine Dateien loeschen
-    python3 vorlaut.py backends        # zeigt, welche Backends nutzbar sind
+Usage:
+    python3 vorlaut.py ui              # web interface at http://localhost:8770
+    python3 vorlaut.py add "Nochmal!"  # record a phrase
+    python3 vorlaut.py build           # render only new/changed phrases
+    python3 vorlaut.py build --all     # re-render everything (after a voice change)
+    python3 vorlaut.py delete <id>     # delete a phrase and its files
+    python3 vorlaut.py backends        # show which backends are usable
 
-Keine pip-Abhaengigkeiten. Gebraucht werden nur ffmpeg und ein TTS-Backend.
+No pip dependencies. All you need is ffmpeg and a TTS backend.
+
+Note: the spoken content is German (see phrases.json and the voice settings in
+config.json). Only the tooling around it is in English.
 """
 
 import hashlib
@@ -34,18 +37,18 @@ CONFIG = ROOT / "config.json"
 RAW = ROOT / "build" / "raw"
 OUT = ROOT / "out"
 
-# Ausgabeprofile: Zielgeraet -> ffmpeg-Parameter.
-# anybook  : Anybook Studio nimmt WAV/MP3, 44.1 kHz mono reicht voellig.
-# esp32    : I2S mit MAX98357A, 16 kHz mono 16 bit spart Flash und klingt gut.
-# preview  : fuer die Weboberflaeche.
+# Output profiles: target device -> ffmpeg parameters.
+# anybook  : Anybook Studio accepts WAV/MP3, 44.1 kHz mono is plenty.
+# esp32    : I2S with MAX98357A, 16 kHz mono 16 bit saves flash and sounds fine.
+# preview  : for the web interface.
 PROFILES = {
     "anybook": ["-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le"],
     "esp32":   ["-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le"],
     "preview": ["-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le"],
 }
 
-# Stille am Anfang/Ende weg, dann auf einheitliche Lautheit normalisieren.
-# Ohne das ist ein Satz fluesterleise und der naechste bruellt.
+# Strip silence at the start/end, then normalise to a uniform loudness.
+# Without this one phrase is barely audible and the next one shouts.
 FILTERS = (
     "silenceremove=start_periods=1:start_silence=0.05:start_threshold=-50dB,"
     "areverse,"
@@ -54,6 +57,7 @@ FILTERS = (
     "loudnorm=I=-16:TP=-1.5:LRA=11"
 )
 
+# The voice settings stay German on purpose — German is the spoken language.
 DEFAULT_CONFIG = {
     "backend": "say",
     "say":        {"voice": "Anna"},
@@ -66,13 +70,13 @@ DEFAULT_CONFIG = {
 }
 
 
-# ---------------------------------------------------------------- Persistenz
+# --------------------------------------------------------------- Persistence
 
 def load_config():
     if not CONFIG.exists():
         CONFIG.write_text(json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False))
     cfg = json.loads(CONFIG.read_text())
-    for k, v in DEFAULT_CONFIG.items():          # fehlende Schluessel ergaenzen
+    for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
         if k not in cfg:
             cfg[k] = v
     return cfg
@@ -89,6 +93,7 @@ def save_phrases(items):
 
 
 def slug(text):
+    """Filename-safe id. The substitutions are German because the phrases are."""
     keep = "abcdefghijklmnopqrstuvwxyz0123456789"
     sub = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e"}
     out = []
@@ -98,11 +103,11 @@ def slug(text):
     s = "".join(out).strip("-")
     while "--" in s:
         s = s.replace("--", "-")
-    return s[:40] or "satz"
+    return s[:40] or "phrase"
 
 
 def fingerprint(text, cfg):
-    """Aendert sich, wenn Text ODER Stimme sich aendert -> Neurendern noetig."""
+    """Changes when the text OR the voice changes -> re-render needed."""
     backend = cfg["backend"]
     payload = json.dumps([text, backend, cfg.get(backend, {})],
                          sort_keys=True, ensure_ascii=False)
@@ -112,7 +117,7 @@ def fingerprint(text, cfg):
 # ------------------------------------------------------------------ Backends
 
 def tts_say(text, dest, opt):
-    """macOS-Bordmittel. Zum Ausprobieren ohne Setup, nicht als Dauerloesung."""
+    """Built into macOS. Good for a quick try without setup, not for the long run."""
     aiff = dest.with_suffix(".aiff")
     subprocess.run(["say", "-v", opt["voice"], "-o", str(aiff), text], check=True)
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(aiff),
@@ -121,14 +126,14 @@ def tts_say(text, dest, opt):
 
 
 def tts_espeak(text, dest, opt):
-    """Auf Linux fast immer schon da. Klingt roboterhaft, beweist aber, dass
-    die Kette laeuft, bevor du dich um eine gute Stimme kuemmerst."""
+    """Almost always present on Linux. Sounds robotic, but proves the chain
+    works before you go looking for a good voice."""
     subprocess.run([opt["binary"], "-v", opt["voice"], "-s", str(opt["speed"]),
                     "-w", str(dest), text], check=True)
 
 
 def tts_piper(text, dest, opt):
-    """Lokal, offline, kostenlos, laeuft in zehn Jahren noch."""
+    """Local, offline, free, and still running the same way in ten years."""
     subprocess.run([opt["binary"], "-m", opt["model"], "-f", str(dest)],
                    input=text.encode("utf-8"), check=True,
                    stdout=subprocess.DEVNULL)
@@ -137,7 +142,7 @@ def tts_piper(text, dest, opt):
 def tts_azure(text, dest, opt):
     key = os.environ.get(opt["key_env"])
     if not key:
-        raise RuntimeError(f"Umgebungsvariable {opt['key_env']} ist nicht gesetzt.")
+        raise RuntimeError(f"Environment variable {opt['key_env']} is not set.")
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         'xml:lang="de-DE">'
@@ -160,9 +165,9 @@ def tts_azure(text, dest, opt):
 def tts_elevenlabs(text, dest, opt):
     key = os.environ.get(opt["key_env"])
     if not key:
-        raise RuntimeError(f"Umgebungsvariable {opt['key_env']} ist nicht gesetzt.")
+        raise RuntimeError(f"Environment variable {opt['key_env']} is not set.")
     if not opt["voice_id"]:
-        raise RuntimeError("voice_id fehlt in config.json.")
+        raise RuntimeError("voice_id is missing in config.json.")
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{opt['voice_id']}"
     body = json.dumps({"text": text, "model_id": opt["model"]}).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST",
@@ -185,10 +190,10 @@ def esc(s):
              .replace('"', "&quot;"))
 
 
-# -------------------------------------------------------------------- Rendern
+# ----------------------------------------------------------------- Rendering
 
 def render(item, cfg, force=False):
-    """Ein Satz -> Rohdatei -> alle Ausgabeprofile. Gibt True bei Arbeit."""
+    """One phrase -> raw file -> every output profile. Returns True if it worked."""
     fp = fingerprint(item["text"], cfg)
     targets = [OUT / p / f"{item['id']}.wav" for p in PROFILES]
     if not force and item.get("fingerprint") == fp and all(t.exists() for t in targets):
@@ -198,14 +203,14 @@ def render(item, cfg, force=False):
     raw = RAW / f"{item['id']}.wav"
     backend = cfg["backend"]
     if backend not in BACKENDS:
-        raise RuntimeError(f"Unbekanntes Backend '{backend}' in config.json. "
-                           f"Moeglich: {', '.join(BACKENDS)}")
+        raise RuntimeError(f"Unknown backend '{backend}' in config.json. "
+                           f"Available: {', '.join(BACKENDS)}")
     opt = cfg[backend]
     binary = opt.get("binary") or ({"say": "say"}.get(backend))
     if binary and not shutil.which(binary):
-        raise RuntimeError(f"'{binary}' ist nicht installiert \u2014 Backend "
-                           f"'{backend}' kann nicht rendern. "
-                           f"`vorlaut.py backends` zeigt, was da ist.")
+        raise RuntimeError(f"'{binary}' is not installed — backend "
+                           f"'{backend}' cannot render. "
+                           f"`vorlaut.py backends` shows what is available.")
     BACKENDS[backend](item["text"], raw, opt)
 
     for profile, args in PROFILES.items():
@@ -223,32 +228,32 @@ def build(force=False):
     cfg = load_config()
     items = load_phrases()
     if not items:
-        print("phrases.json ist leer. Erst Saetze anlegen: vorlaut.py add \"Text\"")
+        print("phrases.json is empty. Add phrases first: vorlaut.py add \"Text\"")
         return
     done = 0
     for item in items:
         try:
             if render(item, cfg, force):
-                print(f"  gerendert  {item['id']}  \u2014 {item['text']}")
+                print(f"  rendered   {item['id']}  — {item['text']}")
                 done += 1
         except Exception as e:
-            print(f"  FEHLER     {item['id']}: {e}", file=sys.stderr)
+            print(f"  ERROR      {item['id']}: {e}", file=sys.stderr)
     save_phrases(items)
-    print(f"\n{done} von {len(items)} Saetzen neu gerendert. Stimme: {cfg['backend']}")
-    print(f"Dateien liegen in {OUT}/anybook und {OUT}/esp32")
+    print(f"\nRe-rendered {done} of {len(items)} phrases. Voice: {cfg['backend']}")
+    print(f"Files are in {OUT}/anybook and {OUT}/esp32")
 
 
 def phrase_state(item, cfg):
-    """ok = passt, fehlt = nie gerendert, alt = andere Stimme oder anderer Text."""
+    """ok = current, missing = never rendered, stale = other voice or other text."""
     if not all((OUT / prof / f"{item['id']}.wav").exists() for prof in PROFILES):
-        return "fehlt"
+        return "missing"
     if item.get("fingerprint") != fingerprint(item["text"], cfg):
-        return "alt"
+        return "stale"
     return "ok"
 
 
 def voice_label(cfg):
-    """Stimmname fuer die Oberflaeche, z.B. de-DE-GiselaNeural -> Gisela."""
+    """Voice name for the interface, e.g. de-DE-GiselaNeural -> Gisela."""
     opt = cfg.get(cfg["backend"], {})
     name = opt.get("voice") or cfg["backend"]
     return name.split("-")[-1].replace("Neural", "") if name.count("-") >= 2 else name
@@ -261,10 +266,10 @@ def phrases_with_state():
 
 
 def delete_phrase(pid):
-    """Satz aus phrases.json werfen und alle erzeugten WAVs loeschen.
+    """Drop a phrase from phrases.json and delete every WAV it produced.
 
-    Gibt (True, geloeschte_dateien) zurueck, oder (False, []) wenn es die
-    ID gar nicht gibt. Dateien duerfen fehlen, das ist kein Fehler."""
+    Returns (True, deleted_files), or (False, []) if the id does not exist.
+    Missing files are fine, that is not an error."""
     items = load_phrases()
     rest = [i for i in items if i.get("id") != pid]
     if len(rest) == len(items):
@@ -287,7 +292,7 @@ def delete_phrase(pid):
 
 # ------------------------------------------------------------------------ UI
 
-PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>vorlaut</title>
 <style>
@@ -330,14 +335,14 @@ button.quiet:hover{color:var(--text)}
   border-bottom:1px solid var(--line-soft)}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
 .item.ok .dot{background:var(--ok)}
-.item.alt .dot{background:var(--warn)}
+.item.stale .dot{background:var(--warn)}
 .item .txt{flex:1;min-width:0}
 .item .line{font-size:18px;letter-spacing:-.01em}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
 .item .id{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
   color:var(--muted);word-break:break-all}
 .item .state{font-size:12px;color:var(--muted)}
-.item.alt .state{color:var(--warn)}
+.item.stale .state{color:var(--warn)}
 .item audio{height:32px;flex:none;filter:invert(.92) hue-rotate(180deg);opacity:.85}
 .item .del{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:7px 9px;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
@@ -348,14 +353,14 @@ button.quiet:hover{color:var(--text)}
 </style>
 <main>
 <h1>vorlaut</h1>
-<p class="sub">Ein Satz, eine Stimme, Dateien fuer Anybook und ESP32.</p>
+<p class="sub">One phrase, one voice, files for Anybook and ESP32.</p>
 
 <div class="hero">
-  <label for="t">Was soll sie sagen koennen?</label>
+  <label for="t">What should she be able to say?</label>
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
   <div class="row">
-    <button class="primary" id="add">Satz anlegen</button>
-    <button class="quiet" id="build">Fehlende nachholen</button>
+    <button class="primary" id="add">Add phrase</button>
+    <button class="quiet" id="build">Render missing</button>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
@@ -363,41 +368,41 @@ button.quiet:hover{color:var(--text)}
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
   <span class="spacer"></span>
-  <span class="voice">Stimme <b id="voice">\u2026</b></span>
+  <span class="voice">Voice <b id="voice">…</b></span>
 </div>
 
 <div id="list"></div>
 
 <div class="foot">
-  <button class="quiet" id="rebuild">Alle Saetze neu aufnehmen</button>
+  <button class="quiet" id="rebuild">Re-record all phrases</button>
 </div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
-const LABEL={ok:'aufgenommen',fehlt:'noch nicht aufgenommen',alt:'noch mit alter Stimme'};
+const LABEL={ok:'recorded',missing:'not recorded yet',stale:'still in the old voice'};
 
 async function load(){
   const data=await (await fetch('/api/phrases')).json();
-  // Neueste zuerst. phrases.json bleibt chronologisch, nur die Anzeige dreht.
+  // Newest first. phrases.json stays chronological, only the display flips.
   const items=(data.items||[]).slice().reverse();
   $('voice').textContent=data.voice||'\\u2014';
 
-  const offen=items.filter(i=>i.state!=='ok').length;
-  $('count').textContent = !items.length ? 'Noch keine Saetze'
-    : items.length+(items.length===1?' Satz':' Saetze')+
-      (offen? ', '+offen+' noch offen' : ', alle aufgenommen');
+  const pending=items.filter(i=>i.state!=='ok').length;
+  $('count').textContent = !items.length ? 'No phrases yet'
+    : items.length+(items.length===1?' phrase':' phrases')+
+      (pending? ', '+pending+' pending' : ', all recorded');
 
   $('list').innerHTML = items.length ? '' :
-    '<p class="empty">Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
-    'jede Zeile wird ein eigener Satz.</p>';
+    '<p class="empty">Nothing here yet. Several lines at once work too \\u2014 '+
+    'each line becomes its own phrase.</p>';
   for(const it of items){
     const d=document.createElement('div');d.className='item '+it.state;
     d.innerHTML='<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
       '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
-      (it.state==='fehlt'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
-      '<button class="del" title="Satz loeschen" aria-label="Satz loeschen">\\uD83D\\uDDD1\\uFE0F</button>';
+      (it.state==='missing'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
+      '<button class="del" title="Delete phrase" aria-label="Delete phrase">\\uD83D\\uDDD1\\uFE0F</button>';
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=LABEL[it.state];
@@ -406,33 +411,33 @@ async function load(){
   }
 }
 async function del(it){
-  if(!confirm('\\u201E'+it.text+'\\u201C wirklich loeschen?\\n\\nDer Satz und seine Audiodateien '+
-              'werden entfernt. Das laesst sich nicht rueckgaengig machen.'))return;
-  say('Loesche \\u2026');
+  if(!confirm('Really delete \\u201C'+it.text+'\\u201D?\\n\\nThe phrase and its audio files '+
+              'will be removed. This cannot be undone.'))return;
+  say('Deleting \\u2026');
   const r=await post('/api/delete',{id:it.id});
-  if(r){say('Geloescht: '+r.id);load()}
+  if(r){say('Deleted: '+r.id);load()}
 }
 async function post(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body||{})});
-  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return null}
+  if(!r.ok){say('Failed: '+await r.text());return null}
   return r.json();
 }
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
-  if(!lines.length){say('Erst etwas eintippen.');return}
-  say('Nehme auf \\u2026');
+  if(!lines.length){say('Type something first.');return}
+  say('Recording \\u2026');
   const res=await post('/api/phrases',{lines});
-  if(res){$('t').value='';say(res.added+' angelegt, '+res.rendered+' aufgenommen.');load()}
+  if(res){$('t').value='';say(res.added+' added, '+res.rendered+' recorded.');load()}
 };
-$('build').onclick=async()=>{say('Hole fehlende Aufnahmen nach \\u2026');
+$('build').onclick=async()=>{say('Rendering what is missing \\u2026');
   const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es war nichts nachzuholen.');load()}};
+  if(r){say(r.rendered?r.rendered+' recorded.':'Nothing was missing.');load()}};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Alle Saetze mit der aktuellen Stimme neu aufnehmen?'))return;
-  say('Nehme alle neu auf, das dauert \\u2026');
+  if(!confirm('Re-record all phrases with the current voice?'))return;
+  say('Re-recording everything, this takes a while \\u2026');
   const r=await post('/api/build',{force:true});
-  if(r){say(r.rendered+' neu aufgenommen.');load()}};
+  if(r){say(r.rendered+' re-recorded.');load()}};
 load();
 </script>
 </html>"""
@@ -503,10 +508,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/api/delete":
             pid = (data.get("id") or "").strip()
             if not pid:
-                return self._send(400, "Keine ID uebergeben.", "text/plain")
+                return self._send(400, "No id provided.", "text/plain")
             ok, _ = delete_phrase(pid)
             if not ok:
-                return self._send(404, f"Kein Satz mit der ID '{pid}'.", "text/plain")
+                return self._send(404, f"No phrase with the id '{pid}'.", "text/plain")
             return self._send(200, json.dumps({"ok": True, "id": pid},
                                               ensure_ascii=False))
 
@@ -517,13 +522,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 def check_backends():
     cfg = load_config()
-    print(f"Aktiv laut config.json: {cfg['backend']}\n")
-    print("  say        ", "vorhanden" if shutil.which("say") else "nicht gefunden (nur macOS)")
-    print("  espeak     ", "vorhanden" if shutil.which(cfg["espeak"]["binary"]) else "nicht gefunden")
-    print("  piper      ", "vorhanden" if shutil.which(cfg["piper"]["binary"]) else "nicht gefunden")
-    print("  azure      ", "Key gesetzt" if os.environ.get(cfg["azure"]["key_env"]) else "kein Key")
-    print("  elevenlabs ", "Key gesetzt" if os.environ.get(cfg["elevenlabs"]["key_env"]) else "kein Key")
-    print("\n  ffmpeg     ", "vorhanden" if shutil.which("ffmpeg") else "FEHLT \u2014 ohne geht nichts")
+    print(f"Active per config.json: {cfg['backend']}\n")
+    print("  say        ", "found" if shutil.which("say") else "not found (macOS only)")
+    print("  espeak     ", "found" if shutil.which(cfg["espeak"]["binary"]) else "not found")
+    print("  piper      ", "found" if shutil.which(cfg["piper"]["binary"]) else "not found")
+    print("  azure      ", "key set" if os.environ.get(cfg["azure"]["key_env"]) else "no key")
+    print("  elevenlabs ", "key set" if os.environ.get(cfg["elevenlabs"]["key_env"]) else "no key")
+    print("\n  ffmpeg     ", "found" if shutil.which("ffmpeg") else "MISSING — nothing works without it")
 
 
 def main():
@@ -533,11 +538,11 @@ def main():
     if cmd == "ui":
         load_config()
         port = 8770
-        print(f"vorlaut laeuft auf http://localhost:{port}  (Strg-C beendet)")
+        print(f"vorlaut is running at http://localhost:{port}  (Ctrl-C to stop)")
         http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
     elif cmd == "add":
         if len(args) < 2:
-            sys.exit('Aufruf: vorlaut.py add "Der Satz"')
+            sys.exit('Usage: vorlaut.py add "The phrase"')
         items = load_phrases()
         existing = {i["id"] for i in items}
         base, sid, n = slug(args[1]), slug(args[1]), 2
@@ -545,24 +550,24 @@ def main():
             sid, n = f"{base}-{n}", n + 1
         items.append({"id": sid, "text": args[1]})
         save_phrases(items)
-        print(f"angelegt: {sid}")
+        print(f"added: {sid}")
         build()
     elif cmd == "delete":
         if len(args) < 2:
-            sys.exit("Aufruf: vorlaut.py delete <id>")
+            sys.exit("Usage: vorlaut.py delete <id>")
         pid = args[1]
         ok, removed = delete_phrase(pid)
         if not ok:
             ids = [i["id"] for i in load_phrases()]
-            print(f"Kein Satz mit der ID '{pid}'.", file=sys.stderr)
+            print(f"No phrase with the id '{pid}'.", file=sys.stderr)
             if ids:
-                print("Vorhanden sind: " + ", ".join(ids), file=sys.stderr)
+                print("Available ids: " + ", ".join(ids), file=sys.stderr)
             sys.exit(1)
-        print(f"geloescht: {pid}")
+        print(f"deleted: {pid}")
         for f in removed:
-            print(f"  entfernt   {f.relative_to(ROOT)}")
+            print(f"  removed    {f.relative_to(ROOT)}")
         if not removed:
-            print("  (keine Audiodateien vorhanden)")
+            print("  (no audio files present)")
     elif cmd == "build":
         build(force="--all" in args)
     elif cmd == "backends":
