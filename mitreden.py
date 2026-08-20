@@ -16,7 +16,7 @@ Usage:
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
-    python3 mitreden.py dedupe          # merge phrases that say the same thing
+    python3 mitreden.py dedupe          # show duplicates (--apply to merge them)
     python3 mitreden.py export <group> <folder>   # copy one group out for transfer
     python3 mitreden.py backends        # show which backends are usable
 
@@ -375,28 +375,31 @@ def delete_phrase(pid):
     return True, removed
 
 
-def dedupe():
+def dedupe(apply=False):
     """Merge phrases that say the same thing.
 
     Groups make duplicates easy to create by hand, and phrase sets that grew
     before groups existed have them anyway. The oldest entry wins, takes over
     the groups of the others, and their audio files go away.
 
-    Returns (kept, dropped)."""
-    keep, dropped, seen = [], [], {}
+    Nothing is written unless apply=True. phrases.json is the only copy these
+    sentences have, so the merge is worth seeing before it happens.
+
+    Returns (kept, merges) where a merge is (dropped phrase, phrase it joins)."""
+    keep, merges, seen = [], [], {}
     for it in load_phrases():
         twin = seen.get(norm_text(it["text"]))
         if twin:
-            add_tags(twin, it.get("tags") or [])
-            dropped.append(it)
+            add_tags(twin, it.get("tags") or [])   # in memory until we save
+            merges.append((it, twin))
         else:
             seen[norm_text(it["text"])] = it
             keep.append(it)
-    if dropped:
-        for it in dropped:
-            remove_files(it["id"])
+    if merges and apply:
+        for dropped, _ in merges:
+            remove_files(dropped["id"])
         save_phrases(keep)
-    return keep, dropped
+    return keep, merges
 
 
 def in_group(item, tag):
@@ -995,13 +998,21 @@ def main():
         if not removed:
             print("  (no audio files present)")
     elif cmd == "dedupe":
-        keep, dropped = dedupe()
-        if not dropped:
+        apply = "--apply" in args
+        keep, merges = dedupe(apply)
+        if not merges:
             print(f"No duplicates. {len(keep)} phrases, all different.")
             return
-        for item in dropped:
-            print(f"  merged     {item['id']} — \"{item['text']}\"")
-        print(f"\n{len(dropped)} merged away, {len(keep)} phrases left.")
+        for dropped, twin in merges:
+            print(f"  {dropped['id']} — \"{dropped['text']}\"")
+            print(f"    joins {twin['id']}" +
+                  (f"  [{', '.join(twin['tags'])}]" if twin.get("tags") else ""))
+        if apply:
+            print(f"\n{len(merges)} merged away, {len(keep)} phrases left.")
+        else:
+            print(f"\n{len(merges)} would be merged, {len(keep)} would remain. "
+                  f"Nothing was changed.")
+            print("Run `mitreden.py dedupe --apply` to actually do it.")
     elif cmd == "export":
         if len(args) < 3:
             sys.exit("Usage: mitreden.py export <group|all> <folder> "

@@ -130,8 +130,13 @@ Kleinschreibung und zusätzliche Leerzeichen sind dabei egal, Satzzeichen nicht:
 Für Bestände, die vor den Gruppen entstanden sind:
 
 ```
-python3 mitreden.py dedupe   # führt doppelte Sätze zusammen, räumt die Dateien weg
+python3 mitreden.py dedupe           # zeigt, was zusammengeführt würde
+python3 mitreden.py dedupe --apply   # führt es wirklich zusammen
 ```
+
+Ohne `--apply` wird nichts angefasst. Der Befehl löscht Einträge und
+Audiodateien, und deine `phrases.json` ist das Einzige an diesem Projekt, von
+dem es keine zweite Kopie gibt — deshalb erst zeigen, dann machen.
 
 **Rausholen, was du gerade siehst.** Der Knopf „Herunterladen“ packt genau die Sätze
 zusammen, die die Liste gerade zeigt — nach einer Suche also die Treffer, in
