@@ -34,6 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PHRASES = ROOT / "phrases.json"
 CONFIG = ROOT / "config.json"
+ICON = ROOT / "icon.svg"
 RAW = ROOT / "build" / "raw"
 OUT = ROOT / "out"
 
@@ -295,10 +296,11 @@ def delete_phrase(pid):
 PAGE = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>mitreden</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
 <style>
 :root{
   --ink:#0e1014; --panel:#161920; --line:#242833; --line-soft:#1c202a;
-  --text:#f2efea; --muted:#7c8496; --accent:#f0a202; --accent-ink:#14161c;
+  --text:#f2efea; --muted:#7c8496; --accent:#ff8bc7; --accent-ink:#14161c;
   --ok:#3fb96b; --warn:#f0a202; --miss:#5b6377; --danger:#e5484d;
 }
 *{box-sizing:border-box}
@@ -306,7 +308,9 @@ body{margin:0;background:var(--ink);color:var(--text);
   font:16px/1.55 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
   padding:clamp(20px,5vw,64px);-webkit-font-smoothing:antialiased}
 main{max-width:720px;margin:0 auto}
-h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0}
+h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
+  display:flex;align-items:center;gap:12px}
+.logo{width:clamp(34px,7vw,52px);height:auto;flex:none}
 .sub{color:var(--muted);margin:6px 0 36px;font-size:15px}
 .hero{background:var(--panel);border:1px solid var(--line);border-radius:16px;
   padding:22px 22px 16px}
@@ -321,7 +325,7 @@ button{font:inherit;font-weight:600;border-radius:10px;padding:11px 18px;
   border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
 button:hover{background:#1e222c}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button.primary:hover{background:#ffb01a}
+button.primary:hover{background:#ffa3d2}
 button.quiet{border-color:transparent;color:var(--muted);padding:11px 12px}
 button.quiet:hover{color:var(--text)}
 .status{color:var(--muted);font-size:14px;min-height:20px;margin:12px 2px 0}
@@ -352,7 +356,7 @@ button.quiet:hover{color:var(--text)}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
 </style>
 <main>
-<h1>mitreden</h1>
+<h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
 <p class="sub">One phrase, one voice, files for Anybook and ESP32.</p>
 
 <div class="hero">
@@ -459,6 +463,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             return self._send(200, PAGE, "text/html; charset=utf-8")
+        if self.path == "/icon.svg":
+            if not ICON.exists():
+                return self._send(404, b"", "text/plain")
+            return self._send(200, ICON.read_bytes(), "image/svg+xml")
         if self.path.startswith("/audio/"):
             f = OUT / "preview" / Path(self.path).name
             if not f.exists() or ".." in self.path:
