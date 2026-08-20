@@ -108,8 +108,8 @@ Gruppennamen — und sie ist tolerant, was Umlaute angeht: `hor auf`,
 `hoer auf` und `Hör auf` finden alle denselben Satz.
 
 Solange eine Gruppe ausgewählt ist, landen neu angelegte Sätze automatisch in
-ihr. Die Gruppen eines vorhandenen Satzes änderst du über „ändern“ neben seinen
-Etiketten.
+ihr. Alles Weitere zu einem einzelnen Satz steckt im ⋮ am rechten Rand seiner
+Zeile: dort änderst du seine Gruppen und dort löschst du ihn.
 
 **Ein Text, eine Datei.** Legst du einen Satz an, den es schon gibt, entsteht
 kein zweiter Eintrag — der vorhandene bekommt nur die neue Gruppe dazu. Egal in
@@ -179,6 +179,10 @@ Lokale. So kommst du an einen Schlüssel:
 ```
 export AZURE_SPEECH_KEY="dein-schluessel"
 ```
+
+`rate` und `pitch` gelten für die erzeugten Dateien und wirken erst nach einem
+`build --all`. Das Tempo, mit dem der Browser beim Vorhören abspielt, hat damit
+nichts zu tun — deshalb bietet die Oberfläche es gar nicht erst an.
 
 Azure hat eine kostenlose Stufe (F0). Für die Menge an Sätzen, um die es hier
 geht, zahlst du damit in aller Regel nichts. In `config.json` stehen nur

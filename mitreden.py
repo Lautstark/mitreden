@@ -539,12 +539,20 @@ button.quiet:hover{color:var(--text)}
   background:var(--line-soft);border:1px solid var(--line);border-radius:999px;
   padding:2px 10px;cursor:pointer}
 .item .tag:hover{background:#1e222c;color:var(--text)}
-.item .tag.edit{background:transparent;border-style:dashed;opacity:.65}
 .item audio{height:32px;flex:none;filter:invert(.92) hue-rotate(180deg);opacity:.85}
-.item .del{background:transparent;border:1px solid transparent;border-radius:9px;
-  padding:7px 9px;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
-.item .del:hover{color:var(--danger);border-color:rgba(229,72,77,.35);
-  background:rgba(229,72,77,.1)}
+.menuwrap{position:relative;flex:none}
+.dots{background:transparent;border:1px solid transparent;border-radius:9px;
+  padding:6px 10px;font-size:18px;line-height:1.2;color:var(--muted);cursor:pointer}
+.dots:hover,.dots[aria-expanded=true]{background:#1e222c;color:var(--text)}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:200px;
+  display:flex;flex-direction:column;padding:6px;background:var(--panel);
+  border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.menu button{font:inherit;font-size:14px;font-weight:500;text-align:left;
+  white-space:nowrap;background:transparent;border:0;border-radius:7px;
+  padding:9px 11px;color:var(--text);cursor:pointer}
+.menu button:hover{background:#1e222c}
+.menu button.danger{color:var(--danger)}
+.menu button.danger:hover{background:rgba(229,72,77,.12)}
 .empty{color:var(--muted);padding:32px 2px;font-size:15px}
 .more{width:100%;margin-top:18px;color:var(--muted);font-size:14px}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
@@ -554,7 +562,7 @@ button.quiet:hover{color:var(--text)}
   .item{flex-wrap:wrap;gap:10px}
   .item .dot{order:1}
   .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
-  .item .del{order:3}
+  .menuwrap{order:3}
   .item audio{order:4;flex:1 1 100%;width:100%}
 }
 </style>
@@ -673,8 +681,13 @@ function draw(){
     d.innerHTML='<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
       '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
-      (it.state==='missing'?'':'<audio controls preload="none" src="/audio/'+it.id+'.wav"></audio>')+
-      '<button class="del" title="Satz l\\u00f6schen" aria-label="Satz l\\u00f6schen">\\uD83D\\uDDD1\\uFE0F</button>';
+      // The player's own \u22ee menu offers a playback speed that only affects
+      // listening here, never the rendered file — and a download of the preview
+      // rather than the device files. Both mislead, so both are switched off.
+      (it.state==='missing'?'':'<audio controls controlsList="nodownload noplaybackrate" '+
+        'disableRemotePlayback preload="none" src="/audio/'+it.id+'.wav"></audio>')+
+      '<div class="menuwrap"><button class="dots" aria-haspopup="true" '+
+      'aria-expanded="false" title="Mehr" aria-label="Mehr">\\u22ee</button></div>';
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=LABEL[it.state];
@@ -685,11 +698,7 @@ function draw(){
       b.onclick=()=>{TAG=t;draw()};
       meta.appendChild(b);
     }
-    const e=document.createElement('button');
-    e.className='tag edit';e.textContent=(it.tags||[]).length?'\\u00e4ndern':'+ Gruppe';
-    e.onclick=()=>editTags(it);
-    meta.appendChild(e);
-    d.querySelector('.del').onclick=()=>del(it);
+    d.querySelector('.dots').onclick=ev=>openMenu(ev.currentTarget,it);
     $('list').appendChild(d);
   }
   if(!SHOW_ALL&&items.length>CAP){
@@ -699,6 +708,31 @@ function draw(){
     $('list').appendChild(b);
   }
 }
+
+function closeMenus(){
+  for(const m of document.querySelectorAll('.menu'))m.remove();
+  for(const b of document.querySelectorAll('.dots'))b.setAttribute('aria-expanded','false');
+}
+function openMenu(btn,it){
+  const open=btn.getAttribute('aria-expanded')==='true';
+  closeMenus();
+  if(open)return;                       // a second click closes it again
+  btn.setAttribute('aria-expanded','true');
+  const m=document.createElement('div');m.className='menu';
+  const add=(label,danger,fn)=>{
+    const b=document.createElement('button');
+    b.textContent=label;
+    if(danger)b.className='danger';
+    b.onclick=()=>{closeMenus();fn()};
+    m.appendChild(b);
+  };
+  add((it.tags||[]).length?'Gruppen \\u00e4ndern \\u2026':'Zu einer Gruppe hinzuf\\u00fcgen \\u2026',
+      false,()=>editTags(it));
+  add('Satz l\\u00f6schen',true,()=>del(it));
+  btn.parentNode.appendChild(m);
+}
+addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenus()});
+addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
 
 async function load(){
   const data=await (await fetch('/api/phrases')).json();
