@@ -523,6 +523,7 @@ button.quiet:hover{color:var(--text)}
   font-weight:650}
 .chip.on:hover{background:#ffa3d2}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
+.chip.fold{border-style:dashed;opacity:.8}
 .item{display:flex;gap:14px;align-items:center;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
@@ -606,7 +607,14 @@ const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
 const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
              stale:'noch in der alten Stimme'};
-let ALL=[], TAG='', SHOW_ALL=false;
+let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
+// Several groups can be picked at once and they combine with OR: pick two books
+// and you get the phrases of both. The free text search narrows that further,
+// so the two mechanisms are ANDed with each other.
+const TAGS=new Set();
+// One group per picture book adds up fast. Only the most used ones are on
+// screen; the rest is one click away, and the search finds group names too.
+const CHIP_CAP=12;
 
 // Rendering thousands of rows makes the page crawl, and nobody reads that far
 // anyway — search and groups are the real answer to a big phrase set. So the
@@ -630,30 +638,56 @@ function found(){
   return ALL.filter(i=>{const h=hay(i);return h.includes(a)||h.includes(b)});
 }
 // What the list shows: search first, then the group filter on top.
-const shown=()=>{const f=found();return TAG?f.filter(i=>(i.tags||[]).includes(TAG)):f};
+const shown=()=>{const f=found();
+  return TAGS.size?f.filter(i=>(i.tags||[]).some(t=>TAGS.has(t))):f};
+// The one group we are "in" — only unambiguous while exactly one is picked.
+const soleTag=()=>TAGS.size===1?[...TAGS][0]:'';
 
 function chip(label,n,tag){
   const b=document.createElement('button');
-  b.className='chip'+(TAG===tag?' on':'');
+  b.className='chip'+((tag===null?!TAGS.size:TAGS.has(tag))?' on':'');
   b.textContent=label;
   const s=document.createElement('span');s.className='n';s.textContent=n;
   b.appendChild(s);
-  b.onclick=()=>{TAG=(tag&&TAG===tag)?'':tag;draw()};
+  b.onclick=()=>{
+    if(tag===null)TAGS.clear();
+    else if(TAGS.has(tag))TAGS.delete(tag);
+    else TAGS.add(tag);
+    draw();
+  };
   $('chips').appendChild(b);
+}
+
+function drawChips(hits){
+  const counts={};
+  for(const i of hits)for(const t of (i.tags||[]))counts[t]=(counts[t]||0)+1;
+  for(const t of TAGS)if(!(t in counts))counts[t]=0;   // a pick never vanishes
+  // Most used first — those are the everyday ones. Alphabetical within a tie.
+  const names=Object.keys(counts)
+    .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
+  $('chips').innerHTML='';
+  if(!names.length)return;
+  chip('Alle',hits.length,null);
+  let vis=names;
+  if(!ALL_TAGS&&names.length>CHIP_CAP){
+    const top=names.slice(0,CHIP_CAP);
+    vis=top.concat([...TAGS].filter(t=>!top.includes(t)));
+  }
+  for(const n of vis)chip(n,counts[n],n);
+  if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
+    const b=document.createElement('button');
+    b.className='chip fold';
+    b.textContent=ALL_TAGS?'weniger':'+ '+(names.length-vis.length)+' weitere';
+    b.onclick=()=>{ALL_TAGS=!ALL_TAGS;draw()};
+    $('chips').appendChild(b);
+  }
 }
 
 function draw(){
   const hits=found(), items=shown().slice().reverse();  // newest first
 
-  // Group chips count within the current search, so they stay useful while typing.
-  const counts={};
-  for(const i of hits)for(const t of (i.tags||[]))counts[t]=(counts[t]||0)+1;
-  const names=Object.keys(counts).sort();
-  $('chips').innerHTML='';
-  if(names.length){
-    chip('Alle',hits.length,'');
-    for(const n of names)chip(n,counts[n],n);
-  }
+  // Chips count within the current search, so they stay useful while typing.
+  drawChips(hits);
 
   const pending=items.filter(i=>i.state!=='ok').length;
   $('count').textContent = !ALL.length ? 'Noch keine S\\u00e4tze'
@@ -665,7 +699,8 @@ function draw(){
   const ready=items.filter(i=>i.state!=='missing').length;
   $('dl').textContent=ready?ready+' herunterladen':'Herunterladen';
   $('dl').disabled=!ready;
-  $('nt').placeholder=TAG?TAG+' \\u2014 die Gruppe, in der du bist':'kindergarten, spiel';
+  $('nt').placeholder=soleTag()?soleTag()+' \\u2014 die Gruppe, in der du bist'
+                               :'kindergarten, spiel';
 
   $('list').innerHTML='';
   if(!items.length){
@@ -695,7 +730,7 @@ function draw(){
     for(const t of (it.tags||[])){
       const b=document.createElement('button');
       b.className='tag';b.textContent=t;b.title='Nur diese Gruppe zeigen';
-      b.onclick=()=>{TAG=t;draw()};
+      b.onclick=()=>{TAGS.clear();TAGS.add(t);draw()};
       meta.appendChild(b);
     }
     d.querySelector('.dots').onclick=ev=>openMenu(ev.currentTarget,it);
@@ -738,7 +773,9 @@ async function load(){
   const data=await (await fetch('/api/phrases')).json();
   ALL=data.items||[];
   $('voice').textContent=data.voice||'\\u2014';
-  if(TAG&&!ALL.some(i=>(i.tags||[]).includes(TAG)))TAG='';
+  const live=new Set();
+  for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
+  for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
   draw();
 }
 async function editTags(it){
@@ -766,7 +803,7 @@ $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
   if(!lines.length){say('Erst etwas eintippen.');return}
   let tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!tags.length&&TAG)tags=[TAG];          // adding inside a group stays in it
+  if(!tags.length&&soleTag())tags=[soleTag()];   // adding inside a group stays in it
   say('Wird aufgenommen \\u2026');
   const res=await post('/api/phrases',{lines,tags});
   if(res){
@@ -785,7 +822,7 @@ $('dl').onclick=async()=>{
   if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
   const url=URL.createObjectURL(await r.blob());
   const a=document.createElement('a');
-  a.href=url;a.download='mitreden-'+(TAG||'alle')+'.zip';
+  a.href=url;a.download='mitreden-'+(soleTag()||(TAGS.size?'auswahl':'alle'))+'.zip';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
   const skipped=vis.length-ids.length;

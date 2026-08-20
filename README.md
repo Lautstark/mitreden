@@ -102,10 +102,20 @@ Eine Gruppe ist einfach ein Etikett am Satz:
 ```
 
 In der Oberfläche steht über der Liste eine Reihe Gruppen zum Anklicken, daneben
-ein Suchfeld. Beides greift zusammen: erst suchen, dann auf eine Gruppe
-einschränken. Die Suche läuft im Browser, ohne Warten, über Text *und*
+ein Suchfeld. Die Suche läuft im Browser, ohne Warten, über Text *und*
 Gruppennamen — und sie ist tolerant, was Umlaute angeht: `hor auf`,
 `hoer auf` und `Hör auf` finden alle denselben Satz.
+
+**Mehrere Gruppen gleichzeitig** lassen sich anklicken, und sie verknüpfen mit
+ODER: Grüffelo *und* Olchis ausgewählt heißt „zeig mir die Sätze aus beiden
+Büchern“. Der Freitext schränkt das zusätzlich ein. So kommst du auch mit einer
+Gruppe pro Bilderbuch zurecht, ohne dass die Liste unbrauchbar wird.
+
+Damit die Gruppenleiste nicht ausufert, zeigt sie die zwölf meistgenutzten
+Gruppen — im Alltag also `zuhause`, `kindergarten`, `spiel` — und dahinter
+„+ n weitere“ für den Rest. Was du ausgewählt hast, bleibt immer sichtbar, auch
+wenn es sonst eingeklappt wäre. Und wenn du den Namen kennst, ist das Suchfeld
+sowieso schneller: es findet Gruppennamen mit.
 
 Solange eine Gruppe ausgewählt ist, landen neu angelegte Sätze automatisch in
 ihr. Alles Weitere zu einem einzelnen Satz steckt im ⋮ am rechten Rand seiner
