@@ -16,15 +16,20 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir piper-tts
 
-# Two German voices, one male and one female, both CC0 — so they may travel
-# in a public image. A model is only usable together with its .onnx.json.
+# Two German and two English voices, one male and one female each. All four
+# are CC0 or public domain, which is why they may travel in a public image —
+# most of piper's better-known English voices may not, so check the MODEL_CARD
+# before adding one. A model is only usable together with its .onnx.json.
 # Drop further .onnx files into voices/ next to your phrases to add your own.
 # The download retries: the build hangs off someone else's server, and a
 # single hiccup there used to turn the whole image red.
 ENV MITREDEN_VOICES=/voices
 RUN mkdir -p /voices && cd /voices \
- && base=https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE \
- && for v in thorsten/medium/de_DE-thorsten-medium kerstin/low/de_DE-kerstin-low; do \
+ && base=https://huggingface.co/rhasspy/piper-voices/resolve/main \
+ && for v in de/de_DE/thorsten/medium/de_DE-thorsten-medium \
+             de/de_DE/kerstin/low/de_DE-kerstin-low \
+             en/en_US/kristin/medium/en_US-kristin-medium \
+             en/en_US/john/medium/en_US-john-medium; do \
       n=$(basename $v); \
       curl -sfL --retry 5 --retry-delay 3 --retry-all-errors \
            -o $n.onnx      "$base/$v.onnx"; \

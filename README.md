@@ -140,19 +140,34 @@ python3 mitreden.py build --all --voice piper:de_DE-thorsten-medium
 
 Der letzte Befehl zieht alle bestehenden Sätze auf diese Stimme um.
 
-Bei Azure stehen alle Stimmen deiner Sprache zur Wahl — für Deutsch sind das
-17. Die Liste kommt von Azure selbst und wird eine Woche lang zwischen-
-gespeichert; ohne Netz bleibt es bei der konfigurierten Stimme, damit die
-Auswahl nie leer ist.
+Bei Azure bestimmt `languages`, welche Stimmen angeboten werden — Azure hat
+556, das ist keine Auswahl mehr:
+
+```json
+{ "azure": { "languages": ["de-DE", "en-US"], … } }
+```
+
+Ein Eintrag mit Bindestrich meint genau dieses Gebietsschema, einer ohne jedes
+der Sprache (`"de"` nimmt auch de-AT und de-CH). Ohne die Angabe bleibt es bei
+der Sprache der eingestellten Stimme. Für `["de-DE", "en-US"]` sind es 75
+Stimmen. Die Liste kommt von Azure selbst und wird eine Woche lang
+zwischengespeichert; ohne Netz bleibt es bei der konfigurierten Stimme, damit
+die Auswahl nie leer ist.
 
 Angeboten wird nur, was auch wirklich funktioniert: eine Cloud-Stimme erst,
 wenn ihr Schlüssel gesetzt ist, eine lokale erst, wenn das Programm dahinter
 existiert. Eine Stimme in der Liste, die dann beim Aufnehmen scheitert, wäre
 schlimmer als keine Auswahl.
 
-**Im Container sind zwei deutsche Piper-Stimmen dabei** — Thorsten und
-Kerstin, beide CC0. Damit spricht mitreden sofort, ohne Konto, ohne Schlüssel,
-ohne dass je etwas dein Netz verlässt. Eigene Modelle kommen dazu, indem du
+**Im Container sind vier Piper-Stimmen dabei** — Thorsten und Kerstin auf
+Deutsch, John und Kristin auf Englisch, alle vier gemeinfrei oder CC0. Damit
+spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas dein
+Netz verlässt.
+
+Wenn du eine weitere Piper-Stimme dazulegst, wirf vorher einen Blick in ihre
+`MODEL_CARD`: Etliche der bekannteren englischen Stimmen stehen unter
+nicht-kommerziellen oder unklaren Lizenzen und gehören deshalb nicht in ein
+Abbild, das du weitergibst. Eigene Modelle kommen dazu, indem du
 eine `.onnx` samt zugehöriger `.onnx.json` in einen Ordner `voices/` neben
 deine Sätze legst. Liegen deine Modelle woanders, sagt `MITREDEN_VOICES`, wo —
 im Abbild zeigt die Variable auf `/voices`.

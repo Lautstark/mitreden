@@ -5,7 +5,11 @@
     "region": "germanywestcentral",
     "key_env": "AZURE_SPEECH_KEY",
     "rate": "-5%",
-    "pitch": "0%"
+    "pitch": "0%",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ]
   },
   "output": {
     "format": "mp3",

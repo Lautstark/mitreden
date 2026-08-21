@@ -100,7 +100,8 @@ DEFAULT_CONFIG = {
     "espeak":     {"binary": "espeak-ng", "voice": "de", "speed": 150},
     "piper":      {"model": "de_DE-kerstin-low.onnx", "binary": "piper"},
     "azure":      {"voice": "de-DE-GiselaNeural", "region": "westeurope",
-                   "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%"},
+                   "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%",
+                   "languages": ["de-DE", "en-US"]},
     "elevenlabs": {"voice_id": "", "model": "eleven_multilingual_v2",
                    "key_env": "ELEVENLABS_API_KEY"},
     # mp3 by default: it is what talkers, reading pens and phone apps expect,
@@ -584,13 +585,18 @@ def azure_voices(cfg):
     than a slightly old list."""
     opt = cfg.get("azure") or {}
     mine = opt.get("voice") or ""
-    locale = "-".join(mine.split("-")[:2])
+    # Which languages to offer. "de" takes every German locale, "de-DE" only
+    # that one. Without the setting it stays at the language of the configured
+    # voice — Azure has 556 voices, and a picker with all of them is no picker.
+    want = [w.lower() for w in (opt.get("languages") or [])]
+    if not want:
+        want = ["-".join(mine.split("-")[:2]).lower()] if mine else []
     cache = DATA / ".azure-voices.json"
     try:
         age = time.time() - cache.stat().st_mtime
         if age < AZURE_CACHE_DAYS * 86400:
             known = json.loads(cache.read_text())
-            if known.get("locale") == locale:
+            if known.get("want") == want:
                 return known["voices"]
     except Exception:
         pass
@@ -602,11 +608,13 @@ def azure_voices(cfg):
                           os.environ.get(opt.get("key_env", ""), "")})
         with urllib.request.urlopen(req, timeout=10) as r:
             names = sorted(v["ShortName"] for v in json.load(r)
-                           if v.get("Locale", "").startswith(locale))
+                           if any(v.get("Locale", "").lower() == w
+                                  or v.get("Locale", "").lower().startswith(w + "-")
+                                  for w in want))
         if mine and mine not in names:
             names.append(mine)          # configured by hand, keep it usable
         DATA.mkdir(parents=True, exist_ok=True)
-        cache.write_text(json.dumps({"locale": locale, "voices": names}))
+        cache.write_text(json.dumps({"want": want, "voices": names}))
         return names
     except Exception:
         return [mine] if mine else []
