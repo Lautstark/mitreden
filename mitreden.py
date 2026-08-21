@@ -878,10 +878,12 @@ button.quiet:hover{color:var(--text)}
 .chip.on:hover{background:#ffa3d2}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .chip.fold{border-style:dashed;opacity:.8}
-/* Centred in the row, not on the first line. Sitting the box against the top
-   line was defensible on paper and looked top-heavy in practice. */
-.item{display:flex;gap:14px;align-items:center;padding:15px 2px;
+/* The box belongs to the phrase, so it sits with the phrase — not in the
+   middle of a row that a second line of groups can make twice as tall, where
+   it ends up next to the small print instead. */
+.item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
+.item input[type=checkbox]{margin-top:10px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
 /* margin-bottom comes from the label rule for the form above; here it would
@@ -898,6 +900,9 @@ button.quiet:hover{color:var(--text)}
    for each other. The labels say which axis a row narrows. */
 .filters{margin:14px 2px 0}
 .frow{display:flex;align-items:baseline;gap:10px;margin-top:10px}
+/* display:flex beats the browser's own rule for [hidden], so both of these
+   would stay on screen while claiming to be hidden. */
+.frow[hidden],.split[hidden]{display:none}
 .flabel{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
   flex:none;width:64px;padding-top:6px}
 .frow .chips{margin:0}
@@ -906,10 +911,16 @@ button.quiet:hover{color:var(--text)}
   margin:18px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 /* The same drawn chevron as the selects use. The character U+2304 sits on the
    baseline and reads as a typo next to the text. */
-.acts #bulk{padding:9px 32px 9px 14px;font-size:14px;
+/* The everyday action is a button you press, not an entry you go looking for.
+   Everything rarer sits behind the chevron next to it. */
+.split{display:flex}
+.split #dlmp3{border-top-right-radius:0;border-bottom-right-radius:0;
+  border-right-color:transparent;padding:9px 14px;font-size:14px}
+.acts #bulk{border-top-left-radius:0;border-bottom-left-radius:0;
+  padding:9px 26px 9px 12px;font-size:14px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 13px center}
-.acts #bulk:hover{background-color:#1e222c}
+  background-repeat:no-repeat;background-position:right 10px center}
+.acts #bulk:hover,.split #dlmp3:hover{background-color:#1e222c}
 /* The two pairs travel together: wrapping them apart would put a lone voice
    picker under the selection and read as if it belonged to it. */
 .acts .doing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
@@ -1017,8 +1028,10 @@ button.quiet:hover{color:var(--text)}
 
 <div class="acts">
   <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
-  <span class="menuwrap" id="doing" hidden>
-    <button id="bulk" aria-haspopup="true" aria-expanded="false">Mit Auswahl</button>
+  <span class="split menuwrap" id="doing" hidden>
+    <button id="dlmp3">Als MP3 herunterladen</button>
+    <button id="bulk" aria-haspopup="true" aria-expanded="false"
+      title="Weitere Aktionen" aria-label="Weitere Aktionen"></button>
   </span>
 </div>
 
@@ -1295,13 +1308,13 @@ async function delMany(ids){
   say(ids.length+' gel\\u00f6scht.');load();
 }
 
+$('dlmp3').onclick=()=>grabMany(
+  ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').map(i=>i.id),'mp3');
 $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
   const ids=[...SEL];
   const fertig=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').map(i=>i.id);
-  if(fertig.length){
-    add('Als MP3 herunterladen',false,()=>{closeMenus();grabMany(fertig,'mp3')});
+  if(fertig.length)
     add('Als WAV herunterladen',false,()=>{closeMenus();grabMany(fertig,'wav')});
-  }
   add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
   add('Gruppen \\u00e4ndern',false,()=>{closeMenus();tagsMany(ids)});
   add(ids.length===1?'Satz l\\u00f6schen':ids.length+' S\\u00e4tze l\\u00f6schen',

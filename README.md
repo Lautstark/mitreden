@@ -242,9 +242,9 @@ Ohne `--apply` wird nichts angefasst.
 einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
 beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und **auf
 eine andere Stimme umstellen**. Beide Knöpfe erscheinen, sobald etwas
-angekreuzt ist: ein Knopf „Mit Auswahl", der ein Menü öffnet — herunterladen
-als MP3 oder WAV, Stimme ändern, Gruppen ändern, löschen. Es ist dasselbe
-Menü, das das ⋮ einer Zeile für einen einzelnen Satz zeigt.
+angekreuzt ist: „Als MP3 herunterladen" direkt, alles Seltenere hinter dem
+Pfeil daneben — als WAV, Stimme ändern, Gruppen ändern, löschen. Es ist
+dasselbe Menü, das das ⋮ einer Zeile für einen einzelnen Satz zeigt.
 
 Sollte doch einmal eine Aufnahme scheitern, sagt es die Pille „Nicht
 aufgenommen" in der Stimmenreihe. Anklicken, auswählen, Stimme setzen — und
