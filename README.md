@@ -88,10 +88,27 @@ längst auf einem Talker oder einem Hörstift, und die soll ein vergessenes
 Fragezeichen nicht umbenennen. Für einen wirklich anderen Satz ist ein neuer
 Eintrag der richtige Weg.
 
+## Deutsch oder Englisch
+
+Oben rechts steht die Sprachwahl. Beim ersten Besuch richtet sich mitreden
+nach deinem Browser, danach nach dem, was du zuletzt gewählt hast; die Wahl
+steht auch in der Adresse (`?lang=de`), ein Link nimmt sie also mit.
+
+Die Sprache der Oberfläche und die Sprache der Stimmen haben nichts
+miteinander zu tun: In beiden Fassungen stehen dieselben Stimmen zur Wahl,
+deutsche wie englische.
+
+Die Texte liegen in `lang/de.json` und `lang/en.json`, mit englischen
+Schlüsseln. Eine weitere Sprache ist eine weitere Datei — sie taucht ohne
+Codeänderung in der Auswahl auf. Fehlt ein Schlüssel, greift Englisch, und
+fehlt er dort auch, steht der Schlüssel selbst da: eine Lücke soll auffallen,
+nicht leer bleiben.
+
 ## Was rauskommt
 
-Pro Satz eine Datei in `out/`, benannt nach seiner ID. Die ID entsteht aus den
-ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
+Pro Satz eine Datei in `out/`, benannt nach seiner ID. In der Oberfläche
+kommt die ID nicht mehr vor — sie ist ein Dateiname, kein Lesestoff. Sie
+entsteht aus den ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
 langen Satz kein langer Dateiname wird. Zwei Sätze mit demselben Anfang
 bekommen eine Nummer angehängt. Bestehende IDs bleiben, wie sie sind — sie
 stehen womöglich schon auf einem Gerät. Standard ist MP3 mit

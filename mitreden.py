@@ -538,6 +538,24 @@ def phrase_state(item, cfg, voices=None):
     return "ok"
 
 
+LANGS = ROOT / "lang"
+
+
+def strings():
+    """Every language the interface can speak, by code.
+
+    The files sit next to the program, not next to your phrases: they are part
+    of mitreden, not of what you write with it. A missing or broken file costs
+    that one language, not the page."""
+    out = {}
+    for f in sorted(LANGS.glob("*.json")):
+        try:
+            out[f.stem] = json.loads(f.read_text())
+        except Exception as e:
+            print(f"  skipping {f.name}: {e}", file=sys.stderr)
+    return out
+
+
 def piper_models():
     """Every piper model on this machine, by name. The .onnx.json beside it is
     piper's own and has to be there, so a lone .onnx is not a usable voice."""
@@ -934,6 +952,14 @@ button.quiet:hover{color:var(--text)}
 .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
+.langpick{margin-left:auto;font:inherit;font-size:13px;font-weight:600;
+  color:var(--muted);background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center}
+.langpick:hover{color:var(--text);background-color:#1e222c}
+.langpick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Shaped like the group chips, so the header reads as one row of controls
    instead of one control and one browser default. */
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
@@ -1014,8 +1040,6 @@ button.quiet:hover{color:var(--text)}
 .item .txt{flex:1;min-width:0}
 .item .line{font-size:18px;letter-spacing:-.01em}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
-.item .id{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
-  color:var(--muted);word-break:break-all}
 .item .state{font-size:12px;color:var(--muted)}
 .item.stale .state{color:var(--warn)}
 .item .tag{font:inherit;font-size:12px;font-weight:500;color:var(--muted);
@@ -1063,40 +1087,41 @@ button.quiet:hover{color:var(--text)}
 </style>
 <main>
 <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
-<p class="sub">Ein Satz, eine Stimme, eine Audiodatei.</p>
+<p class="sub" data-i18n="tagline"></p>
 
 <div class="hero">
-  <label for="t">Neue Sätze, einer pro Zeile</label>
-  <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
-  <label class="tight" for="nt">Gruppen (optional, mit Komma getrennt)</label>
-  <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
+  <label for="t" data-i18n="new_phrases"></label>
+  <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
+  <label class="tight" for="nt" data-i18n="groups_label"></label>
+  <input id="nt" type="text" data-i18n-ph="groups_hint" autocomplete="off">
   <div class="row">
-    <button class="primary" id="add">Satz hinzufügen</button>
-    <select id="voice" class="asbutton" aria-label="Stimme"
-      title="Womit aufgenommen wird"></select>
+    <button class="primary" id="add" data-i18n="add_phrase"></button>
+    <select id="voice" class="asbutton" data-i18n-aria="voice_label"
+      data-i18n-title="voice_title"></select>
   </div>
   <p class="status" id="s" hidden></p>
 </div>
 
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
+  <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
 </div>
 
 <div class="tools">
-  <input id="q" type="search" placeholder="Sätze und Gruppen durchsuchen…" autocomplete="off">
+  <input id="q" type="search" data-i18n-ph="search_hint" autocomplete="off">
 </div>
 
 <div class="filters">
-  <div class="frow"><span class="flabel">Gruppen</span><span class="chips" id="chips"></span></div>
-  <div class="frow" id="vrow" hidden><span class="flabel">Stimmen</span><span class="chips" id="vchips"></span></div>
+  <div class="frow"><span class="flabel" data-i18n="filter_groups"></span><span class="chips" id="chips"></span></div>
+  <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
 </div>
 
 <div class="acts">
-  <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
+  <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt"></span></label>
   <span class="split menuwrap" id="doing" hidden>
-    <button id="dlmp3">Als MP3 herunterladen</button>
+    <button id="dlmp3" data-i18n="download_mp3"></button>
     <button id="bulk" aria-haspopup="true" aria-expanded="false"
-      title="Weitere Aktionen" aria-label="Weitere Aktionen"></button>
+      data-i18n-title="more_actions" data-i18n-aria="more_actions"></button>
   </span>
 </div>
 
@@ -1104,16 +1129,69 @@ button.quiet:hover{color:var(--text)}
 </main>
 <script>
 const $=id=>document.getElementById(id);
+
+// --- Sprachen ---------------------------------------------------------
+// The strings come from lang/*.json so that translating means editing a file,
+// not hunting through the program. Keys are English; a key that is missing in
+// one language falls back to English, and then to the key itself, so a gap is
+// visible instead of blank.
+let STR={}, LANG='de';
+const NAMES={de:'Deutsch',en:'English'};
+
+function t(key,vars){
+  const set=STR[LANG]||{}, fallback=STR.en||{};
+  let s=set[key]!==undefined?set[key]:(fallback[key]!==undefined?fallback[key]:key);
+  if(vars)for(const k in vars)s=s.split('{'+k+'}').join(vars[k]);
+  return s;
+}
+// Singular and plural are separate keys — languages disagree about where the
+// line falls, and "1 Sätze" is the kind of thing you stop seeing yourself.
+const tn=(key,n,vars)=>t(key+(n===1?'_one':'_other'),Object.assign({n},vars));
+
+function applyLang(){
+  document.documentElement.lang=LANG;
+  for(const el of document.querySelectorAll('[data-i18n]'))
+    el.textContent=t(el.dataset.i18n);
+  for(const el of document.querySelectorAll('[data-i18n-ph]'))
+    el.placeholder=t(el.dataset.i18nPh);
+  for(const el of document.querySelectorAll('[data-i18n-title]'))
+    el.title=t(el.dataset.i18nTitle);
+  for(const el of document.querySelectorAll('[data-i18n-aria]'))
+    el.setAttribute('aria-label',t(el.dataset.i18nAria));
+  draw();
+}
+
+async function loadStrings(){
+  STR=await (await fetch('/api/strings')).json();
+  const codes=Object.keys(STR);
+  // What you picked last, else what the browser asks for, else German.
+  const wanted=new URLSearchParams(location.search).get('lang')
+    ||localStorage.getItem('mitreden.lang')
+    ||(navigator.language||'de').slice(0,2);
+  LANG=codes.includes(wanted)?wanted:(codes.includes('de')?'de':codes[0]);
+  const sel=$('lang');
+  sel.innerHTML='';
+  for(const c of codes){
+    const o=new Option(NAMES[c]||c,c);
+    if(c===LANG)o.selected=true;
+    sel.appendChild(o);
+  }
+  sel.onchange=e=>{
+    LANG=e.target.value;
+    localStorage.setItem('mitreden.lang',LANG);
+    const u=new URL(location);u.searchParams.set('lang',LANG);
+    history.replaceState(null,'',u);      // reload and sharing keep it
+    applyLang();
+  };
+}
 const say=m=>{const e=$('s');e.textContent=m||'';e.hidden=!m};
-const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
-             stale:'ge\\u00e4ndert seit der Aufnahme'};
 // Every row names its own voice now: they can differ from each other, so the
 // header no longer answers the question for the whole list.
 // Either it is not recorded, or you get the voice it is recorded in. Saying
 // "recorded" as well would be a word that is true of every row.
-const stateText=it=>it.state==='missing'?LABEL.missing
-                  :it.state==='stale'?'ge\\u00e4ndert seit der Aufnahme'
-                  :(it.voice||'aufgenommen');
+const stateText=it=>it.state==='missing'?t('state_missing')
+                  :it.state==='stale'?t('state_stale')
+                  :(it.voice||t('state_recorded'));
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
@@ -1152,7 +1230,7 @@ function found(){
 const voiceOf=i=>i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
 const shown=()=>{
   let f=found();
-  if(TAGS.size)f=f.filter(i=>(i.tags||[]).some(t=>TAGS.has(t)));
+  if(TAGS.size)f=f.filter(i=>(i.tags||[]).some(x=>TAGS.has(x)));
   if(VOICES.size)f=f.filter(i=>VOICES.has(voiceOf(i)));
   return f;
 };
@@ -1190,7 +1268,7 @@ function drawVoiceChips(hits){
   // One voice and nothing missing is no choice at all — the row stays away.
   $('vrow').hidden=names.length<2&&!VOICES.size;
   if($('vrow').hidden)return;
-  chip('Alle',hits.length,null,VOICES,'vchips');
+  chip(t('chip_all'),hits.length,null,VOICES,'vchips');
   // Same cap as the groups: a wall of pills is not a filter any more.
   let vis=names;
   if(!ALL_VOICES&&names.length>CHIP_CAP){
@@ -1198,11 +1276,11 @@ function drawVoiceChips(hits){
     vis=top.concat([...VOICES].filter(v=>!top.includes(v)));
   }
   for(const n of vis)
-    chip(n===NOCHNICHT?'Nicht aufgenommen':n,counts[n],n,VOICES,'vchips');
+    chip(n===NOCHNICHT?t('chip_not_recorded'):n,counts[n],n,VOICES,'vchips');
   if(names.length>vis.length||ALL_VOICES&&names.length>CHIP_CAP){
     const b=document.createElement('button');
     b.className='chip fold';
-    b.textContent=ALL_VOICES?'weniger':'+ '+(names.length-vis.length)+' weitere';
+    b.textContent=ALL_VOICES?t('chip_less'):t('chip_more',{n:names.length-vis.length});
     b.onclick=()=>{ALL_VOICES=!ALL_VOICES;draw()};
     $('vchips').appendChild(b);
   }
@@ -1210,24 +1288,24 @@ function drawVoiceChips(hits){
 
 function drawChips(hits){
   const counts={};
-  for(const i of hits)for(const t of (i.tags||[]))counts[t]=(counts[t]||0)+1;
-  for(const t of TAGS)if(!(t in counts))counts[t]=0;   // a pick never vanishes
+  for(const i of hits)for(const x of (i.tags||[]))counts[x]=(counts[x]||0)+1;
+  for(const x of TAGS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
   // Most used first — those are the everyday ones. Alphabetical within a tie.
   const names=Object.keys(counts)
     .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
   $('chips').innerHTML='';
   if(!names.length)return;
-  chip('Alle',hits.length,null,TAGS,'chips');
+  chip(t('chip_all'),hits.length,null,TAGS,'chips');
   let vis=names;
   if(!ALL_TAGS&&names.length>CHIP_CAP){
     const top=names.slice(0,CHIP_CAP);
-    vis=top.concat([...TAGS].filter(t=>!top.includes(t)));
+    vis=top.concat([...TAGS].filter(x=>!top.includes(x)));
   }
   for(const n of vis)chip(n,counts[n],n,TAGS,'chips');
   if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
     const b=document.createElement('button');
     b.className='chip fold';
-    b.textContent=ALL_TAGS?'weniger':'+ '+(names.length-vis.length)+' weitere';
+    b.textContent=ALL_TAGS?t('chip_less'):t('chip_more',{n:names.length-vis.length});
     b.onclick=()=>{ALL_TAGS=!ALL_TAGS;draw()};
     $('chips').appendChild(b);
   }
@@ -1241,28 +1319,27 @@ function draw(){
   drawVoiceChips(hits);
 
   const pending=items.filter(i=>i.state!=='ok').length;
-  $('count').textContent = !ALL.length ? 'Noch keine S\\u00e4tze'
+  $('count').textContent = !ALL.length ? t('count_none')
     : items.length===ALL.length
-      ? ALL.length+(ALL.length===1?' Satz':' S\\u00e4tze')+
-        (pending?', '+pending+' offen':', alle aufgenommen')
-      : items.length+' von '+ALL.length+' S\\u00e4tzen'+(pending?', '+pending+' offen':'');
+      ? tn('count',ALL.length)+
+        (pending?t('count_open',{n:pending}):t('count_all_recorded'))
+      : t('count_filtered',{n:items.length,all:ALL.length})+
+        (pending?t('count_open',{n:pending}):'');
 
 
   $('list').innerHTML='';
   if(!items.length){
     const p=document.createElement('p');p.className='empty';
-    p.textContent=ALL.length?'Kein Satz passt.'
-      :'Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
-       'jede Zeile wird ein eigener Satz.';
+    p.textContent=ALL.length?t('empty_no_match'):t('empty_start');
     $('list').appendChild(p);
     refreshSel();
     return;
   }
   for(const it of (SHOW_ALL?items:items.slice(0,CAP))){
     const d=document.createElement('div');d.className='item '+it.state;
-    d.innerHTML='<input type="checkbox" aria-label="Ausw\\u00e4hlen">'+
+    d.innerHTML='<input type="checkbox" aria-label="'+t('select_one')+'">'+
       '<div class="txt"><div class="line"></div>'+
-      '<div class="meta"><span class="id"></span>'+
+      '<div class="meta">'+
       '<span class="st"><span class="dot"></span><span class="state"></span></span>'+
       '</div></div>'+
       // The player's own \u22ee menu offers a playback speed that only affects
@@ -1276,13 +1353,12 @@ function draw(){
     box.checked=SEL.has(it.id);
     box.onchange=()=>{box.checked?SEL.add(it.id):SEL.delete(it.id);refreshSel()};
     d.querySelector('.line').textContent=it.text;
-    d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=stateText(it);
     const meta=d.querySelector('.meta');
-    for(const t of (it.tags||[])){
+    for(const tag of (it.tags||[])){
       const b=document.createElement('button');
-      b.className='tag';b.textContent=t;b.title='Nur diese Gruppe zeigen';
-      b.onclick=()=>{TAGS.clear();TAGS.add(t);draw()};
+      b.className='tag';b.textContent=tag;b.title=t('tag_title');
+      b.onclick=()=>{TAGS.clear();TAGS.add(tag);draw()};
       meta.appendChild(b);
     }
     d.querySelector('.dots').onclick=ev=>openMenu(ev.currentTarget,it);
@@ -1290,7 +1366,7 @@ function draw(){
   }
   if(!SHOW_ALL&&items.length>CAP){
     const b=document.createElement('button');
-    b.className='more';b.textContent='Alle '+items.length+' S\\u00e4tze zeigen';
+    b.className='more';b.textContent=t('show_all',{n:items.length});
     b.onclick=()=>{SHOW_ALL=true;draw()};
     $('list').appendChild(b);
   }
@@ -1322,7 +1398,7 @@ async function voiceMenu(m,apply){
   m.innerHTML='';
   for(const v of await (await fetch('/api/voices')).json()){
     const b=document.createElement('button');
-    b.textContent='Auf '+v.label+' umstellen';
+    b.textContent=t('switch_to',{voice:v.label});
     b.onclick=()=>{closeMenus();apply(v.id,v.label)};
     m.appendChild(b);
   }
@@ -1330,50 +1406,44 @@ async function voiceMenu(m,apply){
 
 async function switchTo(ids,id,label){
   if(!ids.length)return;
-  if(!confirm(ids.length+(ids.length===1?' Satz':' S\\u00e4tze')+' auf '+label+
-              ' umstellen?\\n\\nDie bestehenden Aufnahmen werden ersetzt.'))return;
-  say(ids.length+(ids.length===1?' Satz wird':' S\\u00e4tze werden')+
-      ' auf '+label+' umgestellt \\u2026');
+  if(!confirm(tn('ask_switch',ids.length,{voice:label})))return;
+  say(t('busy_switch',{voice:label}));
   const r=await post('/api/build',{force:true,ids,voice:id});
-  if(r){say(r.rendered+' umgestellt auf '+label+'.');load()}
+  if(r){say(t('done_switch',{n:r.rendered,voice:label}));load()}
 }
 
 async function grabMany(ids,fmt){
-  if(!ids.length){say('Davon ist nichts aufgenommen.');return}
-  say(ids.length+(ids.length===1?' Satz wird':' S\\u00e4tze werden')+' gepackt \\u2026');
+  if(!ids.length){say(t('nothing_recorded'));return}
+  say(t('busy_pack',{n:ids.length}));
   const r=await fetch('/api/download',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,format:fmt})});
-  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
+  if(!r.ok){say(t('failed',{error:await r.text()}));return}
   const url=URL.createObjectURL(await r.blob());
   const a=document.createElement('a');
   a.href=url;a.download='mitreden-'+ids.length+'-'+fmt+'.zip';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
-  say(ids.length+' als '+fmt.toUpperCase()+' heruntergeladen.');
+  say(t('done_pack',{n:ids.length,format:fmt.toUpperCase()}));
 }
 
 async function tagsMany(ids,mode){
   const rein=mode==='add';
-  const v=prompt((rein?'Welche Gruppen bekommen diese ':'Welche Gruppen verlieren diese ')+
-                 ids.length+' S\\u00e4tze?\\n\\nMit Komma getrennt. '+
-                 (rein?'Vorhandene Gruppen bleiben.':'Andere Gruppen bleiben.'),'');
+  const v=prompt(t(rein?'ask_groups_add':'ask_groups_remove',{n:ids.length}),'');
   if(v===null)return;
   const tags=v.split(',').map(t=>t.trim()).filter(Boolean);
-  if(!tags.length){say('Keine Gruppe genannt.');return}
-  say(rein?'Wird hinzugef\\u00fcgt \\u2026':'Wird entfernt \\u2026');
+  if(!tags.length){say(t('no_group_named'));return}
+  say(t(rein?'busy_group_add':'busy_group_remove'));
   const r=await post('/api/tags',{ids,tags,mode});
-  if(r){say(r.ids.length+(rein?' S\\u00e4tze sind jetzt in ':' S\\u00e4tze nicht mehr in ')+
-            tags.join(', ')+'.');load()}
+  if(r){say(t(rein?'done_group_add':'done_group_remove',
+                {n:r.ids.length,groups:tags.join(', ')}));load()}
 }
 
 async function delMany(ids){
-  if(!confirm(ids.length+(ids.length===1?' Satz':' S\\u00e4tze')+
-              ' l\\u00f6schen?\\n\\nDie S\\u00e4tze und ihre Audiodateien werden entfernt. '+
-              'Das l\\u00e4sst sich nicht r\\u00fcckg\\u00e4ngig machen.'))return;
-  say('Wird gel\\u00f6scht \\u2026');
+  if(!confirm(tn('ask_delete',ids.length)))return;
+  say(t('busy_delete'));
   for(const id of ids)await post('/api/delete',{id});
   SEL.clear();
-  say(ids.length+' gel\\u00f6scht.');load();
+  say(t('done_delete',{n:ids.length}));load();
 }
 
 $('dlmp3').onclick=()=>grabMany(
@@ -1382,12 +1452,12 @@ $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
   const ids=[...SEL];
   const fertig=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').map(i=>i.id);
   if(fertig.length)
-    add('Als WAV herunterladen',false,()=>{closeMenus();grabMany(fertig,'wav')});
-  add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
-  add('Zu Gruppe hinzuf\\u00fcgen',false,()=>{closeMenus();tagsMany(ids,'add')});
-  add('Aus Gruppe entfernen',false,()=>{closeMenus();tagsMany(ids,'remove')});
-  add(ids.length===1?'Satz l\\u00f6schen':ids.length+' S\\u00e4tze l\\u00f6schen',
-      true,()=>{closeMenus();delMany(ids)});
+    add(t('download_wav'),false,()=>{closeMenus();grabMany(fertig,'wav')});
+  add(t('menu_change_voice'),false,
+      mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
+  add(t('menu_add_group'),false,()=>{closeMenus();tagsMany(ids,'add')});
+  add(t('menu_remove_group'),false,()=>{closeMenus();tagsMany(ids,'remove')});
+  add(tn('menu_delete',ids.length),true,()=>{closeMenus();delMany(ids)});
 });
 
 function closeMenus(){
@@ -1399,15 +1469,16 @@ function closeMenus(){
 }
 function openMenu(btn,it){
   menuOn(btn,(m,add)=>{
-    add('Text \\u00e4ndern',false,()=>{closeMenus();editText(it)});
+    add(t('menu_edit_text'),false,()=>{closeMenus();editText(it)});
     if(it.state!=='missing'){
-      add('Als MP3 herunterladen',false,()=>{closeMenus();grab(it,'mp3')});
-      add('Als WAV herunterladen',false,()=>{closeMenus();grab(it,'wav')});
+      add(t('download_mp3'),false,()=>{closeMenus();grab(it,'mp3')});
+      add(t('download_wav'),false,()=>{closeMenus();grab(it,'wav')});
     }
-    add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo([it.id],id,label)));
-    add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
+    add(t('menu_change_voice'),false,
+        mm=>voiceMenu(mm,(id,label)=>switchTo([it.id],id,label)));
+    add((it.tags||[]).length?t('menu_change_groups'):t('menu_add_to_group'),
         false,()=>{closeMenus();editTags(it)});
-    add('Satz l\\u00f6schen',true,()=>{closeMenus();del(it)});
+    add(t('menu_delete_one'),true,()=>{closeMenus();del(it)});
   });
 }
 addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenus()});
@@ -1418,8 +1489,8 @@ async function load(){
   ALL=data.items||[];
   await loadVoices(data.voice);
   const live=new Set();
-  for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
-  for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
+  for(const i of ALL)for(const x of (i.tags||[]))live.add(x);
+  for(const x of [...TAGS])if(!live.has(x))TAGS.delete(x);   // group is gone
   const alive=new Set(ALL.map(i=>i.id));
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
@@ -1449,7 +1520,7 @@ $('voice').onchange=async e=>{
   const r=await post('/api/voice',{id});
   if(!r){sel.value=was;return}
   sel.dataset.was=id;
-  say('Neue Aufnahmen bekommen '+r.label+'.');
+  say(t('voice_now',{voice:r.label}));
   draw();                                 // labels name the voice
 };
 function grab(it,fmt){
@@ -1458,50 +1529,48 @@ function grab(it,fmt){
   document.body.appendChild(a);a.click();a.remove();
 }
 async function editText(it){
-  const v=prompt('Text f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\n'+
-                 'Der Satz wird sofort neu aufgenommen. '+
-                 'Der Dateiname bleibt \\u201E'+it.id+'\\u201C.',it.text);
+  const v=prompt(t('ask_edit_text',{text:'\\u201E'+it.text+'\\u201C',id:it.id}),it.text);
   if(v===null)return;
   if(v.trim()===it.text)return;                 // nichts angefasst
-  say('Wird neu aufgenommen \\u2026');
+  say(t('busy_record'));
   const r=await post('/api/edit',{id:it.id,text:v});
-  if(r){say('Ge\\u00e4ndert: \\u201E'+r.text+'\\u201C');load()}
+  if(r){say(t('done_edit',{text:'\\u201E'+r.text+'\\u201C'}));load()}
 }
 async function editTags(it){
-  const v=prompt('Gruppen f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\nMit Komma getrennt. '+
-                 'Leer entfernt alle Gruppen.',(it.tags||[]).join(', '));
+  const v=prompt(t('ask_groups_one',{text:'\\u201E'+it.text+'\\u201C'}),
+                 (it.tags||[]).join(', '));
   if(v===null)return;
   const tags=v.split(',');
   const r=await post('/api/tags',{ids:[it.id],tags,mode:'set'});
   if(r){const rest=tags.map(t=>t.trim()).filter(Boolean);
-        say(rest.length?'Jetzt in: '+rest.join(', '):'Keine Gruppen mehr.');load()}
+        say(rest.length?t('done_groups_one',{groups:rest.join(', ')})
+                       :t('done_groups_none'));load()}
 }
 async function del(it){
-  if(!confirm('\\u201E'+it.text+'\\u201C wirklich l\\u00f6schen?\\n\\nDer Satz und seine '+
-              'Audiodateien werden entfernt. Das l\\u00e4sst sich nicht r\\u00fcckg\\u00e4ngig machen.'))return;
-  say('Wird gel\\u00f6scht \\u2026');
+  if(!confirm(t('ask_delete_this',{text:'\\u201E'+it.text+'\\u201C'})))return;
+  say(t('busy_delete'));
   const r=await post('/api/delete',{id:it.id});
-  if(r){say('Gel\\u00f6scht: '+r.id);load()}
+  if(r){say(t('done_delete_one',{text:it.text}));load()}
 }
 async function post(url,body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body||{})});
-  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return null}
+  if(!r.ok){say(t('failed',{error:await r.text()}));return null}
   return r.json();
 }
 $('q').oninput=draw;
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
-  if(!lines.length){say('Erst etwas eintippen.');return}
+  if(!lines.length){say(t('type_first'));return}
   // Only what stands in the field. A filter further down is a way of looking
   // at the list, not a hidden instruction about the phrase you are typing.
   const tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
-  say('Wird aufgenommen \\u2026');
+  say(t('busy_add'));
   const res=await post('/api/phrases',{lines,tags});
   if(res){
     $('t').value='';
-    say(res.added+' hinzugef\\u00fcgt, '+res.rendered+' aufgenommen'+
-        (res.merged?', '+res.merged+' gab es schon':'')+'.');
+    say(t('done_add',{added:res.added,rendered:res.rendered})+
+        (res.merged?t('done_add_twins',{n:res.merged}):'')+'.');
     load();
   }
 };
@@ -1515,9 +1584,9 @@ function refreshSel(){
   // including what a filter is currently hiding, or you press a button that
   // touches a phrase you cannot see.
   const versteckt=SEL.size-picked;
-  $('selalltxt').textContent=SEL.size
-    ? SEL.size+' ausgew\\u00e4hlt'+(versteckt?', '+versteckt+' davon ausgeblendet':'')
-    : 'Alle ausw\\u00e4hlen';
+  $('selalltxt').textContent=!SEL.size?t('select_all')
+    :versteckt?t('selected_hidden',{n:SEL.size,hidden:versteckt})
+    :t('selected',{n:SEL.size});
   // Everything you can do with a selection lives behind one button. What the
   // search and the pills do is filter, nothing else.
   $('doing').hidden=!SEL.size;
@@ -1526,7 +1595,7 @@ $('selall').onchange=e=>{
   for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
   draw();
 };
-load();
+loadStrings().then(()=>{applyLang();load()});
 </script>
 </html>"""
 
@@ -1579,6 +1648,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
+        if self.path == "/api/strings":
+            return self._send(200, json.dumps(strings(), ensure_ascii=False))
         if self.path == "/api/voices":
             return self._send(200, json.dumps(available_voices(load_config()),
                                               ensure_ascii=False))
