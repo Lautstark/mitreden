@@ -126,7 +126,11 @@ Normalfall — „Alle auswählen", einmal aufnehmen, fertig. Aber wenn ein Satz
 jemand anderem gehört oder in einer anderen Sprache ist, darf er anders
 klingen.
 
-In jeder Zeile steht, in welcher Stimme sie aufgenommen ist.
+In jeder Zeile steht, in welcher Stimme sie aufgenommen ist. Eine Stimme heißt
+`Kerstin · piper · de`: Name, woher sie kommt, welche Sprache sie spricht. Die
+Sprache steht dabei, weil das der Grund ist, aus dem sich zwei Stimmen in
+derselben Liste wirklich unterscheiden — etwa in einem Haushalt mit zwei
+Sprachen.
 
 ```
 python3 mitreden.py voices                              # was geht hier?

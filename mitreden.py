@@ -539,6 +539,17 @@ def pretty_piper(stem):
     return rest.partition("-")[0].replace("_", " ").title()
 
 
+def label_of(name, backend, lang=""):
+    """Name, where it comes from, and which language it speaks — the three
+    things that tell two entries in the picker apart."""
+    return " \u00b7 ".join(p for p in (name, backend, lang) if p)
+
+
+def lang_of(tag):
+    """de_DE-thorsten-medium, de-DE-GiselaNeural, de -> de"""
+    return tag.replace("_", "-").split("-")[0].lower() if tag else ""
+
+
 AZURE_CACHE_DAYS = 7
 
 
@@ -591,22 +602,27 @@ def available_voices(cfg):
     there, and a local one only once the program behind it exists."""
     out = []
     for stem, path in piper_models().items():
-        out.append({"id": f"piper:{stem}", "label": f"{pretty_piper(stem)} \u00b7 piper",
+        out.append({"id": f"piper:{stem}",
+                    "label": label_of(pretty_piper(stem), "piper", lang_of(stem)),
                     "backend": "piper", "model": str(path)})
     opt = cfg.get("azure") or {}
     if os.environ.get(opt.get("key_env", "")):
         for name in azure_voices(cfg):
-            out.append({"id": f"azure:{name}", "label": f"{short_voice(name)} \u00b7 azure",
+            out.append({"id": f"azure:{name}",
+                        "label": label_of(short_voice(name), "azure", lang_of(name)),
                         "backend": "azure", "voice": name})
     opt = cfg.get("elevenlabs") or {}
     if os.environ.get(opt.get("key_env", "")):
-        out.append({"id": "elevenlabs", "label": "ElevenLabs", "backend": "elevenlabs"})
+        out.append({"id": "elevenlabs", "label": "ElevenLabs",
+                    "backend": "elevenlabs"})
     for backend in ("say", "espeak"):
         opt = cfg.get(backend) or {}
         binary = opt.get("binary") or backend
         if shutil.which(binary):
             out.append({"id": backend,
-                        "label": f"{opt.get('voice', backend)} \u00b7 {backend}",
+                        "label": label_of(opt.get("voice", backend), backend,
+                                          lang_of(opt["voice"]) if backend == "espeak"
+                                          else ""),
                         "backend": backend})
     active = active_voice(cfg)
     for v in out:
