@@ -857,7 +857,9 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 button.primary:hover{background:#ffa3d2}
 button.quiet{border-color:transparent;color:var(--muted);padding:11px 12px}
 button.quiet:hover{color:var(--text)}
-.status{color:var(--muted);font-size:14px;min-height:20px;margin:12px 2px 0}
+/* No placeholder line: an empty status reserves a gap for nothing. */
+.status{color:var(--muted);font-size:14px;margin:12px 2px 0}
+.status[hidden]{display:none}
 .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
@@ -882,7 +884,7 @@ button.quiet:hover{color:var(--text)}
 .item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
 /* Centred on the first line of the phrase — measured, not guessed. */
-.item input[type=checkbox]{margin-top:6px}
+.item input[type=checkbox]{margin-top:8px}
 .item .txt{padding-top:1px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
@@ -901,15 +903,10 @@ button.quiet:hover{color:var(--text)}
 .flabel{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
   flex:none;width:64px;padding-top:6px}
 .frow .chips{margin:0}
-.acts{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-  padding:10px 12px}
-.alarm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  background:var(--panel);border:1px solid var(--warn);border-radius:12px;
-  padding:12px 14px;margin:14px 2px 0;font-size:14px}
-.alarm button{padding:8px 14px;font-size:14px;border-color:var(--warn);
-  color:var(--text)}
+
 .acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:18px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.acts #bulk{padding:9px 14px;font-size:14px}
 /* The two pairs travel together: wrapping them apart would put a lone voice
    picker under the selection and read as if it belonged to it. */
 .acts .doing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
@@ -999,16 +996,11 @@ button.quiet:hover{color:var(--text)}
     <select id="voice" class="asbutton" aria-label="Stimme"
       title="Womit aufgenommen wird"></select>
   </div>
-  <p class="status" id="s">&nbsp;</p>
+  <p class="status" id="s" hidden></p>
 </div>
 
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
-</div>
-
-<div class="alarm" id="alarm" hidden>
-  <span id="alarmtxt"></span>
-  <button id="catchup">Jetzt aufnehmen</button>
 </div>
 
 <div class="tools">
@@ -1022,15 +1014,8 @@ button.quiet:hover{color:var(--text)}
 
 <div class="acts">
   <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
-  <span class="doing" id="doing" hidden>
-    <span class="pair">
-      <select id="dlfmt" title="In welchem Format gepackt wird"></select>
-      <button id="dl">Herunterladen</button>
-    </span>
-    <span class="pair">
-      <select id="tovoice" title="Auf welche Stimme"></select>
-      <button id="rebuild">Umstellen</button>
-    </span>
+  <span class="menuwrap" id="doing" hidden>
+    <button id="bulk" aria-haspopup="true" aria-expanded="false">Mit Auswahl \u2304</button>
   </span>
 </div>
 
@@ -1038,14 +1023,16 @@ button.quiet:hover{color:var(--text)}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const say=m=>$('s').textContent=m||'\\u00a0';
+const say=m=>{const e=$('s');e.textContent=m||'';e.hidden=!m};
 const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
              stale:'ge\\u00e4ndert seit der Aufnahme'};
 // Every row names its own voice now: they can differ from each other, so the
 // header no longer answers the question for the whole list.
+// Either it is not recorded, or you get the voice it is recorded in. Saying
+// "recorded" as well would be a word that is true of every row.
 const stateText=it=>it.state==='missing'?LABEL.missing
-                  :(it.state==='stale'?'ge\\u00e4ndert seit der Aufnahme':'aufgenommen')+
-                   (it.voice?' \\u2014 '+it.voice:'');
+                  :it.state==='stale'?'ge\\u00e4ndert seit der Aufnahme'
+                  :(it.voice||'aufgenommen');
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
@@ -1109,6 +1096,7 @@ function chip(label,n,tag,set,where){
 // Which voices are picked. NOCHNICHT stands for "not recorded at all" — the
 // same question ("what does this sound like?") with the answer "nothing yet".
 const VOICES=new Set(), NOCHNICHT='\\u2205';
+let ALL_VOICES=false;
 
 function drawVoiceChips(hits){
   const counts={};
@@ -1124,8 +1112,21 @@ function drawVoiceChips(hits){
   $('vrow').hidden=names.length<2&&!VOICES.size;
   if($('vrow').hidden)return;
   chip('Alle',hits.length,null,VOICES,'vchips');
-  for(const n of names)
+  // Same cap as the groups: a wall of pills is not a filter any more.
+  let vis=names;
+  if(!ALL_VOICES&&names.length>CHIP_CAP){
+    const top=names.slice(0,CHIP_CAP);
+    vis=top.concat([...VOICES].filter(v=>!top.includes(v)));
+  }
+  for(const n of vis)
     chip(n===NOCHNICHT?'Nicht aufgenommen':n,counts[n],n,VOICES,'vchips');
+  if(names.length>vis.length||ALL_VOICES&&names.length>CHIP_CAP){
+    const b=document.createElement('button');
+    b.className='chip fold';
+    b.textContent=ALL_VOICES?'weniger':'+ '+(names.length-vis.length)+' weitere';
+    b.onclick=()=>{ALL_VOICES=!ALL_VOICES;draw()};
+    $('vchips').appendChild(b);
+  }
 }
 
 function drawChips(hits){
@@ -1217,31 +1218,109 @@ function draw(){
   refreshSel();
 }
 
+// The row menu answers "what can I do with this phrase". This is the same
+// question for several of them, so it is the same menu — not a bar that grows
+// another control for every new action.
+function menuOn(btn,build){
+  const open=btn.getAttribute('aria-expanded')==='true';
+  closeMenus();
+  if(open)return;
+  btn.setAttribute('aria-expanded','true');
+  const m=document.createElement('div');m.className='menu';
+  build(m,(label,danger,fn)=>{
+    const b=document.createElement('button');
+    b.textContent=label;
+    if(danger)b.className='danger';
+    b.onclick=e=>{e.stopPropagation();fn(m)};
+    m.appendChild(b);
+  });
+  btn.parentNode.appendChild(m);
+}
+
+// Second level in the same popup: seventeen voices have no place in a bar,
+// but they are fine in a list you opened on purpose.
+async function voiceMenu(m,apply){
+  m.innerHTML='';
+  for(const v of await (await fetch('/api/voices')).json()){
+    const b=document.createElement('button');
+    b.textContent='Auf '+v.label+' umstellen';
+    b.onclick=()=>{closeMenus();apply(v.id,v.label)};
+    m.appendChild(b);
+  }
+}
+
+async function switchTo(ids,id,label){
+  if(!ids.length)return;
+  if(!confirm(ids.length+(ids.length===1?' Satz':' S\\u00e4tze')+' auf '+label+
+              ' umstellen?\\n\\nDie bestehenden Aufnahmen werden ersetzt.'))return;
+  say(ids.length+(ids.length===1?' Satz wird':' S\\u00e4tze werden')+
+      ' auf '+label+' umgestellt \\u2026');
+  const r=await post('/api/build',{force:true,ids,voice:id});
+  if(r){say(r.rendered+' umgestellt auf '+label+'.');load()}
+}
+
+async function grabMany(ids,fmt){
+  if(!ids.length){say('Davon ist nichts aufgenommen.');return}
+  say(ids.length+(ids.length===1?' Satz wird':' S\\u00e4tze werden')+' gepackt \\u2026');
+  const r=await fetch('/api/download',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,format:fmt})});
+  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
+  const url=URL.createObjectURL(await r.blob());
+  const a=document.createElement('a');
+  a.href=url;a.download='mitreden-'+ids.length+'-'+fmt+'.zip';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  say(ids.length+' als '+fmt.toUpperCase()+' heruntergeladen.');
+}
+
+async function tagsMany(ids){
+  const v=prompt('Gruppen f\\u00fcr '+ids.length+' ausgew\\u00e4hlte S\\u00e4tze\\n\\n'+
+                 'Mit Komma getrennt. Leer entfernt alle Gruppen.','');
+  if(v===null)return;
+  say('Gruppen werden gesetzt \\u2026');
+  for(const id of ids)await post('/api/tags',{id,tags:v.split(',')});
+  say(ids.length+' S\\u00e4tze angepasst.');load();
+}
+
+async function delMany(ids){
+  if(!confirm(ids.length+(ids.length===1?' Satz':' S\\u00e4tze')+
+              ' l\\u00f6schen?\\n\\nDie S\\u00e4tze und ihre Audiodateien werden entfernt. '+
+              'Das l\\u00e4sst sich nicht r\\u00fcckg\\u00e4ngig machen.'))return;
+  say('Wird gel\\u00f6scht \\u2026');
+  for(const id of ids)await post('/api/delete',{id});
+  SEL.clear();
+  say(ids.length+' gel\\u00f6scht.');load();
+}
+
+$('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
+  const ids=[...SEL];
+  const fertig=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').map(i=>i.id);
+  if(fertig.length){
+    add('Als MP3 herunterladen',false,()=>{closeMenus();grabMany(fertig,'mp3')});
+    add('Als WAV herunterladen',false,()=>{closeMenus();grabMany(fertig,'wav')});
+  }
+  add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
+  add('Gruppen \\u00e4ndern',false,()=>{closeMenus();tagsMany(ids)});
+  add(ids.length===1?'Satz l\\u00f6schen':ids.length+' S\\u00e4tze l\\u00f6schen',
+      true,()=>{closeMenus();delMany(ids)});
+});
+
 function closeMenus(){
   for(const m of document.querySelectorAll('.menu'))m.remove();
   for(const b of document.querySelectorAll('.dots'))b.setAttribute('aria-expanded','false');
 }
 function openMenu(btn,it){
-  const open=btn.getAttribute('aria-expanded')==='true';
-  closeMenus();
-  if(open)return;                       // a second click closes it again
-  btn.setAttribute('aria-expanded','true');
-  const m=document.createElement('div');m.className='menu';
-  const add=(label,danger,fn)=>{
-    const b=document.createElement('button');
-    b.textContent=label;
-    if(danger)b.className='danger';
-    b.onclick=()=>{closeMenus();fn()};
-    m.appendChild(b);
-  };
-  add('Text \\u00e4ndern',false,()=>editText(it));
-  if(it.state!=='missing')
-    add('Datei herunterladen ('+$('dlfmt').value.toUpperCase()+')',false,()=>grab(it));
-  add('Auf '+targetVoice()+' umstellen',false,()=>redo(it));
-  add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
-      false,()=>editTags(it));
-  add('Satz l\\u00f6schen',true,()=>del(it));
-  btn.parentNode.appendChild(m);
+  menuOn(btn,(m,add)=>{
+    add('Text \\u00e4ndern',false,()=>{closeMenus();editText(it)});
+    if(it.state!=='missing'){
+      add('Als MP3 herunterladen',false,()=>{closeMenus();grab(it,'mp3')});
+      add('Als WAV herunterladen',false,()=>{closeMenus();grab(it,'wav')});
+    }
+    add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo([it.id],id,label)));
+    add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
+        false,()=>{closeMenus();editTags(it)});
+    add('Satz l\\u00f6schen',true,()=>{closeMenus();del(it)});
+  });
 }
 addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenus()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
@@ -1250,7 +1329,6 @@ async function load(){
   const data=await (await fetch('/api/phrases')).json();
   ALL=data.items||[];
   await loadVoices(data.voice);
-  loadFormats(data.format||'mp3');
   const live=new Set();
   for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
   for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
@@ -1263,18 +1341,9 @@ const nameOf=id=>{
   return o&&o.text?o.text:'der aktuellen Stimme';
 };
 const voiceNow=()=>nameOf('voice');      // for new phrases
-const targetVoice=()=>nameOf('tovoice');  // for the ones you switch over
-function loadFormats(current){
-  const sel=$('dlfmt');
-  if(sel.dataset.ready&&sel.dataset.ready===current)return;
-  sel.innerHTML='';
-  for(const f of [current,...['mp3','wav'].filter(x=>x!==current)])
-    sel.appendChild(new Option(f.toUpperCase(),f));
-  sel.dataset.ready=current;               // the recorded format goes first
-}
 async function loadVoices(current){
   const list=await (await fetch('/api/voices')).json();
-  for(const id of ['voice','tovoice']){
+  for(const id of ['voice']){
     const sel=$(id), keep=sel.value;
     sel.innerHTML='';
     if(!list.length){                    // nothing usable: just show it
@@ -1300,15 +1369,10 @@ $('voice').onchange=async e=>{
   say('Neue Aufnahmen bekommen '+r.label+'.');
   draw();                                 // labels name the voice
 };
-function grab(it){
+function grab(it,fmt){
   const a=document.createElement('a');
-  a.href='/audio/'+it.id+'?dl=1&format='+encodeURIComponent($('dlfmt').value);
+  a.href='/audio/'+it.id+'?dl=1&format='+encodeURIComponent(fmt);
   document.body.appendChild(a);a.click();a.remove();
-}
-async function redo(it){
-  say('\\u201E'+it.text+'\\u201C wird auf '+targetVoice()+' umgestellt \\u2026');
-  const r=await post('/api/build',{ids:[it.id],force:true,voice:$('tovoice').value});
-  if(r){say(r.rendered?'Aufgenommen: '+it.id:'Nichts zu tun.');load()}
 }
 async function editText(it){
   const v=prompt('Text f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\n'+
@@ -1356,25 +1420,6 @@ $('add').onclick=async()=>{
     load();
   }
 };
-$('dl').onclick=async()=>{
-  const vis=SEL.size?ALL.filter(i=>SEL.has(i.id)):shown();
-  const ids=vis.filter(i=>i.state!=='missing').map(i=>i.id);
-  if(!ids.length){say('Es ist noch nichts aufgenommen.');return}
-  say(ids.length+' S\\u00e4tze werden gepackt \\u2026');
-  const r=await fetch('/api/download',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ids,format:$('dlfmt').value})});
-  if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
-  const url=URL.createObjectURL(await r.blob());
-  const a=document.createElement('a');
-  a.href=url;a.download='mitreden-'+(soleTag()||(TAGS.size?'auswahl':'alle'))+
-    '-'+$('dlfmt').value+'.zip';
-  document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),2000);
-  const skipped=vis.length-ids.length;
-  say(ids.length+' S\\u00e4tze heruntergeladen'+
-      (skipped?'. '+skipped+' noch nicht aufgenommen':'')+'.');
-};
 function refreshSel(){
   const vis=shown(), ids=vis.map(i=>i.id);
   const picked=ids.filter(i=>SEL.has(i)).length;
@@ -1388,44 +1433,14 @@ function refreshSel(){
   $('selalltxt').textContent=SEL.size
     ? SEL.size+' ausgew\\u00e4hlt'+(versteckt?', '+versteckt+' davon ausgeblendet':'')
     : 'Alle ausw\\u00e4hlen';
-  // The two actions belong to the selection and only show up with one. What
-  // the search and the groups do is filter, nothing else.
+  // Everything you can do with a selection lives behind one button. What the
+  // search and the pills do is filter, nothing else.
   $('doing').hidden=!SEL.size;
-  const bereit=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').length;
-  $('dl').textContent=bereit+' herunterladen';
-  $('dl').disabled=!bereit;
-  // "Record with X" read like a repair. It changes which voice these phrases
-  // speak in — so that is what it says.
-  $('rebuild').textContent='Umstellen';
-
-  // Recording happens by itself when you add or edit a phrase. Something left
-  // open means a recording failed or the format changed — rare, so the offer
-  // only appears when it is true.
-  const offen=ALL.filter(i=>i.state!=='ok').length;
-  $('alarm').hidden=!offen;
-  $('alarmtxt').textContent=offen===1
-    ? 'Ein Satz ist nicht aufgenommen.'
-    : offen+' S\\u00e4tze sind nicht aufgenommen.';
 }
 $('selall').onchange=e=>{
   for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
   draw();
 };
-$('catchup').onclick=async()=>{
-  say('Was offen ist, wird aufgenommen \\u2026');
-  const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}
-};
-$('rebuild').onclick=async()=>{
-  const ids=[...SEL];
-  if(!ids.length)return;
-  const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
-    :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
-  if(!confirm(wieviele+' auf '+targetVoice()+' umstellen?\\n\\n'+
-              'Die bestehenden Aufnahmen werden dabei ersetzt.'))return;
-  say(wieviele+' wird auf '+targetVoice()+' umgestellt \\u2026');
-  const r=await post('/api/build',{force:true,ids,voice:$('tovoice').value});
-  if(r){say(r.rendered+' umgestellt auf '+targetVoice()+'.');load()}};
 load();
 </script>
 </html>"""
