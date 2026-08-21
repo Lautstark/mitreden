@@ -152,7 +152,8 @@ def first_config():
 def load_config():
     if not CONFIG.exists():
         DATA.mkdir(parents=True, exist_ok=True)   # a fresh mount is empty
-        CONFIG.write_text(json.dumps(first_config(), indent=2, ensure_ascii=False))
+        CONFIG.write_text(json.dumps(first_config(), indent=2,
+                                     ensure_ascii=False) + "\n")
     cfg = json.loads(CONFIG.read_text())
     for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
         if k not in cfg:
@@ -719,7 +720,14 @@ def use_voice(cfg, vid):
         return None
     cfg.clear()
     cfg.update(fresh)
-    CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
+    # Only the backend and its own settings go back into the file. What
+    # load_config fills in from the defaults belongs in memory, not on disk —
+    # otherwise a config.json someone wrote by hand grows four backends they
+    # never asked for, every time they pick a voice.
+    raw = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+    raw["backend"] = cfg["backend"]
+    raw[cfg["backend"]] = cfg[cfg["backend"]]   # complete, for the one in use
+    CONFIG.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
     return voice_name(cfg, vid)
 
 
