@@ -225,10 +225,11 @@ python3 mitreden.py dedupe --apply   # führt es wirklich zusammen
 
 Ohne `--apply` wird nichts angefasst.
 
-**Neu aufnehmen.** Vor jeder Zeile steht ein Kästchen. Was du ankreuzt, nimmt
-der Knopf unter der Liste neu auf — einen Satz, eine Handvoll oder alles über
-„Alle auswählen". Ohne Auswahl ist der Knopf ausgegraut, es passiert also
-nichts aus Versehen. Ein Filter lässt die Auswahl unangetastet und sagt dir,
+**Aufnehmen.** Unter der Liste steht ein Knopf, und was er tut, steht drauf.
+Ohne Auswahl holt er nach, was noch nicht aufgenommen ist („2 offene
+aufnehmen"). Kreuzt du vor den Zeilen etwas an, nimmt er genau das neu auf —
+einen Satz, eine Handvoll oder alles über „Alle auswählen". Ist nichts offen
+und nichts angekreuzt, ist er ausgegraut. Ein Filter lässt die Auswahl unangetastet und sagt dir,
 wenn etwas Ausgewähltes gerade nicht zu sehen ist. Einen einzelnen Satz nimmt
 auch das ⋮ neu auf.
 

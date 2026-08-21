@@ -928,7 +928,6 @@ button.quiet:hover{color:var(--text)}
   <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
     <button class="primary" id="add">Satz hinzufügen</button>
-    <button class="quiet" id="build">Fehlende aufnehmen</button>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
@@ -1269,9 +1268,6 @@ $('dl').onclick=async()=>{
   say(ids.length+' S\\u00e4tze heruntergeladen'+
       (skipped?'. '+skipped+' noch nicht aufgenommen':'')+'.');
 };
-$('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
-  const r=await post('/api/build',{force:false});
-  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}};
 function refreshSel(){
   const vis=shown(), ids=vis.map(i=>i.id);
   const picked=ids.filter(i=>SEL.has(i)).length;
@@ -1285,11 +1281,16 @@ function refreshSel(){
   $('selalltxt').textContent=SEL.size
     ? SEL.size+' ausgew\\u00e4hlt'+(versteckt?', '+versteckt+' davon ausgeblendet':'')
     : 'Alle ausw\\u00e4hlen';
+  // One button for two jobs, and its label always says which one it is doing:
+  // with nothing ticked it catches up on what is not recorded yet, which is
+  // the everyday case; with a selection it replaces exactly those.
+  const offen=ALL.filter(i=>i.state!=='ok').length;
   const b=$('rebuild');
-  b.disabled=!SEL.size;
-  b.textContent=SEL.size===ALL.length?'Alle S\\u00e4tze neu aufnehmen'
+  b.disabled=!SEL.size&&!offen;
+  b.textContent=SEL.size===ALL.length&&ALL.length?'Alle S\\u00e4tze neu aufnehmen'
     :SEL.size?SEL.size+(SEL.size===1?' Satz':' S\\u00e4tze')+' neu aufnehmen'
-    :'Nichts ausgew\\u00e4hlt';
+    :offen?offen+(offen===1?' offenen aufnehmen':' offene aufnehmen')
+    :'Alles ist aufgenommen';
 }
 $('selall').onchange=e=>{
   for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
@@ -1297,7 +1298,12 @@ $('selall').onchange=e=>{
 };
 $('rebuild').onclick=async()=>{
   const ids=[...SEL];
-  if(!ids.length)return;
+  if(!ids.length){                       // catching up replaces nothing
+    say('Was fehlt, wird mit '+voiceNow()+' aufgenommen \\u2026');
+    const r=await post('/api/build',{force:false});
+    if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}
+    return;
+  }
   const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
     :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
   if(!confirm(wieviele+' mit '+voiceNow()+' neu aufnehmen?\\n\\n'+
