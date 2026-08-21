@@ -205,37 +205,48 @@ python3 mitreden.py export all ~/Desktop/alles
 mitreden ist ein Werkzeug, kein Dienst — für den Hausgebrauch reicht es, es auf
 dem Rechner zu starten. Wenn es aber dauerhaft laufen soll, damit du auch vom
 Handy aus Sätze hinzufügen kannst und `phrases.json` in der NAS-Sicherung
-liegt, gibt es ein Abbild:
+liegt, gibt es ein fertiges Abbild. Das Repo brauchst du dafür nicht — nur
+einen Ordner für deine Daten und diese `docker-compose.yml`:
+
+```yaml
+services:
+  mitreden:
+    image: ghcr.io/steffipetaffy/mitreden:latest
+    ports: ["8770:8770"]
+    volumes: ["./:/data"]
+    restart: unless-stopped
+```
 
 ```
-docker compose pull           # das fertige Abbild holen
-docker compose up -d          # http://localhost:8770
+docker compose pull && docker compose up -d
 ```
 
-Gebaut wird es in der CI für amd64 und arm64 und liegt danach als
-`ghcr.io/steffipetaffy/mitreden:latest` bereit — dein NAS zieht es, statt
-selbst zu bauen. Wenn du lieber selbst baust: `docker compose up -d --build`.
+Beim ersten Start legt mitreden sich seine `config.json` selbst an; Backend
+und Stimme trägst du dort ein, den Schlüssel in eine `.env` daneben. Alles,
+was dir gehört — Sätze, Config, `out/`, Schlüssel — liegt in diesem einen
+Ordner. Das Programm kommt aus dem Abbild und wird mit `docker compose pull`
+aktuell, ohne deine Daten anzufassen.
 
-Compose reicht den Projektordner als `/app` hinein. `phrases.json`,
-`config.json` und `out/` liegen damit auf dem NAS und überstehen jedes
-Neubauen; der Azure-Schlüssel kommt aus der `.env` in genau diesem Ordner und
-steckt nie im Abbild.
+Gebaut wird das Abbild in der CI für amd64 und arm64, dein NAS zieht es also
+fertig. Selbst bauen geht auch: Repo klonen und `docker compose up -d --build`.
 
-Auf einer Synology sind zwei Dinge zu tun. Erstens die eigene Kennung: sonst
-läuft der Container als root, und was er anlegt, gehört danach root und ist
-über die Netzfreigabe nicht mehr zu bearbeiten. Per SSH `id` aufrufen und die
-`user:`-Zeile in `docker-compose.yml` einkommentieren. Zweitens die
-Portfreigabe — nur im Heimnetz.
+Auf einer Synology ist die eigene Kennung wichtig: sonst läuft der Container
+als root, und was er anlegt, gehört danach root und ist über die Netzfreigabe
+nicht mehr zu bearbeiten. Per SSH `id` aufrufen und `user: "1026:100"` in die
+Compose-Datei eintragen.
 
-Denn: **die Oberfläche hat keine Anmeldung.** Wer den Port erreicht, kann
-Sätze anlegen, löschen und über deinen Schlüssel rendern lassen. Im eigenen
-Netz oder über VPN ist das in Ordnung, im offenen Internet nicht. Deshalb
-lauscht mitreden von sich aus nur auf `localhost` und muss ausdrücklich
-aufgefordert werden, ans Netz zu gehen:
+Und die Portfreigabe gehört ins Heimnetz. Denn: **die Oberfläche hat keine
+Anmeldung.** Wer den Port erreicht, kann Sätze anlegen, löschen und über
+deinen Schlüssel rendern lassen. Im eigenen Netz oder über VPN ist das in
+Ordnung, im offenen Internet nicht. Deshalb lauscht mitreden von sich aus nur
+auf `localhost` und muss ausdrücklich ans Netz geschickt werden:
 
 ```
 python3 mitreden.py ui --host 0.0.0.0 --port 8770
 ```
+
+Wo deine Daten liegen, steuert `MITREDEN_DIR`. Ohne die Variable ist es der
+Ordner neben `mitreden.py` — auf dem Rechner ändert sich also nichts.
 
 ## Deine Inhalte bleiben lokal
 

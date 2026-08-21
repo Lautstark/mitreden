@@ -47,11 +47,17 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-PHRASES = ROOT / "phrases.json"
-CONFIG = ROOT / "config.json"
-ICON = ROOT / "icon.svg"
-RAW = ROOT / "build" / "raw"
-OUT = ROOT / "out"
+
+# Everything that is yours — phrases, config, audio, key — lives in DATA. That
+# is the script's own folder, unless MITREDEN_DIR points somewhere else. The
+# split is what lets a container keep the code to itself and still put your
+# phrases on a NAS, where they get backed up.
+DATA = Path(os.environ.get("MITREDEN_DIR") or ROOT).expanduser()
+PHRASES = DATA / "phrases.json"
+CONFIG = DATA / "config.json"
+ICON = ROOT / "icon.svg"          # part of the program, not of your data
+RAW = DATA / "build" / "raw"
+OUT = DATA / "out"
 
 # Anything ffmpeg can write works as a format; the extension picks the codec.
 # 16000/1 keeps files small for microcontroller flash, 44100/1 is the safe
@@ -97,7 +103,7 @@ def load_env():
     Keys never belong in config.json, so they live in the environment — and a
     .env next to the script saves exporting them by hand in every new shell.
     An explicit export still wins over the file."""
-    f = ROOT / ".env"
+    f = DATA / ".env"
     if not f.exists():
         return
     for line in f.read_text().splitlines():
@@ -110,6 +116,7 @@ def load_env():
 
 def load_config():
     if not CONFIG.exists():
+        DATA.mkdir(parents=True, exist_ok=True)   # a fresh mount is empty
         CONFIG.write_text(json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False))
     cfg = json.loads(CONFIG.read_text())
     for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
@@ -1132,7 +1139,7 @@ def main():
             sys.exit(1)
         print(f"deleted: {pid}")
         for f in removed:
-            print(f"  removed    {f.relative_to(ROOT)}")
+            print(f"  removed    {f.relative_to(DATA)}")
         if not removed:
             print("  (no audio files present)")
     elif cmd == "edit":

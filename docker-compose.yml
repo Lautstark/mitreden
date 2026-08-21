@@ -10,11 +10,11 @@ services:
       #   MITREDEN_PORT=8798 docker compose up -d
       - "${MITREDEN_PORT:-8770}:8770"
     volumes:
-      # Mount the whole project: phrases.json, config.json and out/ then live
-      # on the NAS and survive every rebuild of the image. The Azure key comes
-      # from the .env in that same folder — mitreden reads it on startup. It
-      # is deliberately not in the image.
-      - ./:/app
+      # This folder holds your data, not the program: phrases.json, config.json,
+      # out/ and the .env with the key. It lives on the NAS, survives every new
+      # image, and is what you back up. The code stays inside the image — do
+      # not mount over /app, that would hide it.
+      - ./:/data
     # On a Synology the container otherwise runs as root, and everything it
     # creates (out/, phrases.json) belongs to root afterwards — over the
     # network share you can no longer edit it. Find your own id over SSH with
