@@ -45,6 +45,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -1766,6 +1767,10 @@ loadStrings().then(()=>{applyLang();load()});
 </html>"""
 
 
+# One recording at a time, one write at a time. See route_post below.
+STATE_LOCK = threading.Lock()
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json; charset=utf-8", extra=None):
         if isinstance(body, str):
@@ -1777,11 +1782,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+        self.answered = True
 
     def log_message(self, *a):
         pass
 
+    def guard(self, work):
+        """Answer every request, including the ones that go wrong.
+
+        An exception used to travel straight out of the handler and close the
+        socket without a word. The page then fell over on `await r.text()`
+        — there was no text, so the button simply died and said nothing. The
+        interface is built to show what went wrong; it can only do that if
+        something comes back.
+
+        Whatever already answered stays answered: a handler that fails half
+        way through has said its piece, and a second reply on the same socket
+        would only garble it."""
+        try:
+            work()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                      # the browser left mid-answer, fine
+        except json.JSONDecodeError:
+            self.trouble(400, "That was not valid JSON.")
+        except Exception as e:
+            # The name matters as much as the text: a bare "returned non-zero
+            # exit status 1" at least says CalledProcessError, so it is clear
+            # the recording failed and not the request.
+            self.trouble(500, f"{type(e).__name__}: {e}")
+
+    def trouble(self, code, why):
+        if getattr(self, "answered", False):
+            return
+        try:
+            self._send(code, why, "text/plain; charset=utf-8")
+        except OSError:
+            pass                      # the socket is gone too; nothing to do
+
     def do_GET(self):
+        self.guard(self.route_get)
+
+    def do_POST(self):
+        self.guard(self.route_post)
+
+    def route_get(self):
         # The path, without whatever the page appended for its own state. A
         # link with ?lang=de is still the page, not a different one.
         route = urllib.parse.urlsplit(self.path).path
@@ -1847,13 +1891,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
         return ctype == "application/json"
 
-    def do_POST(self):
+    def route_post(self):
         if not self.same_site():
             return self._send(403, "This request did not come from mitreden.",
                               "text/plain")
-        n = int(self.headers.get("Content-Length", 0))
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            return self._send(400, "Content-Length is not a number.", "text/plain")
         data = json.loads(self.rfile.read(n) or "{}")
-        route = urllib.parse.urlsplit(self.path).path   # same rule as do_GET
+        route = urllib.parse.urlsplit(self.path).path   # same rule as route_get
+        # Reading happens side by side, changing does not. Every route below
+        # loads phrases.json, works on it and writes it back; two of them at
+        # once would each save a copy that never saw the other, and the second
+        # one wins. The lock is around the change, not around the server —
+        # playing a file or opening the page never waits for a recording.
+        with STATE_LOCK:
+            return self.change(route, data)
+
+    def change(self, route, data):
         cfg = load_config()
         items = load_phrases()
 
@@ -2019,7 +2075,11 @@ def main():
         print(f"mitreden is running at http://{shown}:{port}  (Ctrl-C to stop)")
         if host == "0.0.0.0":
             print("Listening on every address — keep this off the open internet.")
-        http.server.HTTPServer((host, port), Handler).serve_forever()
+        # Threading, because recording is slow: piper and ffmpeg run per
+        # phrase, and `build --all` over a few hundred of them held the only
+        # thread there was. The page went dead for minutes — no list, no
+        # playing, nothing. Now only the recording waits for the recording.
+        http.server.ThreadingHTTPServer((host, port), Handler).serve_forever()
     elif cmd == "add":
         text, tags, rest, i = None, [], args[1:], 0
         while i < len(rest):
