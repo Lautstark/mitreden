@@ -380,27 +380,43 @@ def fingerprint(text, cfg):
 
 # ------------------------------------------------------------------ Backends
 
+def run(cmd, **kw):
+    """Run a program and, when it fails, say what it said.
+
+    check=True raises with the whole command line and an exit code, which is
+    the one thing nobody can act on — and the page shows that message. ffmpeg
+    and piper both explain themselves on stderr: a model that is not there, a
+    format that cannot hold this audio. That sentence is what has to arrive."""
+    done = subprocess.run(cmd, capture_output=True, **kw)
+    if done.returncode:
+        why = (done.stderr or b"").decode("utf-8", "replace").strip()
+        # The last line is the complaint; everything above it is ffmpeg
+        # introducing itself.
+        last = why.splitlines()[-1].strip() if why else ""
+        raise RuntimeError(f"{Path(cmd[0]).name}: "
+                           f"{last or f'exit status {done.returncode}'}")
+    return done
+
+
 def tts_say(text, dest, opt):
     """Built into macOS. Good for a quick try without setup, not for the long run."""
     aiff = dest.with_suffix(".aiff")
-    subprocess.run(["say", "-v", opt["voice"], "-o", str(aiff), text], check=True)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(aiff),
-                    str(dest)], check=True)
+    run(["say", "-v", opt["voice"], "-o", str(aiff), text])
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(aiff), str(dest)])
     aiff.unlink(missing_ok=True)
 
 
 def tts_espeak(text, dest, opt):
     """Almost always present on Linux. Sounds robotic, but proves the chain
     works before you go looking for a good voice."""
-    subprocess.run([opt["binary"], "-v", opt["voice"], "-s", str(opt["speed"]),
-                    "-w", str(dest), text], check=True)
+    run([opt["binary"], "-v", opt["voice"], "-s", str(opt["speed"]),
+         "-w", str(dest), text])
 
 
 def tts_piper(text, dest, opt):
     """Local, offline, free, and still running the same way in ten years."""
-    subprocess.run([opt["binary"], "-m", opt["model"], "-f", str(dest)],
-                   input=text.encode("utf-8"), check=True,
-                   stdout=subprocess.DEVNULL)
+    run([opt["binary"], "-m", opt["model"], "-f", str(dest)],
+        input=text.encode("utf-8"))
 
 
 def tts_azure(text, dest, opt):
@@ -410,8 +426,9 @@ def tts_azure(text, dest, opt):
     ssml = (
         '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         'xml:lang="de-DE">'
-        f'<voice name="{opt["voice"]}">'
-        f'<prosody rate="{opt["rate"]}" pitch="{opt["pitch"]}">{esc(text)}</prosody>'
+        f'<voice name="{esc(opt["voice"])}">'
+        f'<prosody rate="{esc(opt["rate"])}" pitch="{esc(opt["pitch"])}">'
+        f'{esc(text)}</prosody>'
         "</voice></speak>"
     )
     url = f"https://{opt['region']}.tts.speech.microsoft.com/cognitiveservices/v1"
@@ -440,8 +457,7 @@ def tts_elevenlabs(text, dest, opt):
     mp3 = dest.with_suffix(".mp3")
     with urllib.request.urlopen(req, timeout=120) as r:
         mp3.write_bytes(r.read())
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
-                    str(dest)], check=True)
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), str(dest)])
     mp3.unlink(missing_ok=True)
 
 
@@ -450,8 +466,9 @@ BACKENDS = {"say": tts_say, "espeak": tts_espeak, "piper": tts_piper,
 
 
 def esc(s):
-    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-             .replace('"', "&quot;"))
+    """XML-safe, for text and for attribute values alike."""
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                  .replace('"', "&quot;").replace("'", "&#39;"))
 
 
 # ----------------------------------------------------------------- Rendering
@@ -489,11 +506,20 @@ def render(item, cfg, force=False, voice_id=None, voices=None):
         raise RuntimeError(f"'{binary}' is not installed — backend "
                            f"'{backend}' cannot render. "
                            f"`mitreden.py backends` shows what is available.")
+    # The recording before this one is not an acceptable answer. A backend
+    # that writes nothing and still exits happily used to leave the previous
+    # wav lying here, and ffmpeg re-encoded that instead — a phrase that
+    # failed to record came out sounding like whatever it said last time.
+    raw.unlink(missing_ok=True)
     BACKENDS[backend](item["text"], raw, opt)
+    if not raw.exists() or raw.stat().st_size == 0:
+        raise RuntimeError(f"'{backend}' produced no audio for "
+                           f"'{item['id']}'. Check the voice in config.json.")
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw),
-                    "-af", FILTERS, *output_args(cfg), str(dest)], check=True)
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(raw),
+         "-af", FILTERS, *output_args(cfg), str(dest)])
+    raw.unlink(missing_ok=True)     # nothing reads it again; out/ is the work
 
     item["fingerprint"] = fp
     item["backend"] = backend
@@ -606,6 +632,10 @@ def set_env_var(name, value):
 
     The file is written for you alone (0600). An empty value removes the line;
     the running process is updated too, so a new key works without a restart."""
+    if value and ("\n" in value or "\r" in value):
+        # One variable per line is the whole format. A value carrying its own
+        # line break would quietly write a second variable nobody asked for.
+        raise ValueError("A key cannot contain a line break.")
     lines = []
     if env_file().exists():
         lines = [l for l in env_file().read_text().splitlines()
@@ -884,17 +914,34 @@ def remove_files(pid):
     return removed
 
 
-def delete_phrase(pid):
-    """Drop a phrase from phrases.json and delete every WAV it produced.
+def delete_phrases(ids):
+    """Drop several phrases and everything they produced, in one pass.
 
-    Returns (True, deleted_files), or (False, []) if the id does not exist."""
+    One read and one write, however many were picked. Deleting them one at a
+    time rewrote the whole file per phrase, and each rewrite was a chance to
+    be interrupted half way through the list.
+
+    The list is saved before the audio goes: a file with no phrase is clutter
+    that `build` clears up by itself, while a phrase with no file would ask
+    to be recorded again forever.
+
+    Returns (ids that were there, files that went away)."""
     items = load_phrases()
-    rest = [i for i in items if i.get("id") != pid]
-    if len(rest) == len(items):
-        return False, []
-    removed = remove_files(pid)
-    save_phrases(rest)
-    return True, removed
+    wanted = {str(i).strip() for i in ids if str(i).strip()}
+    gone = [i["id"] for i in items if i.get("id") in wanted]
+    if not gone:
+        return [], []
+    save_phrases([i for i in items if i.get("id") not in wanted])
+    removed = []
+    for pid in gone:
+        removed += remove_files(pid)
+    return gone, removed
+
+
+def delete_phrase(pid):
+    """One phrase. Returns (True, deleted_files), or (False, []) if unknown."""
+    gone, removed = delete_phrases([pid])
+    return bool(gone), removed
 
 
 def dedupe(apply=False):
@@ -918,9 +965,9 @@ def dedupe(apply=False):
             seen[norm_text(it["text"])] = it
             keep.append(it)
     if merges and apply:
+        save_phrases(keep)                      # the list first, as above
         for dropped, _ in merges:
             remove_files(dropped["id"])
-        save_phrases(keep)
     return keep, merges
 
 
@@ -940,8 +987,8 @@ def as_format(f, fmt, cfg):
     with tempfile.TemporaryDirectory() as tmp:
         conv = Path(tmp) / f"{f.stem}.{fmt}"
         args = output_args(dict(cfg, output=dict(cfg.get("output") or {}, format=fmt)))
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(f),
-                        *args, str(conv)], check=True)
+        run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(f),
+             *args, str(conv)])
         return conv.read_bytes()
 
 
@@ -1515,7 +1562,8 @@ function draw(){
       (it.state==='missing'?'':'<audio controls controlsList="nodownload noplaybackrate" '+
         'disableRemotePlayback preload="none" src="/audio/'+it.id+'"></audio>')+
       '<div class="menuwrap"><button class="dots" aria-haspopup="true" '+
-      'aria-expanded="false" title="Mehr" aria-label="Mehr">\\u22ee</button></div>';
+      'aria-expanded="false" title="'+t('more_actions')+'" aria-label="'+
+      t('more_actions')+'">\\u22ee</button></div>';
     const box=d.querySelector('input[type=checkbox]');
     box.checked=SEL.has(it.id);
     box.onchange=()=>{box.checked?SEL.add(it.id):SEL.delete(it.id);refreshSel()};
@@ -1608,9 +1656,12 @@ async function tagsMany(ids,mode){
 async function delMany(ids){
   if(!confirm(tn('ask_delete',ids.length)))return;
   say(t('busy_delete'));
-  for(const id of ids)await post('/api/delete',{id});
+  // One request, and the count comes back from the server. Deleting them one
+  // by one meant a failure half way through still reported the full number.
+  const r=await post('/api/delete',{ids});
+  if(!r)return;
   SEL.clear();
-  say(t('done_delete',{n:ids.length}));load();
+  say(t('done_delete',{n:r.ids.length}));load();
 }
 
 $('dlmp3').onclick=()=>grabMany(
@@ -1784,8 +1835,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
         self.answered = True
 
-    def log_message(self, *a):
-        pass
+    def log_request(self, *a):
+        pass                # the access log is noise on your own machine
 
     def guard(self, work):
         """Answer every request, including the ones that go wrong.
@@ -1976,6 +2027,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not var:
                 return self._send(400, "No key_env in config.json.", "text/plain")
             key = (data.get("key") or "").strip()
+            if "\n" in key or "\r" in key:
+                return self._send(400, "A key cannot contain a line break.",
+                                  "text/plain")
             if not key:                       # empty field means: forget it
                 set_env_var(var, "")
                 return self._send(200, json.dumps({"ok": True, "set": False}))
@@ -1999,7 +2053,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                  "voices": len(available_voices(load_config()))}))
 
         if route == "/api/download":
-            blob, n = zip_phrases(data.get("ids", []), cfg, data.get("format"))
+            fmt = (data.get("format") or "").lower().lstrip(".")
+            if fmt and fmt not in MIME:
+                return self._send(400, "Unknown format.", "text/plain")
+            blob, n = zip_phrases(data.get("ids", []), cfg, fmt)
             if not n:
                 return self._send(404, "Nothing recorded to download.", "text/plain")
             return self._send(200, blob, "application/zip")
@@ -2022,13 +2079,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"rendered": rendered}))
 
         if route == "/api/delete":
-            pid = (data.get("id") or "").strip()
-            if not pid:
+            ids = data.get("ids") or [data.get("id") or ""]
+            ids = [str(i).strip() for i in ids if str(i).strip()]
+            if not ids:
                 return self._send(400, "No id provided.", "text/plain")
-            ok, _ = delete_phrase(pid)
-            if not ok:
-                return self._send(404, f"No phrase with the id '{pid}'.", "text/plain")
-            return self._send(200, json.dumps({"ok": True, "id": pid},
+            gone, _ = delete_phrases(ids)
+            if not gone:
+                return self._send(404, "No phrase with that id.", "text/plain")
+            return self._send(200, json.dumps({"ok": True, "ids": gone},
                                               ensure_ascii=False))
 
         self._send(404, b"", "text/plain")

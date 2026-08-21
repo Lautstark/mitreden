@@ -27,3 +27,6 @@ _to_delete/
 
 # System
 .DS_Store
+
+# Half-written files from an interrupted save, never worth keeping.
+*.tmp

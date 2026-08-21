@@ -88,6 +88,5 @@
   "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.",
   "key_removed": "{label} wieder abgeschaltet.",
   "key_failed": "Hat nicht geklappt: {error}",
-  "close": "Schließen",
-  "voices_available": "{n} Stimmen verfügbar"
+  "close": "Schließen"
 }

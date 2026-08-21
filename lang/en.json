@@ -88,6 +88,5 @@
   "key_saved": "{label} unlocked — {n} voices to choose from now.",
   "key_removed": "{label} switched off again.",
   "key_failed": "That did not work: {error}",
-  "close": "Close",
-  "voices_available": "{n} voices available"
+  "close": "Close"
 }
