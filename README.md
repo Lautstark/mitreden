@@ -1,14 +1,29 @@
 # mitreden
 
-> ein Text, eine Stimme, eine Audiodatei
+Ein Satz eingetippt, eine Audiodatei zurück — und alle klingen gleich.
 
-mitreden macht aus getipptem Text Audiodateien — alle in derselben Stimme.
-Gedacht ist es für unterstützte Kommunikation: Wer über mehrere Geräte oder
-Apps spricht, bekommt sonst von jedem davon eine andere Stimme geliehen. Hier
-legst du die Stimme einmal fest, und alles klingt gleich.
+Ich baue das für meine dreieinhalbjährige Tochter, die unterstützt
+kommuniziert.
 
-`phrases.json` ist die Quelle der Wahrheit, `out/` das Ergebnis. Stimme
-gewechselt? Ein Befehl, und alles klingt wieder einheitlich.
+## Wofür das gut ist
+
+Wer unterstützt kommuniziert, spricht oft nicht über ein Gerät, sondern über
+mehrere: eine Talker-App auf dem Tablet, einen Hörstift, einzelne Taster.
+Jedes bringt von sich aus eine eigene Stimme mit. Derselbe Satz klingt dann je
+nach Gerät wie eine andere Person — und wer gerade erst lernt, dass diese
+Geräte die eigene Stimme sind, merkt das sofort.
+
+mitreden dreht das um: Die Stimme wird einmal festgelegt, die Sätze stehen an
+einer Stelle, und jedes Gerät bekommt dieselbe Audiodatei. Wechselst du später
+die Stimme, macht ein Befehl alles wieder einheitlich.
+
+Es ist kein Talker und ersetzt keinen. Es ist die Werkstatt dahinter: Text
+rein, Audiodateien raus, im Format, das dein Gerät versteht.
+
+## Wie es funktioniert
+
+`phrases.json` ist die Quelle der Wahrheit — eine Liste von Sätzen. `out/` ist
+das Ergebnis, eine Audiodatei pro Satz. Alles dazwischen macht ein Befehl:
 
 ```
 python3 mitreden.py ui        # Weboberfläche auf http://localhost:8770
@@ -16,9 +31,13 @@ python3 mitreden.py build     # rendern, was fehlt
 python3 mitreden.py backends  # was ist gerade nutzbar?
 ```
 
+Weil `out/` sich jederzeit neu erzeugen lässt, ist `phrases.json` das Einzige,
+was wirklich Sicherung braucht.
+
 Das Repo ist absichtlich klein: eine Datei Python, keine Abhängigkeiten, ein
-bisschen ffmpeg. Der Code ist auf Englisch, alles zum Lesen und Hören auf
-Deutsch. Nur was das Terminal ausgibt, ist englisch geblieben.
+bisschen ffmpeg. Der Code ist auf Englisch, Oberfläche und Doku auf Deutsch —
+die Sätze, die hier entstehen, sind es schließlich auch. Nur was das Terminal
+ausgibt, ist englisch geblieben.
 
 ## Was du brauchst
 
@@ -36,6 +55,8 @@ Für den echten Einsatz siehe [Die Stimme wählen](#die-stimme-wählen).
 ## Loslegen
 
 ```
+git clone https://github.com/SteffiPeTaffy/mitreden.git
+cd mitreden
 cp phrases.example.json phrases.json
 python3 mitreden.py backends   # welches Backend steht bei dir auf "found"?
 ```
@@ -218,9 +239,20 @@ out/  build/        alles daraus Erzeugte
 .env  .env.*        Schlüssel
 ```
 
-Weil `out/` sich jederzeit neu erzeugen lässt, ist das kein Verlust — nur
-`phrases.json` selbst ist es wert, gesichert zu werden. Nimm dafür ein
-privates Repo oder ein Backup außerhalb von git.
+Für `phrases.json` nimmst du am besten ein privates Repo oder ein Backup
+außerhalb von git — es ist, wie oben gesagt, das Einzige, was sich nicht neu
+erzeugen lässt.
+
+## Mitmachen
+
+Das ist ein Hobbyprojekt, entstanden aus einem konkreten Bedarf zu Hause — es
+gibt keine Roadmap und keine Zusagen. Wenn du es für dein eigenes Kind oder
+für jemanden, den du begleitest, benutzt: schön. Fehlerberichte und Fragen
+sind willkommen, auch wenn Antworten dauern können.
+
+Wenn du etwas Ähnliches baust und Rat gebrauchen kannst, mach ein Issue auf.
+Zu unterstützter Kommunikation gibt es wenig Werkzeug, das man selbst in der
+Hand hat, und die Erfahrung damit teilt sich schlecht über Umwege.
 
 ## Lizenz
 
