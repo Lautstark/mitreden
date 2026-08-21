@@ -74,10 +74,18 @@ Ohne Oberfläche geht es genauso:
 
 ```
 python3 mitreden.py add "Ich brauche Hilfe." --tags notfall
+python3 mitreden.py edit guck-mal "Guck mal!"
 python3 mitreden.py build        # nur Neues/Geändertes
 python3 mitreden.py build --all  # alles neu, nach einem Stimmwechsel
 python3 mitreden.py delete ich-brauche-hilfe
 ```
+
+**Vertippt?** Über das ⋮ am rechten Rand einer Zeile lässt sich der Text
+ändern, ohne den Satz neu anzulegen. Er wird sofort neu aufgenommen. Die ID
+und damit der Dateiname bleiben, wie sie sind — die Datei liegt womöglich
+längst auf einem Talker oder einem Hörstift, und die soll ein vergessenes
+Fragezeichen nicht umbenennen. Für einen wirklich anderen Satz ist ein neuer
+Eintrag der richtige Weg.
 
 ## Was rauskommt
 

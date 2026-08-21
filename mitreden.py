@@ -18,6 +18,7 @@ Usage:
     python3 mitreden.py ui              # web interface at http://localhost:8770
     python3 mitreden.py ui --host 0.0.0.0 --port 8770   # reachable from the network
     python3 mitreden.py add "Nochmal!" --tags spiel,zuhause
+    python3 mitreden.py edit hallo "Hallo!"
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
@@ -215,6 +216,35 @@ def set_tags(pid, tags):
             save_phrases(items)
             return clean
     return None
+
+
+def edit_text(items, pid, text):
+    """Change what one phrase says. Works on `items` in place.
+
+    The id stays as it is. It names the audio file, and that file may already
+    sit on a talker or a reading pen — renaming it there is real work for a
+    forgotten question mark. Correcting a text is the common case; a genuinely
+    different sentence is a new phrase, not an edit.
+
+    The fingerprint is left alone on purpose: it no longer matches the new
+    text, which is exactly what marks the phrase as "needs recording".
+
+    Returns (item, None) once changed, or (None, reason) when it cannot be:
+    an empty text, an unknown id, or another phrase that already says this."""
+    text = " ".join(str(text).split())
+    if not text:
+        return None, "An empty phrase says nothing."
+    me = next((i for i in items if i.get("id") == pid), None)
+    if me is None:
+        return None, f"No phrase with the id '{pid}'."
+    if norm_text(me["text"]) == norm_text(text):
+        return me, None                      # same text, nothing to do
+    twin = find_twin(items, text)
+    if twin is not None and twin is not me:
+        return None, (f"'{twin['id']}' already says that. "
+                      f"Two phrases with the same text would be one file.")
+    me["text"] = text
+    return me, None
 
 
 def out_format(cfg):
@@ -820,6 +850,7 @@ function openMenu(btn,it){
     b.onclick=()=>{closeMenus();fn()};
     m.appendChild(b);
   };
+  add('Text \\u00e4ndern \\u2026',false,()=>editText(it));
   add((it.tags||[]).length?'Gruppen \\u00e4ndern \\u2026':'Zu einer Gruppe hinzuf\\u00fcgen \\u2026',
       false,()=>editTags(it));
   add('Satz l\\u00f6schen',true,()=>del(it));
@@ -836,6 +867,16 @@ async function load(){
   for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
   for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
   draw();
+}
+async function editText(it){
+  const v=prompt('Text f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\n'+
+                 'Der Satz wird sofort neu aufgenommen. '+
+                 'Der Dateiname bleibt \\u201E'+it.id+'\\u201C.',it.text);
+  if(v===null)return;
+  if(v.trim()===it.text)return;                 // nichts angefasst
+  say('Wird neu aufgenommen \\u2026');
+  const r=await post('/api/edit',{id:it.id,text:v});
+  if(r){say('Ge\\u00e4ndert: \\u201E'+r.text+'\\u201C');load()}
 }
 async function editTags(it){
   const v=prompt('Gruppen f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\nMit Komma getrennt. '+
@@ -964,6 +1005,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True, "id": pid, "tags": tags},
                                               ensure_ascii=False))
 
+        if self.path == "/api/edit":
+            pid = (data.get("id") or "").strip()
+            item, why = edit_text(items, pid, data.get("text", ""))
+            if why:
+                return self._send(404 if "No phrase" in why else 400,
+                                  why, "text/plain")
+            try:
+                rendered = render(item, cfg)     # right away, like adding does
+            except Exception as e:
+                save_phrases(items)
+                return self._send(500, str(e), "text/plain")
+            save_phrases(items)
+            return self._send(200, json.dumps({"ok": True, "id": item["id"],
+                                               "text": item["text"],
+                                               "rendered": bool(rendered)},
+                                              ensure_ascii=False))
+
         if self.path == "/api/download":
             blob, n = zip_phrases(data.get("ids", []), cfg)
             if not n:
@@ -1077,6 +1135,21 @@ def main():
             print(f"  removed    {f.relative_to(ROOT)}")
         if not removed:
             print("  (no audio files present)")
+    elif cmd == "edit":
+        if len(args) < 3:
+            sys.exit('Usage: mitreden.py edit <id> "The corrected text"')
+        items = load_phrases()
+        before = next((i["text"] for i in items if i.get("id") == args[1]), None)
+        item, why = edit_text(items, args[1], args[2])
+        if why:
+            print(why, file=sys.stderr)
+            sys.exit(1)
+        if item["text"] == before:
+            print(f"unchanged: {item['id']} — \"{item['text']}\"")
+            return
+        save_phrases(items)
+        print(f"edited: {item['id']} — \"{item['text']}\"")
+        build()
     elif cmd == "dedupe":
         apply = "--apply" in args
         keep, merges = dedupe(apply)
