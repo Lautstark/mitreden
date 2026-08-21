@@ -65,12 +65,20 @@ Pro Satz eine Datei in `out/`, benannt nach seiner ID. Standard ist WAV mit
 ffmpeg schreiben kann:
 
 ```json
-{ "output": { "format": "wav", "sample_rate": 44100, "channels": 1 } }
+{ "output": { "format": "mp3", "sample_rate": 44100, "channels": 1,
+              "bitrate": "192k" } }
 ```
 
-`"mp3"` spart Platz, ein kleineres `sample_rate` hilft, wenn das Zielgerät
-wenig Speicher hat. Nach einer Änderung einmal `build` — mitreden merkt selbst,
-dass neu gerendert werden muss, und räumt die alten Dateien weg.
+`"mp3"` spart Platz und ist das, was die meisten Apps und Geräte erwarten; ein
+kleineres `sample_rate` hilft, wenn das Zielgerät wenig Speicher hat.
+
+`bitrate` gilt nur für platzsparende Formate (mp3, ogg, m4a, opus) — bei WAV
+und FLAC wird es ignoriert. 192k klingt sauber, 96k spart die Hälfte und hört
+sich bei einer Stimme immer noch ordentlich an. Ohne Angabe sucht ffmpeg selbst
+etwas aus, und das ist für Sprache oft zu wenig: dumpf und blechern.
+
+Nach einer Änderung einmal `build` — mitreden merkt selbst, dass neu gerendert
+werden muss, und räumt die alten Dateien weg.
 
 Jede Datei ist stillebereinigt und auf −16 LUFS normalisiert. Ohne das ist ein
 Satz kaum hörbar und der nächste brüllt.

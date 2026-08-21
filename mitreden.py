@@ -7,7 +7,8 @@ file in out/. Change the voice = change the backend in config.json
 + `python3 mitreden.py build --all` = everything sounds alike again.
 
 The output format lives in config.json too: wav by default, anything ffmpeg
-can write if you need something else.
+can write if you need something else. Lossy formats get a bitrate from there
+as well — a voice needs a generous one to stay clear.
 
 Phrases can belong to groups ("kindergarten", "spiel"). Groups are labels, not
 folders: one phrase can be in several of them, and out/ stays flat — one text,
@@ -56,6 +57,11 @@ OUT = ROOT / "out"
 MIME = {"wav": "audio/wav", "mp3": "audio/mpeg", "ogg": "audio/ogg",
         "flac": "audio/flac", "m4a": "audio/mp4", "opus": "audio/opus"}
 
+# These formats throw audio away to get small. Left alone, ffmpeg picks a
+# bitrate that makes a voice sound thin and hollow, so we set one ourselves.
+LOSSY = {"mp3", "ogg", "m4a", "opus"}
+DEFAULT_BITRATE = "192k"
+
 # Strip silence at the start/end, then normalise to a uniform loudness.
 # Without this one phrase is barely audible and the next one shouts.
 FILTERS = (
@@ -76,7 +82,8 @@ DEFAULT_CONFIG = {
                    "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%"},
     "elevenlabs": {"voice_id": "", "model": "eleven_multilingual_v2",
                    "key_env": "ELEVENLABS_API_KEY"},
-    "output":     {"format": "wav", "sample_rate": 44100, "channels": 1},
+    "output":     {"format": "wav", "sample_rate": 44100, "channels": 1,
+                   "bitrate": DEFAULT_BITRATE},
 }
 
 
@@ -221,10 +228,13 @@ def out_file(pid, cfg):
 def output_args(cfg):
     """ffmpeg settings for the configured format."""
     out = cfg.get("output") or {}
+    fmt = out_format(cfg)
     args = ["-ar", str(out.get("sample_rate", 44100)),
             "-ac", str(out.get("channels", 1))]
-    if out_format(cfg) == "wav":            # otherwise ffmpeg guesses from .wav
+    if fmt == "wav":                        # otherwise ffmpeg guesses from .wav
         args += ["-c:a", "pcm_s16le"]
+    if fmt in LOSSY:
+        args += ["-b:a", str(out.get("bitrate") or DEFAULT_BITRATE)]
     return args
 
 
