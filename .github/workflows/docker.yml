@@ -15,6 +15,10 @@ on:
       - icon.svg
       - lang/**
       - .github/workflows/docker.yml
+  # So the image can be rebuilt without inventing a commit — after a base
+  # image gets a security update, or to see whether the cache is doing
+  # anything.
+  workflow_dispatch:
 
 jobs:
   image:
@@ -51,6 +55,17 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: mitreden:smoke
+          # Everything expensive in the Dockerfile — apt, pip install piper,
+          # and four voice models pulled off HuggingFace — sits above
+          # `COPY . .`, so an ordinary commit changes only the last layer and
+          # the rest can come out of the cache instead of off the network.
+          #
+          # Its own scope, apart from the multi-arch build below. Both write
+          # with mode=max, and two builds with different platform sets writing
+          # the same scope overwrite each other's index — after which neither
+          # of them hits.
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64,ignore-error=true
 
       # A build that succeeds only means the image exists. It says nothing
       # about whether the program inside it still finds the files it reads
@@ -96,3 +111,14 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE }}:latest
+          # arm64 is built under emulation and is most of the time this job
+          # takes, so it is the leg that gains the most from not repeating
+          # the downloads. Reads the amd64 scope as well: that half was just
+          # built for the smoke test and does not need doing twice.
+          #
+          # ignore-error, because a cache that cannot be written is a slow
+          # build, not a broken release — and this step is the release.
+          cache-from: |
+            type=gha,scope=multi
+            type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=multi,ignore-error=true
