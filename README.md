@@ -44,19 +44,45 @@ and this guide exists in both languages.
 
 ## What you need
 
-Python 3 and `ffmpeg`. Nothing else — no pip packages, no framework.
+Docker. The container brings everything else along: Python, ffmpeg, and four
+voices — two German, two English.
+
+Without Docker it is Python 3 and `ffmpeg`, and nothing else after that: no
+pip packages, no framework.
 
 ```
 brew install ffmpeg          # macOS
 sudo apt install ffmpeg      # Debian/Ubuntu
 ```
 
-Plus a voice. `say` (macOS) and `espeak` (Linux) are already there and cost
-nothing, but they sound robotic — good enough to check that the chain works.
-The container brings four decent voices along, two German and two English.
-See [Choosing a voice](#choosing-a-voice).
+Plus a voice, then. `say` (macOS) and `espeak` (Linux) are already there and
+cost nothing, but they sound robotic — good enough to check that the chain
+works. See [Choosing a voice](#choosing-a-voice).
 
 ## Getting started
+
+The quickest way is the container. It brings four voices along, so it speaks
+straight away — no account, no key, nothing leaving your network:
+
+```
+mkdir mitreden && cd mitreden
+docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest
+```
+
+Open <http://localhost:8770>, type sentences — one line per sentence — and
+press "Add sentence". The audio files land in `out/`, inside the folder you
+started in, together with a `config.json` that mitreden writes for itself.
+
+That is everything. For a permanent setup, see
+[Running it on a NAS](#running-it-on-a-nas); for more voices,
+[Choosing a voice](#choosing-a-voice).
+
+### Without Docker
+
+You need Python 3 and ffmpeg, and a voice: `say` on macOS and `espeak` on
+Linux are already there, but they sound robotic. For a good local voice,
+install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
+`voices/`.
 
 ```
 git clone https://github.com/SteffiPeTaffy/mitreden.git
@@ -71,8 +97,7 @@ Put that backend into `config.json`, then:
 python3 mitreden.py ui
 ```
 
-Type sentences at <http://localhost:8770> — one line per sentence — and press
-"Add sentence". The audio files land in `out/`.
+### From the command line
 
 It works the same without the interface:
 

@@ -42,20 +42,47 @@ Englisch, und diese Anleitung gibt es in beiden Sprachen.
 
 ## Was du brauchst
 
-Python 3 und `ffmpeg`. Sonst nichts — keine pip-Pakete, kein Framework.
+Docker. Alles Weitere bringt der Container mit: Python, ffmpeg und vier
+Stimmen — zwei deutsche, zwei englische.
+
+Ohne Docker sind es Python 3 und `ffmpeg`, und danach nichts mehr: keine
+pip-Pakete, kein Framework.
 
 ```
 brew install ffmpeg          # macOS
 sudo apt install ffmpeg      # Debian/Ubuntu
 ```
 
-Dazu eine Stimme. `say` (macOS) und `espeak` (Linux) sind schon da und kosten
-nichts, klingen aber roboterhaft — gut genug, um zu prüfen, ob die Kette läuft.
-Wer den Container nimmt, hat vier ordentliche Stimmen schon dabei, zwei
-deutsche und zwei englische.
-Siehe [Die Stimme wählen](#die-stimme-wählen).
+Dann brauchst du noch eine Stimme. `say` (macOS) und `espeak` (Linux) sind
+schon da und kosten nichts, klingen aber roboterhaft — gut genug, um zu
+prüfen, ob die Kette läuft. Siehe [Die Stimme wählen](#die-stimme-wählen).
 
 ## Loslegen
+
+Am schnellsten geht es mit dem Container. Er bringt vier Stimmen mit und
+spricht deshalb sofort — ohne Konto, ohne Schlüssel, ohne dass etwas dein Netz
+verlässt:
+
+```
+mkdir mitreden && cd mitreden
+docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest
+```
+
+<http://localhost:8770> öffnen, Sätze eintippen — eine Zeile pro Satz —,
+„Satz hinzufügen" drücken. Die Audiodateien landen in `out/`, in dem Ordner,
+in dem du gestartet hast, zusammen mit einer `config.json`, die mitreden sich
+selbst schreibt.
+
+Das ist alles. Für den Dauerbetrieb siehe
+[Auf dem NAS laufen lassen](#auf-dem-nas-laufen-lassen), für mehr Stimmen
+[Die Stimme wählen](#die-stimme-wählen).
+
+### Ohne Docker
+
+Du brauchst Python 3 und ffmpeg, dazu eine Stimme: `say` auf macOS und
+`espeak` auf Linux sind schon da, klingen aber roboterhaft. Für eine gute
+lokale Stimme installierst du [piper](https://github.com/OHF-Voice/piper1-gpl)
+und legst ein Modell in `voices/`.
 
 ```
 git clone https://github.com/SteffiPeTaffy/mitreden.git
@@ -70,8 +97,7 @@ In `config.json` das passende Backend eintragen, dann:
 python3 mitreden.py ui
 ```
 
-Auf <http://localhost:8770> Sätze eintippen — eine Zeile pro Satz —,
-„Satz hinzufügen“ drücken. Die Audiodateien landen in `out/`.
+### Auf der Kommandozeile
 
 Ohne Oberfläche geht es genauso:
 
