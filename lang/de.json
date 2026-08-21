@@ -88,5 +88,7 @@
   "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.",
   "key_removed": "{label} wieder abgeschaltet.",
   "key_failed": "Hat nicht geklappt: {error}",
-  "close": "Schließen"
+  "close": "Schließen",
+  "not_recorded_one": "Aufnehmen ging nicht: {why}",
+  "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}"
 }

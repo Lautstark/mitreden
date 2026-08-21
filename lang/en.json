@@ -88,5 +88,7 @@
   "key_saved": "{label} unlocked — {n} voices to choose from now.",
   "key_removed": "{label} switched off again.",
   "key_failed": "That did not work: {error}",
-  "close": "Close"
+  "close": "Close",
+  "not_recorded_one": "Recording failed: {why}",
+  "not_recorded_other": "{n} could not be recorded: {why}"
 }

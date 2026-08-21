@@ -183,9 +183,16 @@ def load_config():
         write_atomic(CONFIG, json.dumps(first_config(), indent=2,
                                         ensure_ascii=False) + "\n")
     cfg = json.loads(CONFIG.read_text())
-    for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
+    for k, v in DEFAULT_CONFIG.items():
         if k not in cfg:
             cfg[k] = v
+        elif isinstance(v, dict) and isinstance(cfg[k], dict):
+            # One level deeper, because a config.json is written by hand and
+            # people write down the part they care about. "espeak": {"voice":
+            # "de"} used to lose the binary and come back as KeyError instead
+            # of a sentence anyone could act on. What you wrote wins; the rest
+            # is filled in behind it.
+            cfg[k] = {**v, **cfg[k]}
     return cfg
 
 
@@ -1207,17 +1214,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/phrases":
             fresh, twins = add_lines(items, data.get("lines", []),
                                      data.get("tags", []))
-            rendered = 0
+            # A phrase that cannot be recorded is still a phrase: it is in the
+            # file, it shows up in the list, and it asks to be recorded again.
+            # Failing the whole request over one of them meant the others were
+            # added too and the page was told it had failed — so it did not
+            # reload, and they only turned up the next time you opened it.
+            rendered, failed = 0, []
             for item in fresh:
                 try:
                     rendered += 1 if render(item, cfg) else 0
                 except Exception as e:
-                    save_phrases(items)          # keep what already worked
-                    return self._send(500, str(e), "text/plain")
+                    failed.append(f"{item['id']}: {e}")
             save_phrases(items)
             return self._send(200, json.dumps({"added": len(fresh),
                                                "rendered": rendered,
-                                               "merged": len(twins)}))
+                                               "merged": len(twins),
+                                               "failed": failed},
+                                              ensure_ascii=False))
 
         if route == "/api/tags":
             ids = data.get("ids") or [data.get("id") or ""]
@@ -1237,15 +1250,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if why:
                 return self._send(404 if "No phrase" in why else 400,
                                   why, "text/plain")
+            failed = []
             try:
                 rendered = render(item, cfg)     # right away, like adding does
             except Exception as e:
-                save_phrases(items)
-                return self._send(500, str(e), "text/plain")
-            save_phrases(items)
+                rendered, failed = False, [f"{item['id']}: {e}"]
+            save_phrases(items)                  # the new text is the point
             return self._send(200, json.dumps({"ok": True, "id": item["id"],
                                                "text": item["text"],
-                                               "rendered": bool(rendered)},
+                                               "rendered": bool(rendered),
+                                               "failed": failed},
                                               ensure_ascii=False))
 
         if route == "/api/voice":
@@ -1387,8 +1401,18 @@ def main():
                 tags = rest[i].split(",")
             elif a.startswith("--tag=") or a.startswith("--tags="):
                 tags = a.split("=", 1)[1].split(",")
+            elif a.startswith("-"):
+                # Without this, `add --tag` with nothing after it fell through
+                # and became a phrase that says "--tag", recorded and all.
+                sys.exit(f"'{a}' is not an option here, or it is missing its "
+                         f"value.\nUsage: mitreden.py add \"The phrase\" "
+                         f"[--tags kindergarten,spiel]")
             elif text is None:
                 text = a
+            else:
+                sys.exit(f"One phrase at a time — I do not know what to do "
+                         f"with \"{a}\".\nFor several at once put them in "
+                         f"phrases.json, or use the web interface.")
             i += 1
         if not text:
             sys.exit('Usage: mitreden.py add "The phrase" [--tags kindergarten,spiel]')

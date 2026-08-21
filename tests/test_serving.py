@@ -172,6 +172,33 @@ def check_the_ordinary_paths() -> None:
           f"HTTP {status}, {names}")
 
 
+def check_a_recording_that_fails(folder: Path) -> None:
+    """A phrase that cannot be recorded is still a phrase.
+
+    The config points at a binary that is not there, so rendering fails for
+    certain. The phrase must still be added, the answer must still be an
+    answer, and it has to say which one failed and why — the row would
+    otherwise sit in the list as "not recorded" with nothing explaining it."""
+    (folder / "config.json").write_text(json.dumps(
+        {"backend": "espeak", "espeak": {"binary": "definitely-not-installed"},
+         "output": {"format": "mp3"}}))
+
+    status, body = post("/api/phrases",
+                        json.dumps({"lines": ["Geht nicht"],
+                                    "tags": ["test"]}).encode(), JSON)
+    answer = json.loads(body) if status == 200 else {}
+    check("adding still answers", status == 200, f"HTTP {status}")
+    check("the phrase was added anyway", answer.get("added") == 1, str(answer))
+    check("nothing was recorded", answer.get("rendered") == 0, str(answer))
+    check("and it says which one failed and why",
+          len(answer.get("failed") or []) == 1
+          and "geht-nicht" in answer["failed"][0],
+          str(answer.get("failed"))[:60])
+
+    ids = [i["id"] for i in json.loads((folder / "phrases.json").read_text())]
+    check("the phrase really is in the file", "geht-nicht" in ids, str(ids))
+
+
 def check_still_standing() -> None:
     status, _ = get("/api/phrases")
     check("the server is still there after all that", status == 200, f"HTTP {status}")
@@ -189,6 +216,7 @@ def main() -> int:
             check_torn_requests()
             check_formats()
             check_the_ordinary_paths()
+            check_a_recording_that_fails(folder)
             check_still_standing()
         finally:
             process.terminate()
