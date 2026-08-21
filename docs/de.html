@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<title>mitreden — eine Stimme für alles, was für dich spricht</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Ein Satz eingetippt, eine Audiodatei zurück — und alle klingen gleich. Ein kleines Werkzeug für unterstützte Kommunikation.">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<main>
+
+<div class="top">
+  <img src="icon.svg" alt="">
+  <h1>mitreden</h1>
+  <span class="lang">Deutsch · <a href="index.html">English</a></span>
+</div>
+
+<p class="claim">Ein Satz eingetippt, eine Audiodatei zurück — und alle klingen
+gleich.</p>
+<p class="personal">Ich baue das für meine dreieinhalbjährige Tochter, die
+unterstützt kommuniziert.</p>
+
+<video src="mitreden-de.mp4" poster="poster-de.jpg" controls playsinline
+       preload="metadata"></video>
+<p class="caption">Eine halbe Minute, mit Ton. Die Stimme, die du hörst, ist
+die, die das Programm erzeugt.</p>
+
+<h2>Wofür</h2>
+<p>Wer unterstützt kommuniziert, spricht oft nicht über ein Gerät, sondern über
+mehrere: eine Talker-App auf dem Tablet, einen Hörstift, einzelne Taster. Jedes
+bringt von sich aus eine eigene Stimme mit. Derselbe Satz klingt dann je nach
+Gerät wie eine andere Person — und wer gerade erst lernt, dass diese Geräte die
+eigene Stimme sind, merkt das sofort.</p>
+<p>mitreden dreht das um. Die Stimme wird einmal festgelegt, die Sätze stehen an
+einer Stelle, und jedes Gerät bekommt dieselbe Audiodatei.</p>
+<p>Ich benutze es vor allem für einen <strong>Anybook Reader</strong> — einen
+Stift, der Audiodateien über Aufkleber abspielt. Dessen Programm nimmt nur MP3,
+und genau das schreibt mitreden von Haus aus. Dieselben Dateien wandern auf
+einen Talker, auf Taster, auf das, was als Nächstes kommt.</p>
+
+<h2>Ausprobieren</h2>
+<div class="get">
+  <p>Eine dieser Dateien in einen leeren Ordner legen und öffnen. Sie holt
+  mitreden, startet es und öffnet den Browser. Vier Stimmen sind dabei, es
+  spricht also sofort — ohne Konto, ohne Schlüssel, ohne dass etwas dein Netz
+  verlässt.</p>
+  <div class="btns">
+    <a class="btn primary" href="mitreden.command" download>macOS</a>
+    <a class="btn" href="mitreden.bat" download>Windows</a>
+    <a class="btn" href="mitreden.sh" download>Linux</a>
+  </div>
+  <p class="fine">Docker muss installiert sein — steht es nicht bereit, sagt
+  die Datei es dir. Auf dem Mac braucht der erste Start Rechtsklick → Öffnen,
+  weil die Datei aus dem Internet kommt.</p>
+</div>
+
+<p>Mit Terminal ist es eine Zeile:</p>
+<pre><code>docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest</code></pre>
+<p>Alles, was du schreibst, bleibt in diesem Ordner: Sätze, Audiodateien,
+Einstellungen. Es geht nichts irgendwohin, solange du nicht selbst eine
+Cloud-Stimme wählst.</p>
+
+<h2>Was es nicht ist</h2>
+<p>Kein Talker und kein Ersatz für einen. Es ist die Werkstatt dahinter: Text
+rein, Audiodateien raus, im Format, das dein Gerät versteht. Eine Anmeldung hat
+es auch nicht — lass es im eigenen Netz laufen, nicht im offenen Internet.</p>
+
+<footer>
+  <p>Freie Software, MIT-Lizenz.
+  <a href="https://github.com/SteffiPeTaffy/mitreden">Quelltext und Anleitung
+  auf GitHub</a>. Fehlerberichte und Fragen sind willkommen, auch wenn
+  Antworten dauern können.</p>
+</footer>
+
+</main>

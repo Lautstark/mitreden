@@ -65,8 +65,11 @@ The quickest way is the container. It brings four voices along, so it speaks
 straight away — no account, no key, nothing leaving your network.
 
 **Without a terminal:** put one of these files into an empty folder and open
-it — [mitreden.command](mitreden.command) on a Mac,
-[mitreden.bat](mitreden.bat) on Windows, [mitreden.sh](mitreden.sh) on Linux.
+it — [mitreden.command](docs/mitreden.command) on a Mac,
+[mitreden.bat](docs/mitreden.bat) on Windows, [mitreden.sh](docs/mitreden.sh)
+on Linux. They can also be downloaded from
+[the website](https://steffipetaffy.github.io/mitreden/), which shows what
+this looks like in half a minute.
 It fetches mitreden, starts it and opens your browser. Docker has to be
 installed; the file says so if it is not. As long as the window stays open,
 mitreden runs.

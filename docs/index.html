@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>mitreden — one voice for everything that speaks for you</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Type a sentence, get an audio file back — and they all sound alike. A small tool for augmentative communication.">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<main>
+
+<div class="top">
+  <img src="icon.svg" alt="">
+  <h1>mitreden</h1>
+  <span class="lang"><a href="de.html">Deutsch</a> · English</span>
+</div>
+
+<p class="claim">Type a sentence, get an audio file back — and they all sound
+alike.</p>
+<p class="personal">I am building this for my three-and-a-half-year-old
+daughter, who uses augmentative communication. <em>mitreden</em> is German for
+joining in a conversation.</p>
+
+<video src="mitreden-en.mp4" poster="poster-en.jpg" controls playsinline
+       preload="metadata"></video>
+<p class="caption">Half a minute, sound on. The voice you hear is the one the
+program makes.</p>
+
+<h2>Why</h2>
+<p>People who use augmentative communication often speak through more than one
+device: a talker app on a tablet, a reading pen, single buttons. Each brings
+its own voice along. The same sentence then sounds like a different person
+depending on the device — and someone who is only just learning that these
+devices are their own voice notices immediately.</p>
+<p>mitreden turns that around. The voice is chosen once, the sentences live in
+one place, and every device gets the same audio file.</p>
+<p>I mostly use it for an <strong>Anybook Reader</strong> — a pen that plays
+audio from stickers. Its software only takes MP3, which is what mitreden
+writes by default. The same files go onto a talker, onto buttons, into
+whatever comes next.</p>
+
+<h2>Try it</h2>
+<div class="get">
+  <p>Put one of these files into an empty folder and open it. It fetches
+  mitreden, starts it, and opens your browser. Four voices are included, so it
+  speaks straight away — no account, no key, nothing leaving your network.</p>
+  <div class="btns">
+    <a class="btn primary" href="mitreden.command" download>macOS</a>
+    <a class="btn" href="mitreden.bat" download>Windows</a>
+    <a class="btn" href="mitreden.sh" download>Linux</a>
+  </div>
+  <p class="fine">Docker has to be installed — the file says so if it is not.
+  On a Mac the first start needs right-click → Open, because the file came
+  from the internet.</p>
+</div>
+
+<p>With a terminal it is one line:</p>
+<pre><code>docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest</code></pre>
+<p>Everything you write stays in that folder: sentences, audio files, settings.
+Nothing is sent anywhere unless you choose a cloud voice yourself.</p>
+
+<h2>What it is not</h2>
+<p>Not a talker, and no replacement for one. It is the workshop behind it:
+text in, audio files out, in the format your device understands. It has no
+login either — run it on your own network, not on the open internet.</p>
+
+<footer>
+  <p>Free software, MIT licence.
+  <a href="https://github.com/SteffiPeTaffy/mitreden">Source and documentation
+  on GitHub</a>. Bug reports and questions are welcome; answers may take a
+  while.</p>
+</footer>
+
+</main>
