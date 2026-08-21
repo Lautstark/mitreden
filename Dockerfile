@@ -19,13 +19,17 @@ RUN pip install --no-cache-dir piper-tts
 # Two German voices, one male and one female, both CC0 — so they may travel
 # in a public image. A model is only usable together with its .onnx.json.
 # Drop further .onnx files into voices/ next to your phrases to add your own.
+# The download retries: the build hangs off someone else's server, and a
+# single hiccup there used to turn the whole image red.
 ENV MITREDEN_VOICES=/voices
 RUN mkdir -p /voices && cd /voices \
  && base=https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE \
  && for v in thorsten/medium/de_DE-thorsten-medium kerstin/low/de_DE-kerstin-low; do \
       n=$(basename $v); \
-      curl -sfL -o $n.onnx      "$base/$v.onnx"; \
-      curl -sfL -o $n.onnx.json "$base/$v.onnx.json"; \
+      curl -sfL --retry 5 --retry-delay 3 --retry-all-errors \
+           -o $n.onnx      "$base/$v.onnx"; \
+      curl -sfL --retry 5 --retry-delay 3 --retry-all-errors \
+           -o $n.onnx.json "$base/$v.onnx.json"; \
     done \
  && ls -l /voices
 
