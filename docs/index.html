@@ -6,12 +6,26 @@
 <meta name="description" content="Type a sentence, get an audio file back — and they all sound alike. A small tool for augmentative communication.">
 <link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="style.css">
+<script>
+  // A German browser lands on the German page — once. Clicking a language
+  // link settles it, and ?stay never redirects: a link someone sent you on
+  // purpose should stay the page they meant.
+  (function () {
+    try {
+      if (localStorage.getItem('mitreden.site-lang')) return;
+      if (location.search.indexOf('stay') > -1) return;
+      if ((navigator.language || '').slice(0, 2).toLowerCase() === 'de') {
+        location.replace('de.html');
+      }
+    } catch (e) {}
+  })();
+</script>
 <main>
 
 <div class="top">
   <img src="icon.svg" alt="">
   <h1>mitreden</h1>
-  <span class="lang"><a href="de.html">Deutsch</a> · English</span>
+  <span class="lang"><a href="de.html" onclick="try{localStorage.setItem('mitreden.site-lang','de')}catch(e){}">Deutsch</a> · English</span>
 </div>
 
 <p class="claim">Type a sentence, get an audio file back — and they all sound

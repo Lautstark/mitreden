@@ -134,8 +134,9 @@ Eintrag der richtige Weg.
 ## Deutsch oder Englisch
 
 Oben rechts steht die Sprachwahl. Beim ersten Besuch richtet sich mitreden
-nach deinem Browser, danach nach dem, was du zuletzt gewählt hast; die Wahl
-steht auch in der Adresse (`?lang=de`), ein Link nimmt sie also mit.
+nach deinem Browser — Deutsch bei einem deutschen (de, de-AT, de-CH), sonst
+Englisch —, danach nach dem, was du zuletzt gewählt hast; die Wahl steht auch
+in der Adresse (`?lang=de`), ein Link nimmt sie also mit.
 
 Die Sprache der Oberfläche und die Sprache der Stimmen haben nichts
 miteinander zu tun: In beiden Fassungen stehen dieselben Stimmen zur Wahl,

@@ -1297,11 +1297,14 @@ $('setupclose').onclick=()=>$('setup').close();
 async function loadStrings(){
   STR=await (await fetch('/api/strings')).json();
   const codes=Object.keys(STR);
-  // What you picked last, else what the browser asks for, else German.
+  // What you picked last, else what the browser asks for, else English.
+  // A German browser says de, de-AT or de-CH — the first two letters are
+  // enough. Anything we do not have falls back to English, because that is
+  // the language most likely to be understood by someone who is neither.
   const wanted=new URLSearchParams(location.search).get('lang')
     ||localStorage.getItem('mitreden.lang')
-    ||(navigator.language||'de').slice(0,2);
-  LANG=codes.includes(wanted)?wanted:(codes.includes('de')?'de':codes[0]);
+    ||(navigator.language||'').slice(0,2).toLowerCase();
+  LANG=codes.includes(wanted)?wanted:(codes.includes('en')?'en':codes[0]);
   const sel=$('lang');
   sel.innerHTML='';
   for(const c of codes){

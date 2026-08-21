@@ -133,8 +133,9 @@ genuinely different sentence, a new entry is the right way.
 ## German or English
 
 The language picker sits at the top right. On your first visit mitreden
-follows your browser, after that whatever you chose last; the choice is also
-in the address (`?lang=en`), so a link carries it along.
+follows your browser — German for a German one (de, de-AT, de-CH), English for
+everyone else — after that whatever you chose last; the choice is also in the
+address (`?lang=en`), so a link carries it along.
 
 The language of the interface and the language of the voices have nothing to
 do with each other: both versions offer the same voices, German and English
