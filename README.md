@@ -1,211 +1,211 @@
 # mitreden
 
-Ein Satz eingetippt, eine Audiodatei zurück — und alle klingen gleich.
+[Deutsch](README.de.md) · **English**
 
-Ich baue das für meine dreieinhalbjährige Tochter, die unterstützt
-kommuniziert.
+Type a sentence, get an audio file back — and they all sound alike.
 
-## Wofür das gut ist
+I am building this for my three-and-a-half-year-old daughter, who uses
+augmentative communication.
 
-Wer unterstützt kommuniziert, spricht oft nicht über ein Gerät, sondern über
-mehrere: eine Talker-App auf dem Tablet, einen Hörstift, einzelne Taster.
-Jedes bringt von sich aus eine eigene Stimme mit. Derselbe Satz klingt dann je
-nach Gerät wie eine andere Person — und wer gerade erst lernt, dass diese
-Geräte die eigene Stimme sind, merkt das sofort.
+*mitreden* is German for joining in a conversation.
 
-mitreden dreht das um: Die Stimme wird einmal festgelegt, die Sätze stehen an
-einer Stelle, und jedes Gerät bekommt dieselbe Audiodatei. Wechselst du später
-die Stimme, macht ein Befehl alles wieder einheitlich.
+## What it is for
 
-Es ist kein Talker und ersetzt keinen. Es ist die Werkstatt dahinter: Text
-rein, Audiodateien raus, im Format, das dein Gerät versteht.
+People who use augmentative communication often speak through more than one
+device: a talker app on a tablet, a reading pen, single buttons. Each brings
+its own voice along. The same sentence then sounds like a different person
+depending on the device — and someone who is only just learning that these
+devices are their own voice notices immediately.
 
-## Wie es funktioniert
+mitreden turns that around: the voice is chosen once, the sentences live in
+one place, and every device gets the same audio file. Change the voice later
+and one command makes everything match again.
 
-`phrases.json` ist die Quelle der Wahrheit — eine Liste von Sätzen. `out/` ist
-das Ergebnis, eine Audiodatei pro Satz. Alles dazwischen macht ein Befehl:
+It is not a talker and does not replace one. It is the workshop behind it:
+text in, audio files out, in the format your device understands.
+
+## How it works
+
+`phrases.json` is the source of truth — a list of sentences. `out/` is the
+result, one audio file per sentence. One command does everything in between:
 
 ```
-python3 mitreden.py ui        # Weboberfläche auf http://localhost:8770
-python3 mitreden.py build     # rendern, was fehlt
-python3 mitreden.py backends  # was ist gerade nutzbar?
+python3 mitreden.py ui        # web interface at http://localhost:8770
+python3 mitreden.py build     # render whatever is missing
+python3 mitreden.py backends  # what is usable right now?
 ```
 
-Weil `out/` sich jederzeit neu erzeugen lässt, ist `phrases.json` das Einzige,
-was wirklich Sicherung braucht.
+Because `out/` can be recreated at any time, `phrases.json` is the only thing
+that really needs a backup.
 
-Das Repo ist absichtlich klein: eine Datei Python, keine Abhängigkeiten, ein
-bisschen ffmpeg. Der Code ist auf Englisch, Oberfläche und Doku auf Deutsch —
-die Sätze, die hier entstehen, sind es schließlich auch. Nur was das Terminal
-ausgibt, ist englisch geblieben.
+The repository is deliberately small: one Python file, no dependencies, a bit
+of ffmpeg. The code is in English, the interface speaks German and English,
+and this guide exists in both languages.
 
-## Was du brauchst
+## What you need
 
-Python 3 und `ffmpeg`. Sonst nichts — keine pip-Pakete, kein Framework.
+Python 3 and `ffmpeg`. Nothing else — no pip packages, no framework.
 
 ```
 brew install ffmpeg          # macOS
 sudo apt install ffmpeg      # Debian/Ubuntu
 ```
 
-Dazu eine Stimme. `say` (macOS) und `espeak` (Linux) sind schon da und kosten
-nichts, klingen aber roboterhaft — gut genug, um zu prüfen, ob die Kette läuft.
-Wer den Container nimmt, hat zwei ordentliche deutsche Stimmen schon dabei.
-Siehe [Die Stimme wählen](#die-stimme-wählen).
+Plus a voice. `say` (macOS) and `espeak` (Linux) are already there and cost
+nothing, but they sound robotic — good enough to check that the chain works.
+The container brings four decent voices along, two German and two English.
+See [Choosing a voice](#choosing-a-voice).
 
-## Loslegen
+## Getting started
 
 ```
 git clone https://github.com/SteffiPeTaffy/mitreden.git
 cd mitreden
 cp phrases.example.json phrases.json
-python3 mitreden.py backends   # welches Backend steht bei dir auf "found"?
+python3 mitreden.py backends   # which backend says "found" on your machine?
 ```
 
-In `config.json` das passende Backend eintragen, dann:
+Put that backend into `config.json`, then:
 
 ```
 python3 mitreden.py ui
 ```
 
-Auf <http://localhost:8770> Sätze eintippen — eine Zeile pro Satz —,
-„Satz hinzufügen“ drücken. Die Audiodateien landen in `out/`.
+Type sentences at <http://localhost:8770> — one line per sentence — and press
+"Add sentence". The audio files land in `out/`.
 
-Ohne Oberfläche geht es genauso:
+It works the same without the interface:
 
 ```
-python3 mitreden.py add "Ich brauche Hilfe." --tags notfall
-python3 mitreden.py edit guck-mal "Guck mal!"
-python3 mitreden.py build        # nur Neues/Geändertes
-python3 mitreden.py build --all  # alles neu, nach einem Stimmwechsel
-python3 mitreden.py delete ich-brauche-hilfe
+python3 mitreden.py add "I need help." --tags emergency
+python3 mitreden.py edit look "Look!"
+python3 mitreden.py build        # only new or changed ones
+python3 mitreden.py build --all  # everything again, after a voice change
+python3 mitreden.py delete i-need-help
 ```
 
-**Vertippt?** Über das ⋮ am rechten Rand einer Zeile lässt sich der Text
-ändern, ohne den Satz neu anzulegen. Er wird sofort neu aufgenommen. Die ID
-und damit der Dateiname bleiben, wie sie sind — die Datei liegt womöglich
-längst auf einem Talker oder einem Hörstift, und die soll ein vergessenes
-Fragezeichen nicht umbenennen. Für einen wirklich anderen Satz ist ein neuer
-Eintrag der richtige Weg.
+**Typo?** The ⋮ at the right edge of a row changes the text without creating
+the sentence again. It is recorded again right away. The id, and with it the
+file name, stays as it is — the file may long since be sitting on a talker or
+a reading pen, and a forgotten question mark should not rename it there. For a
+genuinely different sentence, a new entry is the right way.
 
-## Deutsch oder Englisch
+## German or English
 
-Oben rechts steht die Sprachwahl. Beim ersten Besuch richtet sich mitreden
-nach deinem Browser, danach nach dem, was du zuletzt gewählt hast; die Wahl
-steht auch in der Adresse (`?lang=de`), ein Link nimmt sie also mit.
+The language picker sits at the top right. On your first visit mitreden
+follows your browser, after that whatever you chose last; the choice is also
+in the address (`?lang=en`), so a link carries it along.
 
-Die Sprache der Oberfläche und die Sprache der Stimmen haben nichts
-miteinander zu tun: In beiden Fassungen stehen dieselben Stimmen zur Wahl,
-deutsche wie englische.
+The language of the interface and the language of the voices have nothing to
+do with each other: both versions offer the same voices, German and English
+alike.
 
-Die Texte liegen in `lang/de.json` und `lang/en.json`, mit englischen
-Schlüsseln. Eine weitere Sprache ist eine weitere Datei — sie taucht ohne
-Codeänderung in der Auswahl auf. Fehlt ein Schlüssel, greift Englisch, und
-fehlt er dort auch, steht der Schlüssel selbst da: eine Lücke soll auffallen,
-nicht leer bleiben.
+The texts live in `lang/de.json` and `lang/en.json`, with English keys.
+Another language is another file — it shows up in the picker without a code
+change. A missing key falls back to English, and if it is missing there too,
+the key itself appears: a gap should be visible, not blank.
 
-## Was rauskommt
+## What comes out
 
-Pro Satz eine Datei in `out/`, benannt nach seiner ID. In der Oberfläche
-kommt die ID nicht mehr vor — sie ist ein Dateiname, kein Lesestoff. Sie
-entsteht aus den ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
-langen Satz kein langer Dateiname wird. Zwei Sätze mit demselben Anfang
-bekommen eine Nummer angehängt. Bestehende IDs bleiben, wie sie sind — sie
-stehen womöglich schon auf einem Gerät. Standard ist MP3 mit
-44,1 kHz mono — das versteht so ziemlich jedes Gerät und jede App. Das Format
-steht in `config.json` und kann alles sein, was ffmpeg schreiben kann:
+One file per sentence in `out/`, named after its id. The id no longer appears
+in the interface — it is a file name, not something to read. It is built from
+the first words of the sentence and stops at a word boundary, so a long
+sentence does not become a long file name. Two sentences with the same
+beginning get a number appended. Existing ids stay as they are — they may
+already be written on a device.
+
+The default is MP3 at 44.1 kHz mono, which just about every device and app
+understands. The format lives in `config.json` and can be anything ffmpeg can
+write:
 
 ```json
 { "output": { "format": "mp3", "sample_rate": 44100, "channels": 1,
               "bitrate": "192k" } }
 ```
 
-`"mp3"` spart Platz und ist das, was die meisten Apps und Geräte erwarten; ein
-kleineres `sample_rate` hilft, wenn das Zielgerät wenig Speicher hat.
+`"mp3"` saves space and is what most apps and devices expect; a smaller
+`sample_rate` helps when the target device is short on storage.
 
-`bitrate` gilt nur für platzsparende Formate (mp3, ogg, m4a, opus) — bei WAV
-und FLAC wird es ignoriert. 192k klingt sauber, 96k spart die Hälfte und hört
-sich bei einer Stimme immer noch ordentlich an. Ohne Angabe sucht ffmpeg selbst
-etwas aus, und das ist für Sprache oft zu wenig: dumpf und blechern.
+`bitrate` only applies to the space-saving formats (mp3, ogg, m4a, opus) — for
+WAV and FLAC it is ignored. 192k sounds clean, 96k halves that and still holds
+up for a single voice. Without it ffmpeg picks something itself, and for
+speech that is often too little: muffled and tinny.
 
-Nach einer Änderung einmal `build` — mitreden merkt selbst, dass neu gerendert
-werden muss, und räumt die alten Dateien weg.
+After a change, run `build` once — mitreden works out for itself what has to
+be rendered again, and clears the old files away.
 
-Jede Datei ist stillebereinigt und auf −16 LUFS normalisiert. Ohne das ist ein
-Satz kaum hörbar und der nächste brüllt.
+Every file is silence-trimmed and normalised to −16 LUFS. Without that one
+sentence is barely audible and the next one shouts.
 
-## Die Stimme wählen
+## Choosing a voice
 
-Neben „Satz hinzufügen" steht die Stimme. Sie bestimmt, womit aufgenommen
-wird: jeder neue Satz bekommt sie, bestehende behalten ihre, bis du sie
-ankreuzt und „Mit … aufnehmen" drückst. Eine Stimme für alles bleibt der
-Normalfall — „Alle auswählen", einmal aufnehmen, fertig. Aber wenn ein Satz
-jemand anderem gehört oder in einer anderen Sprache ist, darf er anders
-klingen.
+The voice sits next to "Add sentence". It decides what recordings are made
+with: every new sentence gets it, existing ones keep theirs until you tick
+them and pick "Change voice". One voice for everything stays the normal case —
+"Select all", record once, done. But when a sentence belongs to someone else,
+or is in another language, it may sound different.
 
-In jeder Zeile steht, in welcher Stimme sie aufgenommen ist. Eine Stimme heißt
-`Kerstin · piper · de`: Name, woher sie kommt, welche Sprache sie spricht. Die
-Sprache steht dabei, weil das der Grund ist, aus dem sich zwei Stimmen in
-derselben Liste wirklich unterscheiden — etwa in einem Haushalt mit zwei
-Sprachen.
+Every row says which voice it was recorded in. A voice is called
+`Kerstin · piper · de`: name, where it comes from, which language it speaks.
+The language is there because that is the reason two voices in the same list
+really differ — in a household with two languages, say.
 
 ```
-python3 mitreden.py voices                              # was geht hier?
-python3 mitreden.py voice piper:de_DE-thorsten-medium   # ab jetzt damit
+python3 mitreden.py voices                              # what works here?
+python3 mitreden.py voice piper:de_DE-thorsten-medium   # use this from now on
 python3 mitreden.py build --all --voice piper:de_DE-thorsten-medium
 ```
 
-Der letzte Befehl zieht alle bestehenden Sätze auf diese Stimme um.
+The last command moves every existing sentence over to that voice.
 
-Bei Azure bestimmt `languages`, welche Stimmen angeboten werden — Azure hat
-556, das ist keine Auswahl mehr:
+For Azure, `languages` decides which voices are on offer — Azure has 556, and
+that is no longer a choice:
 
 ```json
 { "azure": { "languages": ["de-DE", "en-US"], … } }
 ```
 
-Ein Eintrag mit Bindestrich meint genau dieses Gebietsschema, einer ohne jedes
-der Sprache (`"de"` nimmt auch de-AT und de-CH). Ohne die Angabe bleibt es bei
-der Sprache der eingestellten Stimme. Für `["de-DE", "en-US"]` sind es 75
-Stimmen. Die Liste kommt von Azure selbst und wird eine Woche lang
-zwischengespeichert; ohne Netz bleibt es bei der konfigurierten Stimme, damit
-die Auswahl nie leer ist.
+An entry with a dash means exactly that locale, one without means every locale
+of that language (`"de"` also takes de-AT and de-CH). Without the setting it
+stays at the language of the configured voice. For `["de-DE", "en-US"]` that
+is 75 voices. The list comes from Azure itself and is cached for a week;
+without a network connection the configured voice remains, so the picker is
+never empty.
 
-Angeboten wird nur, was auch wirklich funktioniert: eine Cloud-Stimme erst,
-wenn ihr Schlüssel gesetzt ist, eine lokale erst, wenn das Programm dahinter
-existiert. Eine Stimme in der Liste, die dann beim Aufnehmen scheitert, wäre
-schlimmer als keine Auswahl.
+Only what actually works is offered: a cloud voice once its key is set, a
+local one once the program behind it exists. A voice you can pick that then
+fails while recording would be worse than no choice at all.
 
-**Im Container sind vier Piper-Stimmen dabei** — Thorsten und Kerstin auf
-Deutsch, John und Kristin auf Englisch, alle vier gemeinfrei oder CC0. Damit
-spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas dein
-Netz verlässt.
+**The container brings four piper voices along** — Thorsten and Kerstin in
+German, John and Kristin in English, all four CC0 or public domain. With those
+mitreden speaks immediately, without an account, without a key, without
+anything ever leaving your network.
 
-Wenn du eine weitere Piper-Stimme dazulegst, wirf vorher einen Blick in ihre
-`MODEL_CARD`: Etliche der bekannteren englischen Stimmen stehen unter
-nicht-kommerziellen oder unklaren Lizenzen und gehören deshalb nicht in ein
-Abbild, das du weitergibst. Eigene Modelle kommen dazu, indem du
-eine `.onnx` samt zugehöriger `.onnx.json` in einen Ordner `voices/` neben
-deine Sätze legst. Liegen deine Modelle woanders, sagt `MITREDEN_VOICES`, wo —
-im Abbild zeigt die Variable auf `/voices`.
+If you add another piper voice, look at its `MODEL_CARD` first: quite a few of
+the better-known English voices are under non-commercial or unclear licences
+and do not belong in an image you pass on. Your own models are added by
+dropping an `.onnx` together with its `.onnx.json` into a `voices/` folder
+next to your sentences. If your models live somewhere else, `MITREDEN_VOICES`
+says where — in the image it points at `/voices`.
 
-Von Hand geht es weiterhin über `config.json`, dann einmal
+By hand it still works through `config.json`, followed by
 `python3 mitreden.py build --all`.
 
-**`say` / `espeak`** — schon da, kein Setup, kein Konto. Roboterhaft, aber der
-schnellste Weg zu prüfen, ob alles läuft.
+**`say` / `espeak`** — already there, no setup, no account. Robotic, but the
+fastest way to check that everything runs.
 
 ```json
 { "backend": "say", "say": { "voice": "Anna" } }
 ```
 
-**`piper`** — lokal, offline, kostenlos, quelloffen. Deutsche Modelle gibt es
-[fertig zum Herunterladen](https://github.com/rhasspy/piper). Läuft in zehn
-Jahren noch genauso, ohne Konto und ohne Abo.
+**`piper`** — local, offline, free, open source. The models are
+[ready to download](https://huggingface.co/rhasspy/piper-voices) from the
+piper project itself. It will still run the same way in ten years, without an
+account and without a subscription.
 
-**`azure`** — neuronale Stimmen über die Cloud, klingt deutlich lebendiger als
-alles Lokale. Kostenlose Stufe (F0) reicht für diese Mengen meist aus.
-`rate` und `pitch` gelten für die erzeugten Dateien und wirken nach einem
+**`azure`** — neural voices over the cloud, noticeably more alive than
+anything local. The free tier (F0) is usually enough for these amounts.
+`rate` and `pitch` apply to the generated files and take effect after a
 `build --all`.
 
 ```json
@@ -214,110 +214,107 @@ alles Lokale. Kostenlose Stufe (F0) reicht für diese Mengen meist aus.
              "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%" } }
 ```
 
-**`elevenlabs`** — kann eine echte Stimme klonen. Qualitativ das Beste, dafür
-Abo und Cloud — und die Einwilligung der Person, deren Stimme du klonst.
+**`elevenlabs`** — can clone a real voice. The best quality, but subscription
+and cloud — and the consent of the person whose voice you are cloning.
 
-Schlüssel stehen **nie** in einer Datei im Repo, sondern in einer
-Umgebungsvariablen. In `config.json` steht mit `key_env` nur der *Name*:
-
-```
-export AZURE_SPEECH_KEY="dein-schluessel"
-```
-
-Dauerhafter geht es mit einer `.env` neben `mitreden.py`, die beim Start
-gelesen wird und in `.gitignore` steht:
+Keys **never** go into a file in the repository, they go into an environment
+variable. `config.json` only holds the *name*, in `key_env`:
 
 ```
-AZURE_SPEECH_KEY=dein-schluessel
+export AZURE_SPEECH_KEY="your-key"
 ```
 
-Wenn du dich für eine Cloud-Stimme entscheidest: sichere die erzeugten Dateien
-zusätzlich. Ein Dienst kann verschwinden, eine lokale Datei nicht.
+More permanently through a `.env` next to `mitreden.py`, which is read at
+startup and is listed in `.gitignore`:
 
-## Gruppen, Suche, Download
+```
+AZURE_SPEECH_KEY=your-key
+```
 
-Ab ein paar Dutzend Sätzen willst du Ordnung. mitreden nimmt dafür **Gruppen,
-keine Ordner** — ein Satz kann in mehreren stecken:
+If you settle on a cloud voice, back up the generated files as well. A service
+can disappear, a local file cannot.
+
+## Groups, search, download
+
+Past a few dozen sentences you want some order. mitreden uses **groups, not
+folders** — one sentence can be in several:
 
 ```json
-{ "id": "ich-brauche-hilfe", "text": "Ich brauche Hilfe.",
-  "tags": ["kindergarten", "zuhause", "notfall"] }
+{ "id": "i-need-help", "text": "I need help.",
+  "tags": ["nursery", "home", "emergency"] }
 ```
 
-Über der Liste stehen zwei Reihen zum Anklicken: **Gruppen** und **Stimmen**,
-dazu ein Suchfeld. In der Stimmenreihe steht auch „Nicht aufgenommen", falls
-etwas fehlt. Mehreres lässt sich gleichzeitig wählen, und die Reihen wirken
-zusammen: Gruppe „spiel" und Stimme „Kerstin" zeigt, was beides ist.
+Above the list are two rows to click: **Groups** and **Voices**, plus a search
+box. The voices row also holds "Not recorded", in case something is missing.
+Several can be picked at once, and the rows work together: group "play" and
+voice "Kerstin" shows what is both.
 
-Woran du Filter und Aktionen auseinanderhältst: **Filter sind Pillen, Aktionen
-sind Kästen.** Die Pillen ändern nur, was du siehst. Die Knöpfe im abgesetzten
-Kasten darunter tun etwas — und sie erscheinen erst, wenn du Sätze angekreuzt
-hast. Was ein neuer Satz für Gruppen bekommt, steht allein in seinem Feld
-oben. Mehrere
-Gruppen lassen sich gleichzeitig wählen und verknüpfen mit ODER; der Freitext
-schränkt zusätzlich ein. Die Suche läuft im Browser, ohne Warten, über Text
-*und* Gruppennamen, und ist tolerant bei Umlauten: `hor auf`, `hoer auf` und
-`Hör auf` finden alle denselben Satz.
+How to tell filters from actions: **filters are pills, actions are boxes.**
+The pills only change what you see. The buttons in the separate box below do
+something — and they only appear once you have ticked some sentences. What
+groups a new sentence gets is decided solely by its own field at the top.
 
-Die Leiste zeigt die zwölf meistgenutzten Gruppen und klappt den Rest hinter
-„+ n weitere“ weg. Alles Weitere zu einem Satz steckt im ⋮ am rechten Rand
-seiner Zeile.
+Several groups can be picked at once and combine with OR; the free text
+narrows it further. The search runs in the browser, without waiting, over text
+*and* group names, and is forgiving about umlauts: `hor auf`, `hoer auf` and
+`Hör auf` all find the same sentence.
 
-**Ein Text, eine Datei.** Legst du einen Satz an, den es schon gibt, entsteht
-kein zweiter Eintrag — der vorhandene bekommt nur die neue Gruppe dazu. Groß-
-und Kleinschreibung und zusätzliche Leerzeichen sind egal, Satzzeichen nicht:
-„Nochmal!“ und „Nochmal.“ klingen verschieden, also sind es zwei Sätze.
+The row shows the twelve most used groups and folds the rest behind
+"+ n more". Everything else about a sentence sits in the ⋮ at the right edge
+of its row.
 
-```
-python3 mitreden.py dedupe           # zeigt, was zusammengeführt würde
-python3 mitreden.py dedupe --apply   # führt es wirklich zusammen
-```
-
-Ohne `--apply` wird nichts angefasst.
-
-**Auswählen.** Aufgenommen wird von selbst — beim Hinzufügen und nachdem du
-einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
-beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und **auf
-eine andere Stimme umstellen**. Beide Knöpfe erscheinen, sobald etwas
-angekreuzt ist: „Als MP3 herunterladen" direkt, alles Seltenere hinter dem
-Pfeil daneben — als WAV, Stimme ändern, zu einer Gruppe hinzufügen, aus einer
-entfernen, löschen. Es ist dasselbe Menü, das das ⋮ einer Zeile für einen
-einzelnen Satz zeigt.
-
-Für mehrere Sätze gibt es **hinzufügen und entfernen, aber kein Ersetzen**.
-Markierte Sätze haben meist verschiedene Gruppen, und ein Filter kann welche
-ausblenden — Ersetzen würde dort still etwas wegwerfen, das du nicht siehst.
-In der Zeile ersetzt „Gruppen ändern" weiterhin, denn dort stehen die
-vorhandenen Gruppen im Feld.
-
-Sollte doch einmal eine Aufnahme scheitern, sagt es die Pille „Nicht
-aufgenommen" in der Stimmenreihe. Anklicken, auswählen, Stimme setzen — und
-sie sind da. Ein Filter lässt die Auswahl unangetastet und sagt dir,
-wenn etwas Ausgewähltes gerade nicht zu sehen ist. Einen einzelnen Satz nimmt
-auch das ⋮ neu auf.
-
-**Herunterladen.** Der Knopf packt genau die Sätze zusammen, die die Liste
-gerade zeigt — nach einer Suche also die Treffer, in einer Gruppe deren Sätze.
-Daneben steht das Format: MP3 oder WAV, unabhängig davon, wie die Dateien
-aufgenommen wurden. Gebraucht wird das für das eine Gerät, das aus der Reihe
-tanzt — umgerechnet wird nur für den Download, `out/` bleibt, wie es ist.
-
-Eine einzelne Datei holst du über das ⋮ der Zeile, im selben Format.
-
-Auf der Kommandozeile:
+**One text, one file.** Add a sentence that already exists and no second entry
+appears — the existing one just picks up the new group. Capitalisation and
+extra spaces do not matter, punctuation does: "Again!" and "Again." are spoken
+differently, so they are two sentences.
 
 ```
-python3 mitreden.py export kindergarten ~/Desktop/kiga
-python3 mitreden.py export all ~/Desktop/alles
+python3 mitreden.py dedupe           # shows what would be merged
+python3 mitreden.py dedupe --apply   # actually merges it
 ```
 
-## Auf dem NAS laufen lassen
+Without `--apply` nothing is touched.
 
-mitreden ist ein Werkzeug, kein Dienst — für den Hausgebrauch reicht es, es auf
-dem Rechner zu starten. Wenn es aber dauerhaft laufen soll, damit du auch vom
-Handy aus Sätze hinzufügen kannst und `phrases.json` in der NAS-Sicherung
-liegt, gibt es ein fertiges Abbild. Das Repo brauchst du dafür nicht — nur
-einen Ordner für deine Daten und diese `docker-compose.yml`:
+**Selecting.** Recording happens by itself — when you add a sentence and after
+you change its text. The checkboxes in front of the rows are for the two
+things that concern several sentences: downloading and **switching to another
+voice**. Both buttons appear as soon as something is ticked: "Download as MP3"
+directly, everything rarer behind the chevron next to it — as WAV, change
+voice, add to a group, remove from one, delete. It is the same menu the ⋮ of a
+row shows for a single sentence.
+
+For several sentences there is **adding and removing, but no replacing**.
+Ticked sentences usually have different groups, and a filter may be hiding
+some — replacing would silently throw away something you cannot see. In a
+single row "Change groups" still replaces, because there the existing groups
+are in the field.
+
+Should a recording fail, the "Not recorded" pill in the voices row says so.
+Click it, select, set a voice — and they are there. A filter leaves the
+selection untouched and tells you when something selected is currently out of
+sight. A single sentence can also be recorded again from the ⋮.
+
+**Downloading.** The button packs up the ticked sentences — as MP3 directly,
+as WAV through the chevron next to it. The format is independent of how the
+files were recorded; that is for the one device that does not fit in. The
+conversion happens for the download only, `out/` stays as it is.
+
+A single file comes out of the ⋮ of its row, in the same formats.
+
+On the command line:
+
+```
+python3 mitreden.py export nursery ~/Desktop/nursery
+python3 mitreden.py export all ~/Desktop/everything
+```
+
+## Running it on a NAS
+
+mitreden is a tool, not a service — for home use it is enough to start it on
+your machine. But if it should run permanently, so that you can add sentences
+from your phone and `phrases.json` sits in the NAS backup, there is a ready
+image. You do not need the repository for that — only a folder for your data
+and this `docker-compose.yml`:
 
 ```yaml
 services:
@@ -332,64 +329,63 @@ services:
 docker compose pull && docker compose up -d
 ```
 
-Beim ersten Start legt mitreden sich seine `config.json` selbst an und wählt
-eine Stimme, die hier funktioniert — im Container also Piper. Es spricht damit
-sofort, ganz ohne Schlüssel. Willst du eine Cloud-Stimme, kommt ihr Schlüssel
-in eine `.env` daneben, und sie taucht im Auswahlfeld auf. Alles,
-was dir gehört — Sätze, Config, `out/`, Schlüssel — liegt in diesem einen
-Ordner. Das Programm kommt aus dem Abbild und wird mit `docker compose pull`
-aktuell, ohne deine Daten anzufassen.
+On first start mitreden writes its own `config.json` and picks a voice that
+works here — piper, in the container. It speaks straight away, without any
+key. If you want a cloud voice, its key goes into a `.env` next to it, and the
+voice appears in the picker. Everything that is yours — sentences, config,
+`out/`, keys — lives in that one folder. The program comes from the image and
+is brought up to date with `docker compose pull`, without touching your data.
 
-Gebaut wird das Abbild in der CI für amd64 und arm64, dein NAS zieht es also
-fertig. Selbst bauen geht auch: Repo klonen und `docker compose up -d --build`.
+The image is built in CI for amd64 and arm64, so your NAS pulls it ready-made.
+Building it yourself works too: clone the repository and run
+`docker compose up -d --build`.
 
-Auf einer Synology ist die eigene Kennung wichtig: sonst läuft der Container
-als root, und was er anlegt, gehört danach root und ist über die Netzfreigabe
-nicht mehr zu bearbeiten. Per SSH `id` aufrufen und `user: "1026:100"` in die
-Compose-Datei eintragen.
+On a Synology your own user id matters: otherwise the container runs as root,
+and whatever it creates belongs to root and can no longer be edited over the
+network share. Call `id` over SSH and put `user: "1026:100"` into the compose
+file.
 
-Und die Portfreigabe gehört ins Heimnetz. Denn: **die Oberfläche hat keine
-Anmeldung.** Wer den Port erreicht, kann Sätze anlegen, löschen und über
-deinen Schlüssel rendern lassen. Im eigenen Netz oder über VPN ist das in
-Ordnung, im offenen Internet nicht. Deshalb lauscht mitreden von sich aus nur
-auf `localhost` und muss ausdrücklich ans Netz geschickt werden:
+And the port belongs on your home network. Because: **the interface has no
+login.** Whoever reaches the port can add sentences, delete them, and record
+on your key. On your own network or over a VPN that is fine, on the open
+internet it is not. That is why mitreden listens on `localhost` only unless
+explicitly sent onto the network:
 
 ```
 python3 mitreden.py ui --host 0.0.0.0 --port 8770
 ```
 
-Wo deine Daten liegen, steuert `MITREDEN_DIR`. Ohne die Variable ist es der
-Ordner neben `mitreden.py` — auf dem Rechner ändert sich also nichts.
+Where your data lives is controlled by `MITREDEN_DIR`. Without the variable it
+is the folder next to `mitreden.py` — so nothing changes on your machine.
 
-## Deine Inhalte bleiben lokal
+## Your content stays local
 
-Im Repo liegt nur `phrases.example.json` als Startpunkt. Deine eigene
-`phrases.json`, alles daraus Erzeugte und deine Schlüssel sind in `.gitignore`
-eingetragen und wandern nie mit:
+The repository only holds `phrases.example.json` as a starting point. Your own
+`phrases.json`, everything made from it and your keys are in `.gitignore` and
+never travel along:
 
 ```
-phrases.json        deine Sätze
-phrases.json.*      Sicherungskopien davon
-out/  build/        alles daraus Erzeugte
-*.wav *.mp3 *.aiff  Audio, wo auch immer es auftaucht
-.env  .env.*        Schlüssel
+phrases.json        your sentences
+phrases.json.*      backups of it
+out/  build/        everything made from them
+*.wav *.mp3 *.aiff  audio, wherever it turns up
+.env  .env.*        keys
 ```
 
-Für `phrases.json` nimmst du am besten ein privates Repo oder ein Backup
-außerhalb von git — es ist, wie oben gesagt, das Einzige, was sich nicht neu
-erzeugen lässt.
+For `phrases.json` a private repository or a backup outside git is the way to
+go — it is, as said above, the only thing that cannot be recreated.
 
-## Mitmachen
+## Contributing
 
-Das ist ein Hobbyprojekt, entstanden aus einem konkreten Bedarf zu Hause — es
-gibt keine Roadmap und keine Zusagen. Wenn du es für dein eigenes Kind oder
-für jemanden, den du begleitest, benutzt: schön. Fehlerberichte und Fragen
-sind willkommen, auch wenn Antworten dauern können.
+This is a hobby project, grown out of a concrete need at home — there is no
+roadmap and no promises. If you use it for your own child, or for someone you
+support: good. Bug reports and questions are welcome, even if answers may take
+a while.
 
-Wenn du etwas Ähnliches baust und Rat gebrauchen kannst, mach ein Issue auf.
-Zu unterstützter Kommunikation gibt es wenig Werkzeug, das man selbst in der
-Hand hat, und die Erfahrung damit teilt sich schlecht über Umwege.
+If you are building something similar and could use advice, open an issue.
+There is little tooling for augmentative communication that you can hold in
+your own hands, and the experience of it travels badly by other routes.
 
-## Lizenz
+## Licence
 
-MIT — siehe [LICENSE](LICENSE). Mach damit, was du willst.
+MIT — see [LICENSE](LICENSE). Do what you like with it.
