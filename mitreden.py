@@ -878,18 +878,16 @@ button.quiet:hover{color:var(--text)}
 .chip.on:hover{background:#ffa3d2}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .chip.fold{border-style:dashed;opacity:.8}
-/* Aligned to the top, not the middle: with a phrase that wraps, a checkbox
-   floating at half height looks unmoored. The offset puts it on the first
-   line of the text. */
-.item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
+/* Centred in the row, not on the first line. Sitting the box against the top
+   line was defensible on paper and looked top-heavy in practice. */
+.item{display:flex;gap:14px;align-items:center;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
-/* Centred on the first line of the phrase — measured, not guessed. */
-.item input[type=checkbox]{margin-top:8px}
-.item .txt{padding-top:1px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
+/* margin-bottom comes from the label rule for the form above; here it would
+   push the box 5px off centre against the button beside it. */
 .selall{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
-  cursor:pointer;user-select:none;white-space:nowrap}
+  cursor:pointer;user-select:none;white-space:nowrap;margin-bottom:0}
 /* Both bulk actions live here, next to the selection they act on. Each sits
    against its own knob: the format belongs to the download, the voice to the
    recording. */
@@ -906,7 +904,12 @@ button.quiet:hover{color:var(--text)}
 
 .acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:18px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.acts #bulk{padding:9px 14px;font-size:14px}
+/* The same drawn chevron as the selects use. The character U+2304 sits on the
+   baseline and reads as a typo next to the text. */
+.acts #bulk{padding:9px 32px 9px 14px;font-size:14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center}
+.acts #bulk:hover{background-color:#1e222c}
 /* The two pairs travel together: wrapping them apart would put a lone voice
    picker under the selection and read as if it belonged to it. */
 .acts .doing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
@@ -1015,7 +1018,7 @@ button.quiet:hover{color:var(--text)}
 <div class="acts">
   <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
   <span class="menuwrap" id="doing" hidden>
-    <button id="bulk" aria-haspopup="true" aria-expanded="false">Mit Auswahl \u2304</button>
+    <button id="bulk" aria-haspopup="true" aria-expanded="false">Mit Auswahl</button>
   </span>
 </div>
 
