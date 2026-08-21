@@ -90,7 +90,11 @@ Eintrag der richtige Weg.
 
 ## Was rauskommt
 
-Pro Satz eine Datei in `out/`, benannt nach seiner ID. Standard ist MP3 mit
+Pro Satz eine Datei in `out/`, benannt nach seiner ID. Die ID entsteht aus den
+ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
+langen Satz kein langer Dateiname wird. Zwei Sätze mit demselben Anfang
+bekommen eine Nummer angehängt. Bestehende IDs bleiben, wie sie sind — sie
+stehen womöglich schon auf einem Gerät. Standard ist MP3 mit
 44,1 kHz mono — das versteht so ziemlich jedes Gerät und jede App. Das Format
 steht in `config.json` und kann alles sein, was ffmpeg schreiben kann:
 

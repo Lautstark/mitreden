@@ -169,18 +169,33 @@ def save_phrases(items):
     PHRASES.write_text(json.dumps(items, indent=2, ensure_ascii=False))
 
 
+SLUG_WORDS = 6
+SLUG_CHARS = 40
+
+
 def slug(text, fallback="phrase"):
-    """Filename-safe id. The substitutions are German because the phrases are."""
+    """Filename-safe id. The substitutions are German because the phrases are.
+
+    A long phrase gets a short id: whole words up to a limit, never a cut
+    through the middle of one. "Du und ich, ich und du, und Teddy gehoert
+    auch dazu" used to end up as du-und-ich-ich-und-du-und-teddy-gehoert-,
+    chopped mid-word with a dash hanging off it.
+
+    Two phrases can now end up wanting the same id, but that could happen
+    before as well — whoever adds them numbers the second one."""
     keep = "abcdefghijklmnopqrstuvwxyz0123456789"
     sub = {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "é": "e", "è": "e"}
     out = []
     for ch in text.lower().strip():
         for c in sub.get(ch, ch):
             out.append(c if c in keep else "-")
-    s = "".join(out).strip("-")
-    while "--" in s:
-        s = s.replace("--", "-")
-    return s[:40] or fallback
+    words = [w for w in "".join(out).split("-") if w]
+    short = []
+    for w in words[:SLUG_WORDS]:
+        if short and len("-".join(short + [w])) > SLUG_CHARS:
+            break
+        short.append(w)
+    return "-".join(short)[:SLUG_CHARS].strip("-") or fallback
 
 
 def norm_tag(text):
@@ -834,12 +849,20 @@ button.quiet:hover{color:var(--text)}
 .chip.on:hover{background:#ffa3d2}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .chip.fold{border-style:dashed;opacity:.8}
-.item{display:flex;gap:14px;align-items:center;padding:15px 2px;
+/* Aligned to the top, not the middle: with a phrase that wraps, a checkbox
+   floating at half height looks unmoored. The offset puts it on the first
+   line of the text. */
+.item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
+.item input[type=checkbox]{margin-top:5px}
+.item .txt{padding-top:1px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
 .selall{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
   cursor:pointer;user-select:none;margin:16px 2px 0}
+/* The lamp sits with the words it belongs to instead of starting the row —
+   one marker at the left edge (the checkbox) is enough. */
+.item .st{display:inline-flex;align-items:center;gap:6px}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
 .item.ok .dot{background:var(--ok)}
 .item.stale .dot{background:var(--warn)}
@@ -854,7 +877,8 @@ button.quiet:hover{color:var(--text)}
   background:var(--line-soft);border:1px solid var(--line);border-radius:999px;
   padding:2px 10px;cursor:pointer}
 .item .tag:hover{background:#1e222c;color:var(--text)}
-.item audio{height:32px;flex:none;filter:invert(.92) hue-rotate(180deg);opacity:.85}
+.item audio{height:32px;flex:0 1 auto;width:clamp(170px,30%,280px);min-width:0;
+  filter:invert(.92) hue-rotate(180deg);opacity:.85}
 .menuwrap{position:relative;flex:none}
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--muted);cursor:pointer}
@@ -873,12 +897,24 @@ button.quiet:hover{color:var(--text)}
 .foot{margin-top:28px;color:var(--muted);font-size:13px}
 /* On a phone the player is wider than the room left over, and it used to push
    the delete button off the screen. Give it a line of its own instead. */
-@media (max-width:560px){
+/* Below this the player and the text fight over the same room, long before
+   the layout actually breaks — so the player moves to its own line early. */
+@media (max-width:720px){
   .item{flex-wrap:wrap;gap:10px}
-  .item .dot{order:1}
   .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
   .menuwrap{order:3}
   .item audio{order:4;flex:1 1 100%;width:100%}
+}
+@media (max-width:560px){
+  .hero{padding:16px 16px 12px}
+  textarea{font-size:17px;min-height:112px}
+  .item .line{font-size:17px}
+  .bar{gap:8px}
+  .tools{gap:8px}
+  /* Three controls in one row leaves the search box a stub — it gets its own
+     line, the format and the button share the next one. */
+  .tools input[type=search]{flex:1 1 100%;min-width:0}
+  .tools button{flex:1}
 }
 </style>
 <main>
@@ -1040,9 +1076,10 @@ function draw(){
   for(const it of (SHOW_ALL?items:items.slice(0,CAP))){
     const d=document.createElement('div');d.className='item '+it.state;
     d.innerHTML='<input type="checkbox" aria-label="Ausw\\u00e4hlen">'+
-      '<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
-      '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
+      '<div class="meta"><span class="id"></span>'+
+      '<span class="st"><span class="dot"></span><span class="state"></span></span>'+
+      '</div></div>'+
       // The player's own \u22ee menu offers a playback speed that only affects
       // listening here, never the rendered file — and a download of the preview
       // rather than the device files. Both mislead, so both are switched off.
