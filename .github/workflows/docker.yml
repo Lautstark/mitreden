@@ -4,8 +4,16 @@ on:
   push:
     branches: [main]
     paths:
+      # Everything the image carries. The program is not one file: it reads
+      # ui.html, the language files and the icon from beside itself, so a
+      # change to any of them is a change to what the image serves. The page
+      # used to live inside mitreden.py, which is why it was the only entry
+      # here — editing it now would otherwise ship nothing.
       - Dockerfile
       - mitreden.py
+      - ui.html
+      - icon.svg
+      - lang/**
       - .github/workflows/docker.yml
 
 jobs:
