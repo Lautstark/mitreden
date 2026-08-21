@@ -31,9 +31,11 @@ Usage:
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
 
-Note: everything a person reads is German — the web interface, the README and
-the spoken content itself (phrases.json, the voice settings in config.json).
-English is for the code only: identifiers, comments, docstrings, CLI output.
+Note: what a person reads is German where German is what is being spoken —
+the web interface and the content itself (phrases.json, the voice settings in
+config.json). The guide is README.md in English, with README.de.md as a short
+German way in. English is for the code throughout: identifiers, comments,
+docstrings, CLI output.
 """
 
 import hashlib
