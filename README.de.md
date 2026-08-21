@@ -61,7 +61,20 @@ prüfen, ob die Kette läuft. Siehe [Die Stimme wählen](#die-stimme-wählen).
 
 Am schnellsten geht es mit dem Container. Er bringt vier Stimmen mit und
 spricht deshalb sofort — ohne Konto, ohne Schlüssel, ohne dass etwas dein Netz
-verlässt:
+verlässt.
+
+**Ohne Terminal:** Eine dieser Dateien in einen leeren Ordner legen und öffnen
+— [mitreden.command](mitreden.command) auf dem Mac,
+[mitreden.bat](mitreden.bat) unter Windows, [mitreden.sh](mitreden.sh) unter
+Linux. Sie holt mitreden, startet es und öffnet den Browser. Docker muss
+installiert sein; steht es nicht bereit, sagt die Datei es dir. Solange das
+Fenster offen bleibt, läuft mitreden.
+
+Auf dem Mac kommt die Datei aus dem Internet, deshalb braucht der erste Start
+Rechtsklick → Öffnen statt eines Doppelklicks. macOS fragt einmal, danach
+nicht mehr.
+
+**Mit Terminal** geht dasselbe in einer Zeile:
 
 ```
 mkdir mitreden && cd mitreden

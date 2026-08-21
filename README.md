@@ -62,7 +62,19 @@ works. See [Choosing a voice](#choosing-a-voice).
 ## Getting started
 
 The quickest way is the container. It brings four voices along, so it speaks
-straight away — no account, no key, nothing leaving your network:
+straight away — no account, no key, nothing leaving your network.
+
+**Without a terminal:** put one of these files into an empty folder and open
+it — [mitreden.command](mitreden.command) on a Mac,
+[mitreden.bat](mitreden.bat) on Windows, [mitreden.sh](mitreden.sh) on Linux.
+It fetches mitreden, starts it and opens your browser. Docker has to be
+installed; the file says so if it is not. As long as the window stays open,
+mitreden runs.
+
+On a Mac the file was downloaded from the internet, so the first start needs
+right-click → Open instead of a double-click. macOS asks once, not again.
+
+**With a terminal**, the same thing in one line:
 
 ```
 mkdir mitreden && cd mitreden
