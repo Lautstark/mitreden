@@ -952,7 +952,10 @@ button.quiet:hover{color:var(--text)}
 .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
-.langpick{margin-left:auto;font:inherit;font-size:13px;font-weight:600;
+/* Beside the title, where a page-wide setting belongs — not down at the list,
+   which would suggest it changes something about the list. */
+.top{display:flex;align-items:center;gap:16px}
+.langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
   color:var(--muted);background:transparent;border:1px solid var(--line);
   border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
   appearance:none;-webkit-appearance:none;
@@ -1086,7 +1089,10 @@ button.quiet:hover{color:var(--text)}
 }
 </style>
 <main>
-<h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
+<div class="top">
+  <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
+  <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
+</div>
 <p class="sub" data-i18n="tagline"></p>
 
 <div class="hero">
@@ -1104,7 +1110,6 @@ button.quiet:hover{color:var(--text)}
 
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
-  <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
 </div>
 
 <div class="tools">
@@ -1616,13 +1621,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path == "/":
+        # The path, without whatever the page appended for its own state. A
+        # link with ?lang=de is still the page, not a different one.
+        route = urllib.parse.urlsplit(self.path).path
+        if route == "/":
             return self._send(200, PAGE, "text/html; charset=utf-8")
-        if self.path == "/icon.svg":
+        if route == "/icon.svg":
             if not ICON.exists():
                 return self._send(404, b"", "text/plain")
             return self._send(200, ICON.read_bytes(), "image/svg+xml")
-        if self.path.startswith("/audio/"):
+        if route.startswith("/audio/"):
             # The id alone is enough — the server knows the configured format,
             # so the page never has to care what it is. ?format= asks for a
             # different one, ?dl=1 makes the browser save instead of play.
@@ -1645,12 +1653,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, body,
                               MIME.get(name.rsplit(".", 1)[-1], "application/octet-stream"),
                               extra)
-        if self.path == "/api/phrases":
+        if route == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
-        if self.path == "/api/strings":
+        if route == "/api/strings":
             return self._send(200, json.dumps(strings(), ensure_ascii=False))
-        if self.path == "/api/voices":
+        if route == "/api/voices":
             return self._send(200, json.dumps(available_voices(load_config()),
                                               ensure_ascii=False))
         self._send(404, b"", "text/plain")
@@ -1658,10 +1666,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
         data = json.loads(self.rfile.read(n) or "{}")
+        route = urllib.parse.urlsplit(self.path).path   # same rule as do_GET
         cfg = load_config()
         items = load_phrases()
 
-        if self.path == "/api/phrases":
+        if route == "/api/phrases":
             fresh, twins = add_lines(items, data.get("lines", []),
                                      data.get("tags", []))
             rendered = 0
@@ -1676,7 +1685,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                "rendered": rendered,
                                                "merged": len(twins)}))
 
-        if self.path == "/api/tags":
+        if route == "/api/tags":
             ids = data.get("ids") or [data.get("id") or ""]
             ids = [str(i).strip() for i in ids if str(i).strip()]
             mode = data.get("mode", "set")
@@ -1688,7 +1697,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True, "ids": hit,
                                                "mode": mode}, ensure_ascii=False))
 
-        if self.path == "/api/edit":
+        if route == "/api/edit":
             pid = (data.get("id") or "").strip()
             item, why = edit_text(items, pid, data.get("text", ""))
             if why:
@@ -1705,7 +1714,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                "rendered": bool(rendered)},
                                               ensure_ascii=False))
 
-        if self.path == "/api/voice":
+        if route == "/api/voice":
             label = use_voice(cfg, (data.get("id") or "").strip())
             if label is None:
                 return self._send(404, "That voice is not available here.",
@@ -1715,13 +1724,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True, "label": label},
                                               ensure_ascii=False))
 
-        if self.path == "/api/download":
+        if route == "/api/download":
             blob, n = zip_phrases(data.get("ids", []), cfg, data.get("format"))
             if not n:
                 return self._send(404, "Nothing recorded to download.", "text/plain")
             return self._send(200, blob, "application/zip")
 
-        if self.path == "/api/build":
+        if route == "/api/build":
             force = bool(data.get("force"))
             only = set(data.get("ids") or [])     # empty = everything
             vid = (data.get("voice") or "").strip() or None
@@ -1738,7 +1747,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             save_phrases(items)
             return self._send(200, json.dumps({"rendered": rendered}))
 
-        if self.path == "/api/delete":
+        if route == "/api/delete":
             pid = (data.get("id") or "").strip()
             if not pid:
                 return self._send(400, "No id provided.", "text/plain")
