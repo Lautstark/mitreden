@@ -36,9 +36,10 @@ python3 mitreden.py backends  # was ist gerade nutzbar?
 Weil `out/` sich jederzeit neu erzeugen lässt, ist `phrases.json` das Einzige,
 was wirklich Sicherung braucht.
 
-Das Repo ist absichtlich klein: eine Datei Python, keine Abhängigkeiten, ein
-bisschen ffmpeg. Der Code ist auf Englisch, die Oberfläche spricht Deutsch und
-Englisch, und diese Anleitung gibt es in beiden Sprachen.
+Das Repo ist absichtlich klein: eine Python-Datei und die Seite, die sie
+ausliefert, keine Abhängigkeiten, ein bisschen ffmpeg. Der Code ist auf
+Englisch, die Oberfläche spricht Deutsch und Englisch, und diese Anleitung
+gibt es in beiden Sprachen.
 
 ## Was du brauchst
 
@@ -106,7 +107,9 @@ cp phrases.example.json phrases.json
 python3 mitreden.py backends   # welches Backend steht bei dir auf "found"?
 ```
 
-In `config.json` das passende Backend eintragen, dann:
+Der Befehl schreibt schon eine `config.json` und wählt ein Backend, das bei
+dir funktioniert — einzutragen ist also nichts. Ändern musst du das nur, wenn
+du eine andere Stimme willst. Dann:
 
 ```
 python3 mitreden.py ui
@@ -150,9 +153,11 @@ nicht leer bleiben.
 
 ## Was rauskommt
 
-Pro Satz eine Datei in `out/`, benannt nach seiner ID. In der Oberfläche
-kommt die ID nicht mehr vor — sie ist ein Dateiname, kein Lesestoff. Sie
-entsteht aus den ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
+Pro Satz eine Datei in `out/`, benannt nach seiner ID. In der Liste steht die
+ID nicht — sie ist ein Dateiname, kein Lesestoff. An einer Stelle steht sie
+doch: beim Ändern eines Textes, denn da zählt sie — der Dateiname bleibt, und
+was schon auf einem Gerät liegt, funktioniert weiter. Sie entsteht aus den
+ersten Wörtern des Satzes und hört an einer Wortgrenze auf, damit aus einem
 langen Satz kein langer Dateiname wird. Zwei Sätze mit demselben Anfang
 bekommen eine Nummer angehängt. Bestehende IDs bleiben, wie sie sind — sie
 stehen womöglich schon auf einem Gerät. Standard ist MP3 mit
@@ -441,6 +446,11 @@ Das ist ein Hobbyprojekt, entstanden aus einem konkreten Bedarf zu Hause — es
 gibt keine Roadmap und keine Zusagen. Wenn du es für dein eigenes Kind oder
 für jemanden, den du begleitest, benutzt: schön. Fehlerberichte und Fragen
 sind willkommen, auch wenn Antworten dauern können.
+
+Wenn du etwas änderst: `python3 tests/run.py` lässt die Tests laufen. Ohne
+pip-Pakete, ein paar Sekunden, und dasselbe läuft in CI bei jedem Push. Einen
+einzelnen startet `python3 tests/run.py voice`. Wofür jeder da ist, steht oben
+in seiner eigenen Datei.
 
 Wenn du etwas Ähnliches baust und Rat gebrauchen kannst, mach ein Issue auf.
 Zu unterstützter Kommunikation gibt es wenig Werkzeug, das man selbst in der

@@ -38,9 +38,9 @@ python3 mitreden.py backends  # what is usable right now?
 Because `out/` can be recreated at any time, `phrases.json` is the only thing
 that really needs a backup.
 
-The repository is deliberately small: one Python file, no dependencies, a bit
-of ffmpeg. The code is in English, the interface speaks German and English,
-and this guide exists in both languages.
+The repository is deliberately small: a Python file and the page it serves, no
+dependencies, a bit of ffmpeg. The code is in English, the interface speaks
+German and English, and this guide exists in both languages.
 
 ## What you need
 
@@ -106,7 +106,9 @@ cp phrases.example.json phrases.json
 python3 mitreden.py backends   # which backend says "found" on your machine?
 ```
 
-Put that backend into `config.json`, then:
+That command already writes a `config.json` and picks a backend that works
+here, so there is nothing to fill in. Change it only if you want a different
+voice. Then:
 
 ```
 python3 mitreden.py ui
@@ -148,12 +150,14 @@ the key itself appears: a gap should be visible, not blank.
 
 ## What comes out
 
-One file per sentence in `out/`, named after its id. The id no longer appears
-in the interface — it is a file name, not something to read. It is built from
-the first words of the sentence and stops at a word boundary, so a long
-sentence does not become a long file name. Two sentences with the same
-beginning get a number appended. Existing ids stay as they are — they may
-already be written on a device.
+One file per sentence in `out/`, named after its id. The id stays out of the
+list — it is a file name, not something to read. It appears in one place, when
+you change a text, because that is where it matters: the file name stays as it
+is, and what is already on a device keeps working. It is built from the first
+words of the sentence and stops at a word boundary, so a long sentence does
+not become a long file name. Two sentences with the same beginning get a
+number appended. Existing ids stay as they are — they may already be written
+on a device.
 
 The default is MP3 at 44.1 kHz mono, which just about every device and app
 understands. The format lives in `config.json` and can be anything ffmpeg can
@@ -432,6 +436,11 @@ This is a hobby project, grown out of a concrete need at home — there is no
 roadmap and no promises. If you use it for your own child, or for someone you
 support: good. Bug reports and questions are welcome, even if answers may take
 a while.
+
+If you change something: `python3 tests/run.py` runs the tests. No pip
+packages, a few seconds, and the same run happens in CI on every push. A
+single one is `python3 tests/run.py voice`. What each is for is written at the
+top of its own file.
 
 If you are building something similar and could use advice, open an issue.
 There is little tooling for augmentative communication that you can hold in
