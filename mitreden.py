@@ -891,6 +891,14 @@ button.quiet:hover{color:var(--text)}
 /* Both bulk actions live here, next to the selection they act on. Each sits
    against its own knob: the format belongs to the download, the voice to the
    recording. */
+/* Only visible when something really is missing — a recording that failed,
+   or a format that changed under the existing files. Each phrase keeps its
+   own voice here; this repairs, it does not repaint. */
+.alarm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--warn);border-radius:12px;
+  padding:12px 14px;margin:14px 2px 0;font-size:14px}
+.alarm button{padding:8px 14px;font-size:14px;border-color:var(--warn);
+  color:var(--text)}
 .acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   margin:18px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 /* The two pairs travel together: wrapping them apart would put a lone voice
@@ -901,14 +909,16 @@ button.quiet:hover{color:var(--text)}
   border-right-color:transparent}
 .acts .pair button{border-top-left-radius:0;border-bottom-left-radius:0;
   font-size:14px;padding:11px 15px;white-space:nowrap}
-.withvoice{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}
-.withvoice select,.acts select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
+/* Same box as the button beside it: same font, same vertical padding, so the
+   two do not sit at different heights. */
+.asbutton{padding:11px 34px 11px 16px !important;font-size:16px !important}
+.asbutton,.acts select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
   background:var(--line-soft);border:1px solid var(--line);border-radius:10px;
   padding:11px 30px 11px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 11px center;max-width:230px}
-.withvoice select:hover,.acts select:hover{background-color:#1e222c}
-.withvoice select:focus-visible,.acts select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.asbutton:hover,.acts select:hover{background-color:#1e222c}
+.asbutton:focus-visible,.acts select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* The lamp sits with the words it belongs to instead of starting the row —
    one marker at the left edge (the checkbox) is enough. */
 .item .st{display:inline-flex;align-items:center;gap:6px}
@@ -977,15 +987,19 @@ button.quiet:hover{color:var(--text)}
   <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
     <button class="primary" id="add">Satz hinzufügen</button>
-    <span class="withvoice">Stimme <select id="voice"
-      title="Womit aufgenommen wird"></select></span>
+    <select id="voice" class="asbutton" aria-label="Stimme"
+      title="Womit aufgenommen wird"></select>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
 
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
-  <button class="quiet" id="catchup" hidden>aufnehmen</button>
+</div>
+
+<div class="alarm" id="alarm" hidden>
+  <span id="alarmtxt"></span>
+  <button id="catchup">Jetzt aufnehmen</button>
 </div>
 
 <div class="tools">
@@ -1179,7 +1193,7 @@ function openMenu(btn,it){
   add('Text \\u00e4ndern',false,()=>editText(it));
   if(it.state!=='missing')
     add('Datei herunterladen ('+$('dlfmt').value.toUpperCase()+')',false,()=>grab(it));
-  add('Mit '+voiceNow()+' aufnehmen',false,()=>redo(it));
+  add('Auf '+voiceNow()+' umstellen',false,()=>redo(it));
   add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
       false,()=>editTags(it));
   add('Satz l\\u00f6schen',true,()=>del(it));
@@ -1332,15 +1346,18 @@ function refreshSel(){
   const bereit=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').length;
   $('dl').textContent=bereit+' herunterladen';
   $('dl').disabled=!bereit;
-  $('rebuild').textContent='Mit '+voiceNow()+' aufnehmen';
+  // "Record with X" read like a repair. It changes which voice these phrases
+  // speak in — so that is what it says.
+  $('rebuild').textContent='Auf '+voiceNow()+' umstellen';
 
   // Recording happens by itself when you add or edit a phrase. Something left
   // open means a recording failed or the format changed — rare, so the offer
   // only appears when it is true.
   const offen=ALL.filter(i=>i.state!=='ok').length;
-  const c=$('catchup');
-  c.hidden=!offen;
-  c.textContent=offen+(offen===1?' offenen aufnehmen':' offene aufnehmen');
+  $('alarm').hidden=!offen;
+  $('alarmtxt').textContent=offen===1
+    ? 'Ein Satz ist nicht aufgenommen.'
+    : offen+' S\\u00e4tze sind nicht aufgenommen.';
 }
 $('selall').onchange=e=>{
   for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
@@ -1356,11 +1373,11 @@ $('rebuild').onclick=async()=>{
   if(!ids.length)return;
   const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
     :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
-  if(!confirm(wieviele+' mit '+voiceNow()+' aufnehmen?\\n\\n'+
-              'Bestehende Aufnahmen dieser S\\u00e4tze werden ersetzt.'))return;
-  say(wieviele+' mit '+voiceNow()+' aufnehmen \\u2026');
+  if(!confirm(wieviele+' auf '+voiceNow()+' umstellen?\\n\\n'+
+              'Die bestehenden Aufnahmen werden dabei ersetzt.'))return;
+  say(wieviele+' wird auf '+voiceNow()+' umgestellt \\u2026');
   const r=await post('/api/build',{force:true,ids,voice:$('voice').value});
-  if(r){say(r.rendered+' neu aufgenommen.');load()}};
+  if(r){say(r.rendered+' umgestellt auf '+voiceNow()+'.');load()}};
 load();
 </script>
 </html>"""

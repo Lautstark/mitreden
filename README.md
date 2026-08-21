@@ -233,10 +233,13 @@ Ohne `--apply` wird nichts angefasst.
 
 **Auswählen.** Aufgenommen wird von selbst — beim Hinzufügen und nachdem du
 einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
-beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und in einer
-anderen Stimme aufnehmen. Beide Knöpfe erscheinen, sobald etwas angekreuzt
-ist. Sollte doch einmal etwas offen bleiben, weil eine Aufnahme scheiterte,
-bietet die Zeile über der Liste es an. Ein Filter lässt die Auswahl unangetastet und sagt dir,
+beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und **auf
+eine andere Stimme umstellen**. Beide Knöpfe erscheinen, sobald etwas
+angekreuzt ist.
+
+Sollte doch einmal eine Aufnahme scheitern, sagt es ein Banner über der Liste
+und bietet an, sie nachzuholen — jeder Satz in seiner eigenen Stimme. Das ist
+etwas anderes als Umstellen und fasst die gewählte Stimme nicht an. Ein Filter lässt die Auswahl unangetastet und sagt dir,
 wenn etwas Ausgewähltes gerade nicht zu sehen ist. Einen einzelnen Satz nimmt
 auch das ⋮ neu auf.
 
