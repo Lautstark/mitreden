@@ -412,14 +412,15 @@ def esc(s):
 
 # ----------------------------------------------------------------- Rendering
 
-def render(item, cfg, force=False, voice_id=None):
+def render(item, cfg, force=False, voice_id=None, voices=None):
     """One phrase -> raw file -> one output file. Returns True if it worked.
 
     voice_id records it with that voice and gives it to the phrase for good.
     Without it, a phrase keeps the voice it already has — catching up on what
     is missing must not quietly repaint the rest."""
+    voices = available_voices(cfg) if voices is None else voices
     vid = voice_id or phrase_voice(item, cfg)
-    vcfg = voice_config(cfg, vid) or cfg     # the voice may be gone from here
+    vcfg = voice_config(cfg, vid, voices) or cfg   # the voice may be gone here
     fp = fingerprint(item["text"], vcfg)
     dest = out_file(item["id"], cfg)         # the format is not the voice's business
     if not force and item.get("fingerprint") == fp and dest.exists():
@@ -445,8 +446,8 @@ def render(item, cfg, force=False, voice_id=None):
 
     item["fingerprint"] = fp
     item["backend"] = backend
-    item["voice_id"] = vid               # what to record it with next time
-    item["voice"] = voice_name(cfg, vid)  # and what you are hearing, by name
+    item["voice_id"] = vid               # the identity; the name is made from
+    item.pop("voice", None)              # it on the way out, never stored
     return True
 
 
@@ -474,6 +475,7 @@ def prune_out(cfg):
 
 def build(force=False, voice_id=None):
     cfg = load_config()
+    voices = available_voices(cfg)      # once for the whole run
     items = load_phrases()
     if not items:
         print("phrases.json is empty. Add phrases first: mitreden.py add \"Text\"")
@@ -481,7 +483,7 @@ def build(force=False, voice_id=None):
     done = 0
     for item in items:
         try:
-            if render(item, cfg, force, voice_id):
+            if render(item, cfg, force, voice_id, voices):
                 print(f"  rendered   {item['id']}  — {item['text']}")
                 done += 1
         except Exception as e:
@@ -504,7 +506,7 @@ def phrase_voice(item, cfg):
     return item.get("voice_id") or active_voice(cfg)
 
 
-def phrase_state(item, cfg):
+def phrase_state(item, cfg, voices=None):
     """ok = current, missing = never rendered, stale = the text or the format
     moved on since it was recorded.
 
@@ -513,7 +515,7 @@ def phrase_state(item, cfg):
     whole point of being able to mix them."""
     if not out_file(item["id"], cfg).exists():
         return "missing"
-    vcfg = voice_config(cfg, phrase_voice(item, cfg)) or cfg
+    vcfg = voice_config(cfg, phrase_voice(item, cfg), voices) or cfg
     if item.get("fingerprint") != fingerprint(item["text"], vcfg):
         return "stale"
     return "ok"
@@ -654,13 +656,14 @@ def active_voice(cfg):
     return backend
 
 
-def voice_config(cfg, vid):
+def voice_config(cfg, vid, voices=None):
     """A copy of cfg pointed at one voice. Nothing is written.
 
     This is what lets one phrase be recorded with Thorsten while the next
     keeps Gisela: rendering never reads the configured voice directly, it
     reads the voice that phrase was given."""
-    chosen = next((v for v in available_voices(cfg) if v["id"] == vid), None)
+    catalogue = voices if voices is not None else available_voices(cfg)
+    chosen = next((v for v in catalogue if v["id"] == vid), None)
     if chosen is None:
         return None
     out = json.loads(json.dumps(cfg))
@@ -672,11 +675,21 @@ def voice_config(cfg, vid):
     return out
 
 
-def voice_name(cfg, vid):
-    """The label of one catalogue entry, or the id if it is gone from here."""
-    for v in available_voices(cfg):
+def voice_name(cfg, vid, voices=None):
+    """The label of one catalogue entry.
+
+    A voice can be missing here and still be the one a phrase was recorded
+    with — another machine, a key that is gone, a model that was deleted. The
+    name is then built from the id, because "azure:de-DE-GiselaNeural" is
+    something nobody should have to read."""
+    for v in voices if voices is not None else available_voices(cfg):
         if v["id"] == vid:
             return v["label"]
+    kind, _, rest = vid.partition(":")
+    if kind == "piper" and rest:
+        return label_of(pretty_piper(rest), "piper", lang_of(rest))
+    if kind == "azure" and rest:
+        return label_of(short_voice(rest), "azure", lang_of(rest))
     return vid
 
 
@@ -695,10 +708,10 @@ def use_voice(cfg, vid):
     return voice_name(cfg, vid)
 
 
-def voice_label(cfg):
+def voice_label(cfg, voices=None):
     """Voice name for the interface, e.g. de-DE-GiselaNeural -> Gisela."""
     mine = active_voice(cfg)
-    for v in available_voices(cfg):
+    for v in voices if voices is not None else available_voices(cfg):
         if v["id"] == mine:
             return v["label"]
     opt = cfg.get(cfg["backend"], {})       # configured, but not usable here
@@ -707,10 +720,21 @@ def voice_label(cfg):
 
 
 def phrases_with_state():
+    """The list as the page needs it: state and voice name per phrase.
+
+    Both are worked out here rather than kept in phrases.json. A name is how
+    something is shown, not what it is — storing it means an old entry keeps
+    an old spelling forever, and the voice filter then sees one voice as two.
+    The catalogue is built once for the whole list; it used to be rebuilt for
+    every single phrase."""
     cfg = load_config()
-    items = [dict(i, tags=i.get("tags") or [], state=phrase_state(i, cfg))
+    voices = available_voices(cfg)
+    items = [dict(i, tags=i.get("tags") or [],
+                  state=phrase_state(i, cfg, voices),
+                  voice=voice_name(cfg, phrase_voice(i, cfg), voices))
              for i in load_phrases()]
-    return {"items": items, "voice": voice_label(cfg), "format": out_format(cfg)}
+    return {"items": items, "voice": voice_label(cfg, voices),
+            "format": out_format(cfg)}
 
 
 def remove_files(pid):
@@ -879,7 +903,6 @@ button.quiet:hover{color:var(--text)}
 .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
-.bar .spacer{flex:1}
 /* Shaped like the group chips, so the header reads as one row of controls
    instead of one control and one browser default. */
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
@@ -941,11 +964,6 @@ button.quiet:hover{color:var(--text)}
 /* The two pairs travel together: wrapping them apart would put a lone voice
    picker under the selection and read as if it belonged to it. */
 .acts .doing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
-.acts .pair{display:flex;align-items:center;gap:0}
-.acts .pair select{border-top-right-radius:0;border-bottom-right-radius:0;
-  border-right-color:transparent}
-.acts .pair button{border-top-left-radius:0;border-bottom-left-radius:0;
-  font-size:14px;padding:11px 15px;white-space:nowrap}
 /* Same box as the button beside it: same font, same vertical padding, so the
    two do not sit at different heights. */
 .asbutton{padding:11px 34px 11px 16px !important;font-size:16px !important}
@@ -990,7 +1008,6 @@ button.quiet:hover{color:var(--text)}
 .menu button.danger:hover{background:rgba(229,72,77,.12)}
 .empty{color:var(--muted);padding:32px 2px;font-size:15px}
 .more{width:100%;margin-top:18px;color:var(--muted);font-size:14px}
-.foot{margin-top:28px;color:var(--muted);font-size:13px}
 /* On a phone the player is wider than the room left over, and it used to push
    the delete button off the screen. Give it a line of its own instead. */
 /* Below this the player and the text fight over the same room, long before
@@ -1108,8 +1125,6 @@ const shown=()=>{
   if(VOICES.size)f=f.filter(i=>VOICES.has(voiceOf(i)));
   return f;
 };
-// The one group we are "in" — only unambiguous while exactly one is picked.
-const soleTag=()=>TAGS.size===1?[...TAGS][0]:'';
 
 function chip(label,n,tag,set,where){
   const b=document.createElement('button');
@@ -1369,11 +1384,6 @@ async function load(){
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
 }
-const nameOf=id=>{
-  const o=$(id).selectedOptions[0];
-  return o&&o.text?o.text:'der aktuellen Stimme';
-};
-const voiceNow=()=>nameOf('voice');      // for new phrases
 async function loadVoices(current){
   const list=await (await fetch('/api/voices')).json();
   for(const id of ['voice']){
@@ -1598,12 +1608,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             force = bool(data.get("force"))
             only = set(data.get("ids") or [])     # empty = everything
             vid = (data.get("voice") or "").strip() or None
+            voices = available_voices(cfg)     # once for the whole request
             rendered = 0
             for item in items:
                 if only and item["id"] not in only:
                     continue
                 try:
-                    rendered += 1 if render(item, cfg, force, vid) else 0
+                    rendered += 1 if render(item, cfg, force, vid, voices) else 0
                 except Exception as e:
                     save_phrases(items)
                     return self._send(500, str(e), "text/plain")

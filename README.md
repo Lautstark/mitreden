@@ -154,7 +154,8 @@ schlimmer als keine Auswahl.
 Kerstin, beide CC0. Damit spricht mitreden sofort, ohne Konto, ohne Schlüssel,
 ohne dass je etwas dein Netz verlässt. Eigene Modelle kommen dazu, indem du
 eine `.onnx` samt zugehöriger `.onnx.json` in einen Ordner `voices/` neben
-deine Sätze legst.
+deine Sätze legst. Liegen deine Modelle woanders, sagt `MITREDEN_VOICES`, wo —
+im Abbild zeigt die Variable auf `/voices`.
 
 Von Hand geht es weiterhin über `config.json`, dann einmal
 `python3 mitreden.py build --all`.
