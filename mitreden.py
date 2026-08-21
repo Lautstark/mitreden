@@ -21,6 +21,7 @@ Usage:
     python3 mitreden.py edit hallo "Hallo!"
     python3 mitreden.py voices          # which voices are usable here?
     python3 mitreden.py voice piper:de_DE-thorsten-medium
+    python3 mitreden.py build --all --voice piper:de_DE-thorsten-medium
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
@@ -411,20 +412,26 @@ def esc(s):
 
 # ----------------------------------------------------------------- Rendering
 
-def render(item, cfg, force=False):
-    """One phrase -> raw file -> one output file. Returns True if it worked."""
-    fp = fingerprint(item["text"], cfg)
-    dest = out_file(item["id"], cfg)
+def render(item, cfg, force=False, voice_id=None):
+    """One phrase -> raw file -> one output file. Returns True if it worked.
+
+    voice_id records it with that voice and gives it to the phrase for good.
+    Without it, a phrase keeps the voice it already has — catching up on what
+    is missing must not quietly repaint the rest."""
+    vid = voice_id or phrase_voice(item, cfg)
+    vcfg = voice_config(cfg, vid) or cfg     # the voice may be gone from here
+    fp = fingerprint(item["text"], vcfg)
+    dest = out_file(item["id"], cfg)         # the format is not the voice's business
     if not force and item.get("fingerprint") == fp and dest.exists():
         return False
 
     RAW.mkdir(parents=True, exist_ok=True)
     raw = RAW / f"{item['id']}.wav"
-    backend = cfg["backend"]
+    backend = vcfg["backend"]
     if backend not in BACKENDS:
         raise RuntimeError(f"Unknown backend '{backend}' in config.json. "
                            f"Available: {', '.join(BACKENDS)}")
-    opt = cfg[backend]
+    opt = vcfg[backend]
     binary = opt.get("binary") or ({"say": "say"}.get(backend))
     if binary and not shutil.which(binary):
         raise RuntimeError(f"'{binary}' is not installed — backend "
@@ -437,8 +444,9 @@ def render(item, cfg, force=False):
                     "-af", FILTERS, *output_args(cfg), str(dest)], check=True)
 
     item["fingerprint"] = fp
-    item["backend"] = cfg["backend"]
-    item["voice"] = voice_label(cfg)     # which voice you are hearing, by name
+    item["backend"] = backend
+    item["voice_id"] = vid               # what to record it with next time
+    item["voice"] = voice_name(cfg, vid)  # and what you are hearing, by name
     return True
 
 
@@ -464,7 +472,7 @@ def prune_out(cfg):
     return gone
 
 
-def build(force=False):
+def build(force=False, voice_id=None):
     cfg = load_config()
     items = load_phrases()
     if not items:
@@ -473,7 +481,7 @@ def build(force=False):
     done = 0
     for item in items:
         try:
-            if render(item, cfg, force):
+            if render(item, cfg, force, voice_id):
                 print(f"  rendered   {item['id']}  — {item['text']}")
                 done += 1
         except Exception as e:
@@ -490,11 +498,23 @@ def build(force=False):
     print(f"Files are in {OUT} as .{out_format(cfg)}")
 
 
+def phrase_voice(item, cfg):
+    """The voice this phrase is measured against: its own, or — for one that
+    was never recorded — whatever is currently selected."""
+    return item.get("voice_id") or active_voice(cfg)
+
+
 def phrase_state(item, cfg):
-    """ok = current, missing = never rendered, stale = other voice or other text."""
+    """ok = current, missing = never rendered, stale = the text or the format
+    moved on since it was recorded.
+
+    Choosing another voice does not make a phrase stale any more. It keeps the
+    one it was recorded with until someone records it again — which is the
+    whole point of being able to mix them."""
     if not out_file(item["id"], cfg).exists():
         return "missing"
-    if item.get("fingerprint") != fingerprint(item["text"], cfg):
+    vcfg = voice_config(cfg, phrase_voice(item, cfg)) or cfg
+    if item.get("fingerprint") != fingerprint(item["text"], vcfg):
         return "stale"
     return "ok"
 
@@ -513,10 +533,10 @@ def piper_models():
 
 
 def pretty_piper(stem):
-    """de_DE-thorsten-medium -> Thorsten (piper, medium)"""
+    """de_DE-thorsten-medium -> Thorsten. The quality tier is part of the file
+    name, not of the voice — it does not belong in a picker."""
     rest = stem.split("-", 1)[1] if "-" in stem else stem
-    name, _, quality = rest.partition("-")
-    return f"{name.replace('_', ' ').title()} (piper{', ' + quality if quality else ''})"
+    return rest.partition("-")[0].replace("_", " ").title()
 
 
 AZURE_CACHE_DAYS = 7
@@ -571,12 +591,12 @@ def available_voices(cfg):
     there, and a local one only once the program behind it exists."""
     out = []
     for stem, path in piper_models().items():
-        out.append({"id": f"piper:{stem}", "label": pretty_piper(stem),
+        out.append({"id": f"piper:{stem}", "label": f"{pretty_piper(stem)} \u00b7 piper",
                     "backend": "piper", "model": str(path)})
     opt = cfg.get("azure") or {}
     if os.environ.get(opt.get("key_env", "")):
         for name in azure_voices(cfg):
-            out.append({"id": f"azure:{name}", "label": f"{short_voice(name)} (azure)",
+            out.append({"id": f"azure:{name}", "label": f"{short_voice(name)} \u00b7 azure",
                         "backend": "azure", "voice": name})
     opt = cfg.get("elevenlabs") or {}
     if os.environ.get(opt.get("key_env", "")):
@@ -585,7 +605,8 @@ def available_voices(cfg):
         opt = cfg.get(backend) or {}
         binary = opt.get("binary") or backend
         if shutil.which(binary):
-            out.append({"id": backend, "label": f"{opt.get('voice', backend)} ({backend})",
+            out.append({"id": backend,
+                        "label": f"{opt.get('voice', backend)} \u00b7 {backend}",
                         "backend": backend})
     active = active_voice(cfg)
     for v in out:
@@ -617,22 +638,45 @@ def active_voice(cfg):
     return backend
 
 
+def voice_config(cfg, vid):
+    """A copy of cfg pointed at one voice. Nothing is written.
+
+    This is what lets one phrase be recorded with Thorsten while the next
+    keeps Gisela: rendering never reads the configured voice directly, it
+    reads the voice that phrase was given."""
+    chosen = next((v for v in available_voices(cfg) if v["id"] == vid), None)
+    if chosen is None:
+        return None
+    out = json.loads(json.dumps(cfg))
+    out["backend"] = chosen["backend"]
+    if chosen["backend"] == "piper":
+        out.setdefault("piper", {})["model"] = chosen["model"]
+    if chosen["backend"] == "azure":
+        out.setdefault("azure", {})["voice"] = chosen["voice"]
+    return out
+
+
+def voice_name(cfg, vid):
+    """The label of one catalogue entry, or the id if it is gone from here."""
+    for v in available_voices(cfg):
+        if v["id"] == vid:
+            return v["label"]
+    return vid
+
+
 def use_voice(cfg, vid):
     """Point the config at one voice from the catalogue and write it down.
 
     Returns the new label, or None if that voice is not on offer. Everything
     else follows by itself: the voice is part of the fingerprint, so every
     phrase turns stale and asks to be recorded again."""
-    chosen = next((v for v in available_voices(cfg) if v["id"] == vid), None)
-    if chosen is None:
+    fresh = voice_config(cfg, vid)
+    if fresh is None:
         return None
-    cfg["backend"] = chosen["backend"]
-    if chosen["backend"] == "piper":
-        cfg.setdefault("piper", {})["model"] = chosen["model"]
-    if chosen["backend"] == "azure":
-        cfg.setdefault("azure", {})["voice"] = chosen["voice"]
+    cfg.clear()
+    cfg.update(fresh)
     CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
-    return chosen["label"]
+    return voice_name(cfg, vid)
 
 
 def voice_label(cfg):
@@ -818,25 +862,8 @@ button.quiet:hover{color:var(--text)}
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
 .bar .spacer{flex:1}
-.voice{color:var(--muted);font-size:13px;white-space:nowrap;
-  display:flex;align-items:center;gap:8px}
 /* Shaped like the group chips, so the header reads as one row of controls
    instead of one control and one browser default. */
-.voice select{font:inherit;font-size:13px;font-weight:600;color:var(--text);
-  background:var(--line-soft);border:1px solid var(--line);border-radius:999px;
-  padding:6px 30px 6px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center}
-.voice select:hover{background-color:#1e222c}
-.voice select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.voice select:disabled{color:var(--muted);cursor:default;opacity:1}
-.tools select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
-  background:var(--line-soft);border:1px solid var(--line);border-radius:10px;
-  padding:11px 32px 11px 14px;cursor:pointer;appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 13px center}
-.tools select:hover{background-color:#1e222c}
-.tools select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
 .tools input[type=search]{flex:1;min-width:200px}
 .tools button{padding:11px 15px;font-size:14px;white-space:nowrap}
@@ -854,12 +881,34 @@ button.quiet:hover{color:var(--text)}
    line of the text. */
 .item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
-.item input[type=checkbox]{margin-top:5px}
+/* Centred on the first line of the phrase — measured, not guessed. */
+.item input[type=checkbox]{margin-top:6px}
 .item .txt{padding-top:1px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
 .selall{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
-  cursor:pointer;user-select:none;margin:16px 2px 0}
+  cursor:pointer;user-select:none;white-space:nowrap}
+/* Both bulk actions live here, next to the selection they act on. Each sits
+   against its own knob: the format belongs to the download, the voice to the
+   recording. */
+.acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin:18px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+/* The two pairs travel together: wrapping them apart would put a lone voice
+   picker under the selection and read as if it belonged to it. */
+.acts .doing{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+.acts .pair{display:flex;align-items:center;gap:0}
+.acts .pair select{border-top-right-radius:0;border-bottom-right-radius:0;
+  border-right-color:transparent}
+.acts .pair button{border-top-left-radius:0;border-bottom-left-radius:0;
+  font-size:14px;padding:11px 15px;white-space:nowrap}
+.withvoice{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}
+.withvoice select,.acts select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
+  background:var(--line-soft);border:1px solid var(--line);border-radius:10px;
+  padding:11px 30px 11px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;max-width:230px}
+.withvoice select:hover,.acts select:hover{background-color:#1e222c}
+.withvoice select:focus-visible,.acts select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* The lamp sits with the words it belongs to instead of starting the row —
    one marker at the left edge (the checkbox) is enough. */
 .item .st{display:inline-flex;align-items:center;gap:6px}
@@ -928,42 +977,46 @@ button.quiet:hover{color:var(--text)}
   <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
     <button class="primary" id="add">Satz hinzufügen</button>
+    <span class="withvoice">Stimme <select id="voice"
+      title="Womit aufgenommen wird"></select></span>
   </div>
   <p class="status" id="s">&nbsp;</p>
 </div>
 
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
-  <span class="spacer"></span>
-  <span class="voice">Stimme <select id="voice" title="Gilt f\u00fcr alle S\u00e4tze"></select></span>
+  <button class="quiet" id="catchup" hidden>aufnehmen</button>
 </div>
 
 <div class="tools">
   <input id="q" type="search" placeholder="Sätze und Gruppen durchsuchen…" autocomplete="off">
-  <select id="dlfmt" title="In welchem Format das ZIP gepackt wird"></select>
-  <button id="dl" title="Alles, was die Liste gerade zeigt, als ZIP">Herunterladen</button>
 </div>
 
 <div class="chips" id="chips"></div>
 
-<label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
+<div class="acts">
+  <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
+  <span class="doing" id="doing" hidden>
+    <span class="pair">
+      <select id="dlfmt" title="In welchem Format gepackt wird"></select>
+      <button id="dl">Herunterladen</button>
+    </span>
+    <button id="rebuild">Aufnehmen</button>
+  </span>
+</div>
 
 <div id="list"></div>
-
-<div class="foot">
-  <button class="quiet" id="rebuild">Alle Sätze neu aufnehmen</button>
-</div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
 const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
-             stale:'noch in der alten Stimme'};
-// Naming the old voice beats "old": you can see at a glance whether the row
-// is left over from Gisela or from a piper voice. A current recording is
-// by definition in the voice named in the header, so repeating it is noise.
-const stateText=it=>it.state==='stale'&&it.voice?'noch in '+it.voice
-                  :LABEL[it.state];
+             stale:'ge\\u00e4ndert seit der Aufnahme'};
+// Every row names its own voice now: they can differ from each other, so the
+// header no longer answers the question for the whole list.
+const stateText=it=>it.state==='missing'?LABEL.missing
+                  :(it.state==='stale'?'ge\\u00e4ndert seit der Aufnahme':'aufgenommen')+
+                   (it.voice?' \\u2014 '+it.voice:'');
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
@@ -1056,9 +1109,6 @@ function draw(){
         (pending?', '+pending+' offen':', alle aufgenommen')
       : items.length+' von '+ALL.length+' S\\u00e4tzen'+(pending?', '+pending+' offen':'');
 
-  const ready=items.filter(i=>i.state!=='missing').length;
-  $('dl').textContent=ready?ready+' herunterladen':'Herunterladen';
-  $('dl').disabled=!ready;
 
   $('list').innerHTML='';
   if(!items.length){
@@ -1129,7 +1179,7 @@ function openMenu(btn,it){
   add('Text \\u00e4ndern',false,()=>editText(it));
   if(it.state!=='missing')
     add('Datei herunterladen ('+$('dlfmt').value.toUpperCase()+')',false,()=>grab(it));
-  add(it.state==='missing'?'Aufnehmen':'Neu aufnehmen',false,()=>redo(it));
+  add('Mit '+voiceNow()+' aufnehmen',false,()=>redo(it));
   add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
       false,()=>editTags(it));
   add('Satz l\\u00f6schen',true,()=>del(it));
@@ -1178,20 +1228,15 @@ async function loadVoices(current){
   }
   sel.dataset.was=sel.value;
 }
+// Picking a voice records nothing. It is the voice the next recording gets —
+// existing phrases keep theirs until you record them again.
 $('voice').onchange=async e=>{
   const sel=e.target, id=sel.value, was=sel.dataset.was;
   const r=await post('/api/voice',{id});
   if(!r){sel.value=was;return}
-  if(r.stale&&!confirm('Stimme: '+r.label+'\\n\\n'+r.stale+' S\\u00e4tze klingen jetzt '+
-       'nach der alten Stimme und werden neu aufgenommen. Das dauert einen Moment.')){
-    await post('/api/voice',{id:was});    // put it back, nothing happened
-    sel.value=was;say('Stimme unver\\u00e4ndert.');return;
-  }
   sel.dataset.was=id;
-  say('Wird mit '+r.label+' neu aufgenommen \\u2026');
-  const b=await post('/api/build',{force:true});
-  if(b)say(b.rendered+' S\\u00e4tze mit '+r.label+' aufgenommen.');
-  load();
+  say('Neue Aufnahmen bekommen '+r.label+'.');
+  draw();                                 // labels name the voice
 };
 function grab(it){
   const a=document.createElement('a');
@@ -1200,7 +1245,7 @@ function grab(it){
 }
 async function redo(it){
   say('\\u201E'+it.text+'\\u201C wird mit '+voiceNow()+' aufgenommen \\u2026');
-  const r=await post('/api/build',{ids:[it.id],force:true});
+  const r=await post('/api/build',{ids:[it.id],force:true,voice:$('voice').value});
   if(r){say(r.rendered?'Aufgenommen: '+it.id:'Nichts zu tun.');load()}
 }
 async function editText(it){
@@ -1250,7 +1295,8 @@ $('add').onclick=async()=>{
   }
 };
 $('dl').onclick=async()=>{
-  const vis=shown(), ids=vis.filter(i=>i.state!=='missing').map(i=>i.id);
+  const vis=SEL.size?ALL.filter(i=>SEL.has(i.id)):shown();
+  const ids=vis.filter(i=>i.state!=='missing').map(i=>i.id);
   if(!ids.length){say('Es ist noch nichts aufgenommen.');return}
   say(ids.length+' S\\u00e4tze werden gepackt \\u2026');
   const r=await fetch('/api/download',{method:'POST',
@@ -1280,36 +1326,40 @@ function refreshSel(){
   $('selalltxt').textContent=SEL.size
     ? SEL.size+' ausgew\\u00e4hlt'+(versteckt?', '+versteckt+' davon ausgeblendet':'')
     : 'Alle ausw\\u00e4hlen';
-  // One button for two jobs, and its label always says which one it is doing:
-  // with nothing ticked it catches up on what is not recorded yet, which is
-  // the everyday case; with a selection it replaces exactly those.
+  // The two actions belong to the selection and only show up with one. What
+  // the search and the groups do is filter, nothing else.
+  $('doing').hidden=!SEL.size;
+  const bereit=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').length;
+  $('dl').textContent=bereit+' herunterladen';
+  $('dl').disabled=!bereit;
+  $('rebuild').textContent='Mit '+voiceNow()+' aufnehmen';
+
+  // Recording happens by itself when you add or edit a phrase. Something left
+  // open means a recording failed or the format changed — rare, so the offer
+  // only appears when it is true.
   const offen=ALL.filter(i=>i.state!=='ok').length;
-  const b=$('rebuild');
-  b.disabled=!SEL.size&&!offen;
-  b.textContent=SEL.size===ALL.length&&ALL.length?'Alle S\\u00e4tze neu aufnehmen'
-    :SEL.size?SEL.size+(SEL.size===1?' Satz':' S\\u00e4tze')+' neu aufnehmen'
-    :offen?offen+(offen===1?' offenen aufnehmen':' offene aufnehmen')
-    :'Alles ist aufgenommen';
+  const c=$('catchup');
+  c.hidden=!offen;
+  c.textContent=offen+(offen===1?' offenen aufnehmen':' offene aufnehmen');
 }
 $('selall').onchange=e=>{
   for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
   draw();
 };
+$('catchup').onclick=async()=>{
+  say('Was offen ist, wird aufgenommen \\u2026');
+  const r=await post('/api/build',{force:false});
+  if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}
+};
 $('rebuild').onclick=async()=>{
   const ids=[...SEL];
-  if(!ids.length){                       // catching up replaces nothing
-    say('Was fehlt, wird mit '+voiceNow()+' aufgenommen \\u2026');
-    const r=await post('/api/build',{force:false});
-    if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}
-    return;
-  }
+  if(!ids.length)return;
   const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
     :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
-  if(!confirm(wieviele+' mit '+voiceNow()+' neu aufnehmen?\\n\\n'+
-              'Was schon in dieser Stimme aufgenommen ist, wird ebenfalls '+
-              'ersetzt.'))return;
-  say(wieviele+' mit '+voiceNow()+' neu aufnehmen \\u2026');
-  const r=await post('/api/build',{force:true,ids});
+  if(!confirm(wieviele+' mit '+voiceNow()+' aufnehmen?\\n\\n'+
+              'Bestehende Aufnahmen dieser S\\u00e4tze werden ersetzt.'))return;
+  say(wieviele+' mit '+voiceNow()+' aufnehmen \\u2026');
+  const r=await post('/api/build',{force:true,ids,voice:$('voice').value});
   if(r){say(r.rendered+' neu aufgenommen.');load()}};
 load();
 </script>
@@ -1420,11 +1470,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if label is None:
                 return self._send(404, "That voice is not available here.",
                                   "text/plain")
-            # Nothing is re-recorded here. The phrases have just turned stale,
-            # and the page asks before putting the machine to work.
-            stale = sum(1 for i in items if phrase_state(i, cfg) != "ok")
-            return self._send(200, json.dumps({"ok": True, "label": label,
-                                               "stale": stale},
+            # Nothing is recorded and nothing turns stale: this only says what
+            # the next recording should sound like.
+            return self._send(200, json.dumps({"ok": True, "label": label},
                                               ensure_ascii=False))
 
         if self.path == "/api/download":
@@ -1436,12 +1484,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/api/build":
             force = bool(data.get("force"))
             only = set(data.get("ids") or [])     # empty = everything
+            vid = (data.get("voice") or "").strip() or None
             rendered = 0
             for item in items:
                 if only and item["id"] not in only:
                     continue
                 try:
-                    rendered += 1 if render(item, cfg, force) else 0
+                    rendered += 1 if render(item, cfg, force, vid) else 0
                 except Exception as e:
                     save_phrases(items)
                     return self._send(500, str(e), "text/plain")
@@ -1583,7 +1632,13 @@ def main():
         for pid in missing:
             print(f"  not recorded yet   {pid}", file=sys.stderr)
     elif cmd == "build":
-        build(force="--all" in args)
+        vid = None
+        for i, a in enumerate(args):
+            if a == "--voice" and i + 1 < len(args):
+                vid = args[i + 1]
+            elif a.startswith("--voice="):
+                vid = a.split("=", 1)[1]
+        build(force="--all" in args or vid is not None, voice_id=vid)
     elif cmd == "voices":
         cfg = load_config()
         found = available_voices(cfg)
@@ -1604,7 +1659,9 @@ def main():
                   file=sys.stderr)
             sys.exit(1)
         print(f"voice: {label}")
-        build(force=True)          # everything sounded like the old one
+        print("Everything recorded from now on uses it. Existing phrases keep "
+              "theirs — move them over with:")
+        print(f"  mitreden.py build --all --voice {args[1]}")
     elif cmd == "backends":
         check_backends()
     else:

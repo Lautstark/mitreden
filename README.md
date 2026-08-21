@@ -119,18 +119,22 @@ Satz kaum hörbar und der nächste brüllt.
 
 ## Die Stimme wählen
 
-Oben rechts steht ein Auswahlfeld mit allem, was auf dieser Installation
-nutzbar ist. Umschalten fragt einmal nach und nimmt dann alle Sätze neu auf —
-denn eine Stimme für alles ist der ganze Sinn der Sache.
+Neben „Satz hinzufügen" steht die Stimme. Sie bestimmt, womit aufgenommen
+wird: jeder neue Satz bekommt sie, bestehende behalten ihre, bis du sie
+ankreuzt und „Mit … aufnehmen" drückst. Eine Stimme für alles bleibt der
+Normalfall — „Alle auswählen", einmal aufnehmen, fertig. Aber wenn ein Satz
+jemand anderem gehört oder in einer anderen Sprache ist, darf er anders
+klingen.
+
+In jeder Zeile steht, in welcher Stimme sie aufgenommen ist.
 
 ```
-python3 mitreden.py voices                            # was geht hier?
-python3 mitreden.py voice piper:de_DE-thorsten-medium  # umschalten
+python3 mitreden.py voices                              # was geht hier?
+python3 mitreden.py voice piper:de_DE-thorsten-medium   # ab jetzt damit
+python3 mitreden.py build --all --voice piper:de_DE-thorsten-medium
 ```
 
-Sätze, die noch in der vorherigen Stimme aufgenommen sind, sagen das in ihrer
-Zeile: „noch in Kerstin (piper, low)". So siehst du auf einen Blick, was aus
-der Reihe fällt — etwa wenn du beim Umschalten abgebrochen hast.
+Der letzte Befehl zieht alle bestehenden Sätze auf diese Stimme um.
 
 Bei Azure stehen alle Stimmen deiner Sprache zur Wahl — für Deutsch sind das
 17. Die Liste kommt von Azure selbst und wird eine Woche lang zwischen-
@@ -227,11 +231,12 @@ python3 mitreden.py dedupe --apply   # führt es wirklich zusammen
 
 Ohne `--apply` wird nichts angefasst.
 
-**Aufnehmen.** Unter der Liste steht ein Knopf, und was er tut, steht drauf.
-Ohne Auswahl holt er nach, was noch nicht aufgenommen ist („2 offene
-aufnehmen"). Kreuzt du vor den Zeilen etwas an, nimmt er genau das neu auf —
-einen Satz, eine Handvoll oder alles über „Alle auswählen". Ist nichts offen
-und nichts angekreuzt, ist er ausgegraut. Ein Filter lässt die Auswahl unangetastet und sagt dir,
+**Auswählen.** Aufgenommen wird von selbst — beim Hinzufügen und nachdem du
+einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
+beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und in einer
+anderen Stimme aufnehmen. Beide Knöpfe erscheinen, sobald etwas angekreuzt
+ist. Sollte doch einmal etwas offen bleiben, weil eine Aufnahme scheiterte,
+bietet die Zeile über der Liste es an. Ein Filter lässt die Auswahl unangetastet und sagt dir,
 wenn etwas Ausgewähltes gerade nicht zu sehen ist. Einen einzelnen Satz nimmt
 auch das ⋮ neu auf.
 
