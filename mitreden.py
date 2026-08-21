@@ -922,9 +922,9 @@ button.quiet:hover{color:var(--text)}
 <p class="sub">Ein Satz, eine Stimme, eine Audiodatei.</p>
 
 <div class="hero">
-  <label for="t">Was soll sie sagen können?</label>
+  <label for="t">Neue Sätze, einer pro Zeile</label>
   <textarea id="t" placeholder="Nochmal!&#10;Ich bin dran.&#10;Lass mich in Ruhe."></textarea>
-  <label class="tight" for="nt">Gruppen — optional, mit Komma getrennt</label>
+  <label class="tight" for="nt">Gruppen (optional, mit Komma getrennt)</label>
   <input id="nt" type="text" placeholder="kindergarten, spiel" autocomplete="off">
   <div class="row">
     <button class="primary" id="add">Satz hinzufügen</button>
@@ -1059,8 +1059,6 @@ function draw(){
   const ready=items.filter(i=>i.state!=='missing').length;
   $('dl').textContent=ready?ready+' herunterladen':'Herunterladen';
   $('dl').disabled=!ready;
-  $('nt').placeholder=soleTag()?soleTag()+' \\u2014 die Gruppe, in der du bist'
-                               :'kindergarten, spiel';
 
   $('list').innerHTML='';
   if(!items.length){
@@ -1239,8 +1237,9 @@ $('q').oninput=draw;
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\\n').map(s=>s.trim()).filter(Boolean);
   if(!lines.length){say('Erst etwas eintippen.');return}
-  let tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!tags.length&&soleTag())tags=[soleTag()];   // adding inside a group stays in it
+  // Only what stands in the field. A filter further down is a way of looking
+  // at the list, not a hidden instruction about the phrase you are typing.
+  const tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
   say('Wird aufgenommen \\u2026');
   const res=await post('/api/phrases',{lines,tags});
   if(res){

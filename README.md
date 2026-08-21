@@ -203,7 +203,9 @@ keine Ordner** — ein Satz kann in mehreren stecken:
   "tags": ["kindergarten", "zuhause", "notfall"] }
 ```
 
-Über der Liste stehen die Gruppen zum Anklicken, daneben ein Suchfeld. Mehrere
+Über der Liste stehen die Gruppen zum Anklicken, daneben ein Suchfeld. Beides
+ändert nur, was du siehst — was ein neuer Satz für Gruppen bekommt, steht
+allein in seinem Feld oben. Mehrere
 Gruppen lassen sich gleichzeitig wählen und verknüpfen mit ODER; der Freitext
 schränkt zusätzlich ein. Die Suche läuft im Browser, ohne Warten, über Text
 *und* Gruppennamen, und ist tolerant bei Umlauten: `hor auf`, `hoer auf` und
