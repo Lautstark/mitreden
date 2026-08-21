@@ -18,3 +18,6 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+
+# The tests are not part of the image.
+tests/

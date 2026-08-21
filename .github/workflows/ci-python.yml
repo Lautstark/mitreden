@@ -1,0 +1,75 @@
+name: Tests
+
+# Only when something that can break them changes. The program is not one
+# file: it reads ui.html, the language files and the icon from beside itself,
+# so all of them belong in this list.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+      - ui.html
+      - icon.svg
+      - lang/**
+      - tests/**
+      - .github/workflows/ci-python.yml
+  pull_request:
+    paths:
+      - '**.py'
+      - ui.html
+      - icon.svg
+      - lang/**
+      - tests/**
+      - .github/workflows/ci-python.yml
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencies
+        # No pip install: mitreden has no Python dependencies and that is on
+        # purpose. ffmpeg is what it genuinely cannot work without, and
+        # espeak-ng gives the last step below a voice to record with — a Mac
+        # has `say` for that, a runner has neither unless we say so.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+
+      - name: It imports
+        run: python -c "import mitreden"
+
+      - name: The page is there and is a page
+        # ui.html used to be a string inside mitreden.py. Now it is a file that
+        # can be forgotten in a commit, so check the program can still find it.
+        run: |
+          python -c "
+          import mitreden
+          page = mitreden.page()
+          assert page.startswith('<!doctype html>'), page[:40]
+          assert page.rstrip().endswith('</html>'), page[-40:]
+          assert '</script>' in page, 'the page has lost its script'
+          print(f'{len(page)} characters')"
+
+      - name: Tests
+        # Every tests/test_*.py, and the folder is the list. What each one is
+        # for is in its own docstring, which is the place that can keep it
+        # true. Run one on its own with:
+        #   python3 tests/run.py voice
+        run: python tests/run.py
+
+      - name: Recording actually works
+        # Everything above stubs the speaking out, because what it checks is
+        # not the speaking. This is the one step that runs the real chain
+        # end to end: a voice, then ffmpeg, then a file you could play.
+        run: |
+          export MITREDEN_DIR="$(mktemp -d)"
+          python mitreden.py add "Ein Satz zum Testen." --tags ci
+          test -s "$MITREDEN_DIR/out/ein-satz-zum-testen.mp3"
+          python mitreden.py backends
+          echo "recorded $(ls "$MITREDEN_DIR/out" | wc -l) file(s)"
