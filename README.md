@@ -207,9 +207,16 @@ keine Ordner** — ein Satz kann in mehreren stecken:
   "tags": ["kindergarten", "zuhause", "notfall"] }
 ```
 
-Über der Liste stehen die Gruppen zum Anklicken, daneben ein Suchfeld. Beides
-ändert nur, was du siehst — was ein neuer Satz für Gruppen bekommt, steht
-allein in seinem Feld oben. Mehrere
+Über der Liste stehen zwei Reihen zum Anklicken: **Gruppen** und **Stimmen**,
+dazu ein Suchfeld. In der Stimmenreihe steht auch „Nicht aufgenommen", falls
+etwas fehlt. Mehreres lässt sich gleichzeitig wählen, und die Reihen wirken
+zusammen: Gruppe „spiel" und Stimme „Kerstin" zeigt, was beides ist.
+
+Woran du Filter und Aktionen auseinanderhältst: **Filter sind Pillen, Aktionen
+sind Kästen.** Die Pillen ändern nur, was du siehst. Die Knöpfe im abgesetzten
+Kasten darunter tun etwas — und sie erscheinen erst, wenn du Sätze angekreuzt
+hast. Was ein neuer Satz für Gruppen bekommt, steht allein in seinem Feld
+oben. Mehrere
 Gruppen lassen sich gleichzeitig wählen und verknüpfen mit ODER; der Freitext
 schränkt zusätzlich ein. Die Suche läuft im Browser, ohne Warten, über Text
 *und* Gruppennamen, und ist tolerant bei Umlauten: `hor auf`, `hoer auf` und
@@ -235,7 +242,9 @@ Ohne `--apply` wird nichts angefasst.
 einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
 beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und **auf
 eine andere Stimme umstellen**. Beide Knöpfe erscheinen, sobald etwas
-angekreuzt ist.
+angekreuzt ist, und jeder bringt seine eigene Einstellung mit: das Format beim
+Herunterladen, die Zielstimme beim Umstellen. Letztere ist unabhängig von der
+Stimme oben — die gilt für neue Sätze.
 
 Sollte doch einmal eine Aufnahme scheitern, sagt es ein Banner über der Liste
 und bietet an, sie nachzuholen — jeder Satz in seiner eigenen Stimme. Das ist

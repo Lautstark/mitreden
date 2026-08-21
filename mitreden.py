@@ -894,6 +894,15 @@ button.quiet:hover{color:var(--text)}
 /* Only visible when something really is missing — a recording that failed,
    or a format that changed under the existing files. Each phrase keeps its
    own voice here; this repairs, it does not repaint. */
+/* Filters are pills, actions are boxes — the two zones must never be mistaken
+   for each other. The labels say which axis a row narrows. */
+.filters{margin:14px 2px 0}
+.frow{display:flex;align-items:baseline;gap:10px;margin-top:10px}
+.flabel{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+  flex:none;width:64px;padding-top:6px}
+.frow .chips{margin:0}
+.acts{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px}
 .alarm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   background:var(--panel);border:1px solid var(--warn);border-radius:12px;
   padding:12px 14px;margin:14px 2px 0;font-size:14px}
@@ -1006,7 +1015,10 @@ button.quiet:hover{color:var(--text)}
   <input id="q" type="search" placeholder="Sätze und Gruppen durchsuchen…" autocomplete="off">
 </div>
 
-<div class="chips" id="chips"></div>
+<div class="filters">
+  <div class="frow"><span class="flabel">Gruppen</span><span class="chips" id="chips"></span></div>
+  <div class="frow" id="vrow" hidden><span class="flabel">Stimmen</span><span class="chips" id="vchips"></span></div>
+</div>
 
 <div class="acts">
   <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
@@ -1015,7 +1027,10 @@ button.quiet:hover{color:var(--text)}
       <select id="dlfmt" title="In welchem Format gepackt wird"></select>
       <button id="dl">Herunterladen</button>
     </span>
-    <button id="rebuild">Aufnehmen</button>
+    <span class="pair">
+      <select id="tovoice" title="Auf welche Stimme"></select>
+      <button id="rebuild">Umstellen</button>
+    </span>
   </span>
 </div>
 
@@ -1064,25 +1079,53 @@ function found(){
   const a=bare(q), b=umlaut(q);
   return ALL.filter(i=>{const h=hay(i);return h.includes(a)||h.includes(b)});
 }
-// What the list shows: search first, then the group filter on top.
-const shown=()=>{const f=found();
-  return TAGS.size?f.filter(i=>(i.tags||[]).some(t=>TAGS.has(t))):f};
+// What the list shows: search first, then the group filter, then the voice
+// filter. Every axis narrows; none of them changes anything.
+const voiceOf=i=>i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
+const shown=()=>{
+  let f=found();
+  if(TAGS.size)f=f.filter(i=>(i.tags||[]).some(t=>TAGS.has(t)));
+  if(VOICES.size)f=f.filter(i=>VOICES.has(voiceOf(i)));
+  return f;
+};
 // The one group we are "in" — only unambiguous while exactly one is picked.
 const soleTag=()=>TAGS.size===1?[...TAGS][0]:'';
 
-function chip(label,n,tag){
+function chip(label,n,tag,set,where){
   const b=document.createElement('button');
-  b.className='chip'+((tag===null?!TAGS.size:TAGS.has(tag))?' on':'');
+  b.className='chip'+((tag===null?!set.size:set.has(tag))?' on':'');
   b.textContent=label;
   const s=document.createElement('span');s.className='n';s.textContent=n;
   b.appendChild(s);
   b.onclick=()=>{
-    if(tag===null)TAGS.clear();
-    else if(TAGS.has(tag))TAGS.delete(tag);
-    else TAGS.add(tag);
+    if(tag===null)set.clear();
+    else if(set.has(tag))set.delete(tag);
+    else set.add(tag);
     draw();
   };
-  $('chips').appendChild(b);
+  $(where).appendChild(b);
+}
+
+// Which voices are picked. NOCHNICHT stands for "not recorded at all" — the
+// same question ("what does this sound like?") with the answer "nothing yet".
+const VOICES=new Set(), NOCHNICHT='\\u2205';
+
+function drawVoiceChips(hits){
+  const counts={};
+  for(const i of hits){
+    const key=i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
+    counts[key]=(counts[key]||0)+1;
+  }
+  for(const v of VOICES)if(!(v in counts))counts[v]=0;
+  const names=Object.keys(counts).sort((a,b)=>
+    a===NOCHNICHT?1:b===NOCHNICHT?-1:a.localeCompare(b,'de'));
+  $('vchips').innerHTML='';
+  // One voice and nothing missing is no choice at all — the row stays away.
+  $('vrow').hidden=names.length<2&&!VOICES.size;
+  if($('vrow').hidden)return;
+  chip('Alle',hits.length,null,VOICES,'vchips');
+  for(const n of names)
+    chip(n===NOCHNICHT?'Nicht aufgenommen':n,counts[n],n,VOICES,'vchips');
 }
 
 function drawChips(hits){
@@ -1094,13 +1137,13 @@ function drawChips(hits){
     .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
   $('chips').innerHTML='';
   if(!names.length)return;
-  chip('Alle',hits.length,null);
+  chip('Alle',hits.length,null,TAGS,'chips');
   let vis=names;
   if(!ALL_TAGS&&names.length>CHIP_CAP){
     const top=names.slice(0,CHIP_CAP);
     vis=top.concat([...TAGS].filter(t=>!top.includes(t)));
   }
-  for(const n of vis)chip(n,counts[n],n);
+  for(const n of vis)chip(n,counts[n],n,TAGS,'chips');
   if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
     const b=document.createElement('button');
     b.className='chip fold';
@@ -1115,6 +1158,7 @@ function draw(){
 
   // Chips count within the current search, so they stay useful while typing.
   drawChips(hits);
+  drawVoiceChips(hits);
 
   const pending=items.filter(i=>i.state!=='ok').length;
   $('count').textContent = !ALL.length ? 'Noch keine S\\u00e4tze'
@@ -1193,7 +1237,7 @@ function openMenu(btn,it){
   add('Text \\u00e4ndern',false,()=>editText(it));
   if(it.state!=='missing')
     add('Datei herunterladen ('+$('dlfmt').value.toUpperCase()+')',false,()=>grab(it));
-  add('Auf '+voiceNow()+' umstellen',false,()=>redo(it));
+  add('Auf '+targetVoice()+' umstellen',false,()=>redo(it));
   add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
       false,()=>editTags(it));
   add('Satz l\\u00f6schen',true,()=>del(it));
@@ -1214,10 +1258,12 @@ async function load(){
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
 }
-const voiceNow=()=>{
-  const o=$('voice').selectedOptions[0];
+const nameOf=id=>{
+  const o=$(id).selectedOptions[0];
   return o&&o.text?o.text:'der aktuellen Stimme';
 };
+const voiceNow=()=>nameOf('voice');      // for new phrases
+const targetVoice=()=>nameOf('tovoice');  // for the ones you switch over
 function loadFormats(current){
   const sel=$('dlfmt');
   if(sel.dataset.ready&&sel.dataset.ready===current)return;
@@ -1227,20 +1273,22 @@ function loadFormats(current){
   sel.dataset.ready=current;               // the recorded format goes first
 }
 async function loadVoices(current){
-  const sel=$('voice');
   const list=await (await fetch('/api/voices')).json();
-  sel.innerHTML='';
-  if(!list.length){                      // nothing usable: just show it
-    sel.appendChild(new Option(current||'\\u2014',''));
-    sel.disabled=true;return;
+  for(const id of ['voice','tovoice']){
+    const sel=$(id), keep=sel.value;
+    sel.innerHTML='';
+    if(!list.length){                    // nothing usable: just show it
+      sel.appendChild(new Option(current||'\\u2014',''));
+      sel.disabled=true;continue;
+    }
+    sel.disabled=false;
+    for(const v of list){
+      const o=new Option(v.label,v.id);
+      if(v.id===keep||(!keep&&v.active))o.selected=true;
+      sel.appendChild(o);
+    }
   }
-  sel.disabled=false;
-  for(const v of list){
-    const o=new Option(v.label,v.id);
-    if(v.active)o.selected=true;
-    sel.appendChild(o);
-  }
-  sel.dataset.was=sel.value;
+  $('voice').dataset.was=$('voice').value;
 }
 // Picking a voice records nothing. It is the voice the next recording gets —
 // existing phrases keep theirs until you record them again.
@@ -1258,8 +1306,8 @@ function grab(it){
   document.body.appendChild(a);a.click();a.remove();
 }
 async function redo(it){
-  say('\\u201E'+it.text+'\\u201C wird mit '+voiceNow()+' aufgenommen \\u2026');
-  const r=await post('/api/build',{ids:[it.id],force:true,voice:$('voice').value});
+  say('\\u201E'+it.text+'\\u201C wird auf '+targetVoice()+' umgestellt \\u2026');
+  const r=await post('/api/build',{ids:[it.id],force:true,voice:$('tovoice').value});
   if(r){say(r.rendered?'Aufgenommen: '+it.id:'Nichts zu tun.');load()}
 }
 async function editText(it){
@@ -1348,7 +1396,7 @@ function refreshSel(){
   $('dl').disabled=!bereit;
   // "Record with X" read like a repair. It changes which voice these phrases
   // speak in — so that is what it says.
-  $('rebuild').textContent='Auf '+voiceNow()+' umstellen';
+  $('rebuild').textContent='Umstellen';
 
   // Recording happens by itself when you add or edit a phrase. Something left
   // open means a recording failed or the format changed — rare, so the offer
@@ -1373,11 +1421,11 @@ $('rebuild').onclick=async()=>{
   if(!ids.length)return;
   const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
     :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
-  if(!confirm(wieviele+' auf '+voiceNow()+' umstellen?\\n\\n'+
+  if(!confirm(wieviele+' auf '+targetVoice()+' umstellen?\\n\\n'+
               'Die bestehenden Aufnahmen werden dabei ersetzt.'))return;
-  say(wieviele+' wird auf '+voiceNow()+' umgestellt \\u2026');
-  const r=await post('/api/build',{force:true,ids,voice:$('voice').value});
-  if(r){say(r.rendered+' umgestellt auf '+voiceNow()+'.');load()}};
+  say(wieviele+' wird auf '+targetVoice()+' umgestellt \\u2026');
+  const r=await post('/api/build',{force:true,ids,voice:$('tovoice').value});
+  if(r){say(r.rendered+' umgestellt auf '+targetVoice()+'.');load()}};
 load();
 </script>
 </html>"""
