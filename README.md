@@ -208,14 +208,18 @@ Handy aus Sätze hinzufügen kannst und `phrases.json` in der NAS-Sicherung
 liegt, gibt es ein Abbild:
 
 ```
+docker compose pull           # das fertige Abbild holen
 docker compose up -d          # http://localhost:8770
 ```
+
+Gebaut wird es in der CI für amd64 und arm64 und liegt danach als
+`ghcr.io/steffipetaffy/mitreden:latest` bereit — dein NAS zieht es, statt
+selbst zu bauen. Wenn du lieber selbst baust: `docker compose up -d --build`.
 
 Compose reicht den Projektordner als `/app` hinein. `phrases.json`,
 `config.json` und `out/` liegen damit auf dem NAS und überstehen jedes
 Neubauen; der Azure-Schlüssel kommt aus der `.env` in genau diesem Ordner und
-steckt nie im Abbild. Gebaut wird das Abbild in der CI für amd64 und arm64 und
-liegt danach in der GitHub Container Registry.
+steckt nie im Abbild.
 
 Auf einer Synology sind zwei Dinge zu tun. Erstens die eigene Kennung: sonst
 läuft der Container als root, und was er anlegt, gehört danach root und ist

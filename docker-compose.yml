@@ -1,7 +1,9 @@
 services:
   mitreden:
+    # The NAS pulls this instead of building it — the CI builds amd64 and
+    # arm64 on every push. To build locally instead: docker compose up --build
+    image: ghcr.io/steffipetaffy/mitreden:latest
     build: .
-    image: mitreden
     container_name: mitreden
     ports:
       # Another port on the host, in case something already runs there:
