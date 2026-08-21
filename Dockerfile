@@ -1,13 +1,13 @@
-# mitreden auf einem NAS oder einem anderen Rechner, der durchläuft.
+# mitreden on a NAS, or any other machine that stays on.
 #
-# Das Abbild bringt nur die Laufzeit mit — Python und ffmpeg. Das Projekt
-# selbst wird als Verzeichnis hineingereicht, damit phrases.json, config.json
-# und out/ auf dem NAS liegen und dort gesichert werden.
+# The image carries the runtime and nothing else — Python and ffmpeg. The
+# project itself is mounted in, so phrases.json, config.json and out/ live on
+# the NAS and end up in its backup.
 
 FROM python:3.12-slim
 
-# ffmpeg schneidet die Stille und normalisiert die Lautheit. Ohne ffmpeg
-# funktioniert nichts. Pip-Pakete braucht mitreden keine.
+# ffmpeg trims the silence and evens out the loudness. Nothing works without
+# it. Pip packages mitreden needs none.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg \
  && rm -rf /var/lib/apt/lists/*
@@ -15,11 +15,11 @@ RUN apt-get update \
 WORKDIR /app
 COPY . .
 
-# Ohne das puffert Python seine Ausgabe, sobald sie nicht im Terminal landet —
-# "docker logs" bliebe dann leer, bis der Container aufhört.
+# Without this Python buffers its output as soon as it is not a terminal, and
+# `docker logs` stays empty until the container stops.
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8770
-# Im Container muss auf allen Adressen gelauscht werden, sonst kommt die
-# Portweiterleitung nicht durch. Nach außen begrenzt das die Portfreigabe.
+# In a container it has to listen on every address, otherwise the port forward
+# never reaches it. What gets out is decided by the published port.
 CMD ["python", "mitreden.py", "ui", "--host", "0.0.0.0"]

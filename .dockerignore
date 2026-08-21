@@ -1,5 +1,5 @@
-# Nichts Persönliches ins Abbild: die Sätze, das Fertige und der Schlüssel
-# kommen zur Laufzeit aus dem eingehängten Verzeichnis.
+# Nothing personal in the image: the phrases, everything made from them and
+# the key all come from the mounted directory at runtime.
 phrases.json
 phrases.json.*
 out/

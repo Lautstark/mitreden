@@ -26,19 +26,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Docker-Tags müssen klein geschrieben sein, GitHub-Benutzernamen
-      # nicht — deshalb hier umsetzen.
+      # Docker tags have to be lowercase, GitHub usernames do not — so convert
+      # it here.
       - name: Lowercase the image name
         run: |
-          echo "ABBILD=ghcr.io/$(echo '${{ github.repository }}' \
+          echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' \
             | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
-      # amd64 und arm64, damit auch NAS-Modelle mit ARM es ziehen können,
-      # statt es selbst zu bauen.
+      # amd64 and arm64, so NAS models on ARM can pull the image instead of
+      # building it themselves.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.ABBILD }}:latest
+          tags: ${{ env.IMAGE }}:latest
