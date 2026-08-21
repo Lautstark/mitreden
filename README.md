@@ -50,7 +50,8 @@ sudo apt install ffmpeg      # Debian/Ubuntu
 
 Dazu eine Stimme. `say` (macOS) und `espeak` (Linux) sind schon da und kosten
 nichts, klingen aber roboterhaft — gut genug, um zu prüfen, ob die Kette läuft.
-Für den echten Einsatz siehe [Die Stimme wählen](#die-stimme-wählen).
+Wer den Container nimmt, hat zwei ordentliche deutsche Stimmen schon dabei.
+Siehe [Die Stimme wählen](#die-stimme-wählen).
 
 ## Loslegen
 
@@ -89,9 +90,9 @@ Eintrag der richtige Weg.
 
 ## Was rauskommt
 
-Pro Satz eine Datei in `out/`, benannt nach seiner ID. Standard ist WAV mit
-44,1 kHz mono; das Format steht in `config.json` und kann alles sein, was
-ffmpeg schreiben kann:
+Pro Satz eine Datei in `out/`, benannt nach seiner ID. Standard ist MP3 mit
+44,1 kHz mono — das versteht so ziemlich jedes Gerät und jede App. Das Format
+steht in `config.json` und kann alles sein, was ffmpeg schreiben kann:
 
 ```json
 { "output": { "format": "mp3", "sample_rate": 44100, "channels": 1,
@@ -114,7 +115,27 @@ Satz kaum hörbar und der nächste brüllt.
 
 ## Die Stimme wählen
 
-Das Backend steht in `config.json`. Umstellen, dann einmal
+Oben rechts steht ein Auswahlfeld mit allem, was auf dieser Installation
+nutzbar ist. Umschalten fragt einmal nach und nimmt dann alle Sätze neu auf —
+denn eine Stimme für alles ist der ganze Sinn der Sache.
+
+```
+python3 mitreden.py voices                            # was geht hier?
+python3 mitreden.py voice piper:de_DE-thorsten-medium  # umschalten
+```
+
+Angeboten wird nur, was auch wirklich funktioniert: eine Cloud-Stimme erst,
+wenn ihr Schlüssel gesetzt ist, eine lokale erst, wenn das Programm dahinter
+existiert. Eine Stimme in der Liste, die dann beim Aufnehmen scheitert, wäre
+schlimmer als keine Auswahl.
+
+**Im Container sind zwei deutsche Piper-Stimmen dabei** — Thorsten und
+Kerstin, beide CC0. Damit spricht mitreden sofort, ohne Konto, ohne Schlüssel,
+ohne dass je etwas dein Netz verlässt. Eigene Modelle kommen dazu, indem du
+eine `.onnx` samt zugehöriger `.onnx.json` in einen Ordner `voices/` neben
+deine Sätze legst.
+
+Von Hand geht es weiterhin über `config.json`, dann einmal
 `python3 mitreden.py build --all`.
 
 **`say` / `espeak`** — schon da, kein Setup, kein Konto. Roboterhaft, aber der
@@ -221,8 +242,10 @@ services:
 docker compose pull && docker compose up -d
 ```
 
-Beim ersten Start legt mitreden sich seine `config.json` selbst an; Backend
-und Stimme trägst du dort ein, den Schlüssel in eine `.env` daneben. Alles,
+Beim ersten Start legt mitreden sich seine `config.json` selbst an und wählt
+eine Stimme, die hier funktioniert — im Container also Piper. Es spricht damit
+sofort, ganz ohne Schlüssel. Willst du eine Cloud-Stimme, kommt ihr Schlüssel
+in eine `.env` daneben, und sie taucht im Auswahlfeld auf. Alles,
 was dir gehört — Sätze, Config, `out/`, Schlüssel — liegt in diesem einen
 Ordner. Das Programm kommt aus dem Abbild und wird mit `docker compose pull`
 aktuell, ohne deine Daten anzufassen.

@@ -6,7 +6,7 @@ phrases.json is the source of truth. Every entry is rendered into one audio
 file in out/. Change the voice = change the backend in config.json
 + `python3 mitreden.py build --all` = everything sounds alike again.
 
-The output format lives in config.json too: wav by default, anything ffmpeg
+The output format lives in config.json too: mp3 by default, anything ffmpeg
 can write if you need something else. Lossy formats get a bitrate from there
 as well — a voice needs a generous one to stay clear.
 
@@ -19,6 +19,8 @@ Usage:
     python3 mitreden.py ui --host 0.0.0.0 --port 8770   # reachable from the network
     python3 mitreden.py add "Nochmal!" --tags spiel,zuhause
     python3 mitreden.py edit hallo "Hallo!"
+    python3 mitreden.py voices          # which voices are usable here?
+    python3 mitreden.py voice piper:de_DE-thorsten-medium
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
@@ -59,6 +61,13 @@ ICON = ROOT / "icon.svg"          # part of the program, not of your data
 RAW = DATA / "build" / "raw"
 OUT = DATA / "out"
 
+# Piper models are looked for here, first match wins. The image ships its own
+# under /voices via MITREDEN_VOICES; dropping an .onnx into voices/ next to
+# your phrases adds it without touching the image.
+VOICE_DIRS = [d for d in dict.fromkeys(
+    [Path(os.environ["MITREDEN_VOICES"]) if os.environ.get("MITREDEN_VOICES") else None,
+     DATA / "voices", ROOT / "voices"]) if d is not None]
+
 # Anything ffmpeg can write works as a format; the extension picks the codec.
 # 16000/1 keeps files small for microcontroller flash, 44100/1 is the safe
 # default that plays everywhere.
@@ -90,7 +99,9 @@ DEFAULT_CONFIG = {
                    "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%"},
     "elevenlabs": {"voice_id": "", "model": "eleven_multilingual_v2",
                    "key_env": "ELEVENLABS_API_KEY"},
-    "output":     {"format": "wav", "sample_rate": 44100, "channels": 1,
+    # mp3 by default: it is what talkers, reading pens and phone apps expect,
+    # and a fresh install should produce files that are usable somewhere.
+    "output":     {"format": "mp3", "sample_rate": 44100, "channels": 1,
                    "bitrate": DEFAULT_BITRATE},
 }
 
@@ -114,10 +125,30 @@ def load_env():
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+def first_config():
+    """The config a fresh installation starts with.
+
+    Which voice depends on where mitreden is running: the container brings
+    piper models along, a Mac has say, Linux usually espeak. Picking one that
+    works here means a fresh start speaks without anyone editing a file — and
+    without a key for a service nobody signed up for."""
+    cfg = json.loads(json.dumps(DEFAULT_CONFIG))     # a copy, not the original
+    for stem, path in piper_models().items():
+        cfg["backend"] = "piper"
+        cfg["piper"]["model"] = str(path)
+        return cfg
+    for backend in ("say", "espeak"):
+        opt = DEFAULT_CONFIG.get(backend) or {}
+        if shutil.which(opt.get("binary") or backend):
+            cfg["backend"] = backend
+            return cfg
+    return cfg
+
+
 def load_config():
     if not CONFIG.exists():
         DATA.mkdir(parents=True, exist_ok=True)   # a fresh mount is empty
-        CONFIG.write_text(json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False))
+        CONFIG.write_text(json.dumps(first_config(), indent=2, ensure_ascii=False))
     cfg = json.loads(CONFIG.read_text())
     for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
         if k not in cfg:
@@ -449,9 +480,85 @@ def phrase_state(item, cfg):
     return "ok"
 
 
+def piper_models():
+    """Every piper model on this machine, by name. The .onnx.json beside it is
+    piper's own and has to be there, so a lone .onnx is not a usable voice."""
+    found = {}
+    for d in VOICE_DIRS:
+        if not d.is_dir():
+            continue
+        for f in sorted(d.glob("*.onnx")):
+            if f.with_suffix(".onnx.json").exists() and f.stem not in found:
+                found[f.stem] = f
+    return found
+
+
+def pretty_piper(stem):
+    """de_DE-thorsten-medium -> Thorsten (piper, medium)"""
+    rest = stem.split("-", 1)[1] if "-" in stem else stem
+    name, _, quality = rest.partition("-")
+    return f"{name.replace('_', ' ').title()} (piper{', ' + quality if quality else ''})"
+
+
+def available_voices(cfg):
+    """What this installation can actually speak with, right now.
+
+    A voice nobody can use is worse than no choice at all: it turns into a
+    failed recording later. So a cloud voice only shows up once its key is
+    there, and a local one only once the program behind it exists."""
+    out = []
+    for stem, path in piper_models().items():
+        out.append({"id": f"piper:{stem}", "label": pretty_piper(stem),
+                    "backend": "piper", "model": str(path)})
+    for backend in ("azure", "elevenlabs"):
+        opt = cfg.get(backend) or {}
+        if os.environ.get(opt.get("key_env", "")):
+            name = opt.get("voice") or backend
+            label = name.split("-")[-1].replace("Neural", "") if name.count("-") >= 2 else name
+            out.append({"id": backend, "label": f"{label} ({backend})", "backend": backend})
+    for backend in ("say", "espeak"):
+        opt = cfg.get(backend) or {}
+        binary = opt.get("binary") or backend
+        if shutil.which(binary):
+            out.append({"id": backend, "label": f"{opt.get('voice', backend)} ({backend})",
+                        "backend": backend})
+    active = active_voice(cfg)
+    for v in out:
+        v["active"] = v["id"] == active
+    return out
+
+
+def active_voice(cfg):
+    """Which catalogue entry the config currently points at."""
+    backend = cfg.get("backend")
+    if backend == "piper":
+        return f"piper:{Path((cfg.get('piper') or {}).get('model', '')).stem}"
+    return backend
+
+
+def use_voice(cfg, vid):
+    """Point the config at one voice from the catalogue and write it down.
+
+    Returns the new label, or None if that voice is not on offer. Everything
+    else follows by itself: the voice is part of the fingerprint, so every
+    phrase turns stale and asks to be recorded again."""
+    chosen = next((v for v in available_voices(cfg) if v["id"] == vid), None)
+    if chosen is None:
+        return None
+    cfg["backend"] = chosen["backend"]
+    if chosen["backend"] == "piper":
+        cfg.setdefault("piper", {})["model"] = chosen["model"]
+    CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
+    return chosen["label"]
+
+
 def voice_label(cfg):
     """Voice name for the interface, e.g. de-DE-GiselaNeural -> Gisela."""
-    opt = cfg.get(cfg["backend"], {})
+    mine = active_voice(cfg)
+    for v in available_voices(cfg):
+        if v["id"] == mine:
+            return v["label"]
+    opt = cfg.get(cfg["backend"], {})       # configured, but not usable here
     name = opt.get("voice") or cfg["backend"]
     return name.split("-")[-1].replace("Neural", "") if name.count("-") >= 2 else name
 
@@ -566,6 +673,7 @@ PAGE = """<!doctype html><html lang="de"><meta charset="utf-8">
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <style>
 :root{
+  color-scheme:dark;               /* so the OS draws its own widgets dark too */
   --ink:#0e1014; --panel:#161920; --line:#242833; --line-soft:#1c202a;
   --text:#f2efea; --muted:#7c8496; --accent:#ff8bc7; --accent-ink:#14161c;
   --ok:#3fb96b; --warn:#f0a202; --miss:#5b6377; --danger:#e5484d;
@@ -606,8 +714,18 @@ button.quiet:hover{color:var(--text)}
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
 .bar .spacer{flex:1}
-.voice{color:var(--muted);font-size:13px;white-space:nowrap}
-.voice b{color:var(--text);font-weight:600}
+.voice{color:var(--muted);font-size:13px;white-space:nowrap;
+  display:flex;align-items:center;gap:8px}
+/* Shaped like the group chips, so the header reads as one row of controls
+   instead of one control and one browser default. */
+.voice select{font:inherit;font-size:13px;font-weight:600;color:var(--text);
+  background:var(--line-soft);border:1px solid var(--line);border-radius:999px;
+  padding:6px 30px 6px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.voice select:hover{background-color:#1e222c}
+.voice select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.voice select:disabled{color:var(--muted);cursor:default;opacity:1}
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
 .tools input[type=search]{flex:1;min-width:200px}
 .tools button{padding:11px 15px;font-size:14px;white-space:nowrap}
@@ -682,7 +800,7 @@ button.quiet:hover{color:var(--text)}
 <div class="bar">
   <span class="count" id="count">&nbsp;</span>
   <span class="spacer"></span>
-  <span class="voice">Stimme <b id="voice">…</b></span>
+  <span class="voice">Stimme <select id="voice" title="Gilt f\u00fcr alle S\u00e4tze"></select></span>
 </div>
 
 <div class="tools">
@@ -869,12 +987,43 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
 async function load(){
   const data=await (await fetch('/api/phrases')).json();
   ALL=data.items||[];
-  $('voice').textContent=data.voice||'\\u2014';
+  await loadVoices(data.voice);
   const live=new Set();
   for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
   for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
   draw();
 }
+async function loadVoices(current){
+  const sel=$('voice');
+  const list=await (await fetch('/api/voices')).json();
+  sel.innerHTML='';
+  if(!list.length){                      // nothing usable: just show it
+    sel.appendChild(new Option(current||'\\u2014',''));
+    sel.disabled=true;return;
+  }
+  sel.disabled=false;
+  for(const v of list){
+    const o=new Option(v.label,v.id);
+    if(v.active)o.selected=true;
+    sel.appendChild(o);
+  }
+  sel.dataset.was=sel.value;
+}
+$('voice').onchange=async e=>{
+  const sel=e.target, id=sel.value, was=sel.dataset.was;
+  const r=await post('/api/voice',{id});
+  if(!r){sel.value=was;return}
+  if(r.stale&&!confirm('Stimme: '+r.label+'\\n\\n'+r.stale+' S\\u00e4tze klingen jetzt '+
+       'nach der alten Stimme und werden neu aufgenommen. Das dauert einen Moment.')){
+    await post('/api/voice',{id:was});    // put it back, nothing happened
+    sel.value=was;say('Stimme unver\\u00e4ndert.');return;
+  }
+  sel.dataset.was=id;
+  say('Wird mit '+r.label+' neu aufgenommen \\u2026');
+  const b=await post('/api/build',{force:true});
+  if(b)say(b.rendered+' S\\u00e4tze mit '+r.label+' aufgenommen.');
+  load();
+};
 async function editText(it){
   const v=prompt('Text f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\n'+
                  'Der Satz wird sofort neu aufgenommen. '+
@@ -981,6 +1130,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
+        if self.path == "/api/voices":
+            return self._send(200, json.dumps(available_voices(load_config()),
+                                              ensure_ascii=False))
         self._send(404, b"", "text/plain")
 
     def do_POST(self):
@@ -1027,6 +1179,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True, "id": item["id"],
                                                "text": item["text"],
                                                "rendered": bool(rendered)},
+                                              ensure_ascii=False))
+
+        if self.path == "/api/voice":
+            label = use_voice(cfg, (data.get("id") or "").strip())
+            if label is None:
+                return self._send(404, "That voice is not available here.",
+                                  "text/plain")
+            # Nothing is re-recorded here. The phrases have just turned stale,
+            # and the page asks before putting the machine to work.
+            stale = sum(1 for i in items if phrase_state(i, cfg) != "ok")
+            return self._send(200, json.dumps({"ok": True, "label": label,
+                                               "stale": stale},
                                               ensure_ascii=False))
 
         if self.path == "/api/download":
@@ -1183,6 +1347,27 @@ def main():
             print(f"  not recorded yet   {pid}", file=sys.stderr)
     elif cmd == "build":
         build(force="--all" in args)
+    elif cmd == "voices":
+        cfg = load_config()
+        found = available_voices(cfg)
+        if not found:
+            print("No usable voice here. Install piper, or set a key.")
+            return
+        for v in found:
+            print(f"  {'*' if v['active'] else ' '} {v['id']:<28} {v['label']}")
+        print("\nSwitch with: mitreden.py voice <id>")
+    elif cmd == "voice":
+        if len(args) < 2:
+            sys.exit("Usage: mitreden.py voice <id>   (mitreden.py voices lists them)")
+        cfg = load_config()
+        label = use_voice(cfg, args[1])
+        if label is None:
+            print(f"'{args[1]}' is not available here.", file=sys.stderr)
+            print("Available: " + ", ".join(v["id"] for v in available_voices(cfg)),
+                  file=sys.stderr)
+            sys.exit(1)
+        print(f"voice: {label}")
+        build(force=True)          # everything sounded like the old one
     elif cmd == "backends":
         check_backends()
     else:
