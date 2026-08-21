@@ -27,13 +27,8 @@ text in, audio files out, in the format your device understands.
 ## How it works
 
 `phrases.json` is the source of truth — a list of sentences. `out/` is the
-result, one audio file per sentence. One command does everything in between:
-
-```
-python3 mitreden.py ui        # web interface at http://localhost:8770
-python3 mitreden.py build     # render whatever is missing
-python3 mitreden.py backends  # what is usable right now?
-```
+result, one audio file per sentence. Everything in between happens in the web
+interface: type the sentences, and the audio files appear.
 
 Because `out/` can be recreated at any time, `phrases.json` is the only thing
 that really needs a backup.
@@ -409,6 +404,13 @@ explicitly sent onto the network:
 ```
 python3 mitreden.py ui --host 0.0.0.0 --port 8770
 ```
+
+One thing that is no longer a gap: a page on another site cannot make your
+browser change anything here. Adding, deleting and recording are refused
+unless the request comes from mitreden's own page, so a tab you left open
+somewhere else cannot quietly work on your behalf. That is not a login, and it
+does not make the port safe to publish — it only means the risk is who can
+reach the port, not what else you happen to be browsing.
 
 Where your data lives is controlled by `MITREDEN_DIR`. Without the variable it
 is the folder next to `mitreden.py` — so nothing changes on your machine.
