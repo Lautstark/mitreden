@@ -883,9 +883,10 @@ button.quiet:hover{color:var(--text)}
    it ends up next to the small print instead. */
 .item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
-.item input[type=checkbox]{margin-top:10px}
 .item input[type=checkbox],.selall input[type=checkbox]{
   width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
+/* After the shared rule above, not before it — that one resets the margin. */
+.item input[type=checkbox]{margin-top:6px}
 /* margin-bottom comes from the label rule for the form above; here it would
    push the box 5px off centre against the button beside it. */
 .selall{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
