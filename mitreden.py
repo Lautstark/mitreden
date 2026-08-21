@@ -45,6 +45,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -420,6 +421,7 @@ def render(item, cfg, force=False):
 
     item["fingerprint"] = fp
     item["backend"] = cfg["backend"]
+    item["voice"] = voice_label(cfg)     # which voice you are hearing, by name
     return True
 
 
@@ -567,7 +569,7 @@ def phrases_with_state():
     cfg = load_config()
     items = [dict(i, tags=i.get("tags") or [], state=phrase_state(i, cfg))
              for i in load_phrases()]
-    return {"items": items, "voice": voice_label(cfg)}
+    return {"items": items, "voice": voice_label(cfg), "format": out_format(cfg)}
 
 
 def remove_files(pid):
@@ -632,16 +634,32 @@ def selected_ids(ids):
     return [pid for pid in ids if pid in known]
 
 
-def zip_phrases(ids, cfg):
-    """The current selection as one flat download, named by id."""
+def zip_phrases(ids, cfg, fmt=None):
+    """The current selection as one flat download, named by id.
+
+    fmt converts on the way out, for the device that wants something else than
+    what is in out/. It converts the finished file, not the raw recording, so
+    what you get is the same audio — trimmed and levelled — in another
+    container. out/ itself is left alone."""
+    fmt = (fmt or "").lower().lstrip(".") or out_format(cfg)
     buf = io.BytesIO()
     n = 0
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for pid in selected_ids(ids):
             f = out_file(pid, cfg)
-            if f.exists():
+            if not f.exists():
+                continue
+            if fmt == out_format(cfg):
                 z.write(f, f.name)
-                n += 1
+            else:
+                with tempfile.TemporaryDirectory() as tmp:
+                    conv = Path(tmp) / f"{pid}.{fmt}"
+                    args = output_args(dict(cfg, output=dict(cfg.get("output") or {},
+                                                             format=fmt)))
+                    subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
+                                    "-i", str(f), *args, str(conv)], check=True)
+                    z.write(conv, conv.name)
+            n += 1
     return buf.getvalue(), n
 
 
@@ -726,6 +744,13 @@ button.quiet:hover{color:var(--text)}
 .voice select:hover{background-color:#1e222c}
 .voice select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .voice select:disabled{color:var(--muted);cursor:default;opacity:1}
+.tools select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
+  background:var(--line-soft);border:1px solid var(--line);border-radius:10px;
+  padding:11px 32px 11px 14px;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center}
+.tools select:hover{background-color:#1e222c}
+.tools select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
 .tools input[type=search]{flex:1;min-width:200px}
 .tools button{padding:11px 15px;font-size:14px;white-space:nowrap}
@@ -805,6 +830,7 @@ button.quiet:hover{color:var(--text)}
 
 <div class="tools">
   <input id="q" type="search" placeholder="Sätze und Gruppen durchsuchen…" autocomplete="off">
+  <select id="dlfmt" title="In welchem Format das ZIP gepackt wird"></select>
   <button id="dl" title="Alles, was die Liste gerade zeigt, als ZIP">Herunterladen</button>
 </div>
 
@@ -821,6 +847,11 @@ const $=id=>document.getElementById(id);
 const say=m=>$('s').textContent=m||'\\u00a0';
 const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
              stale:'noch in der alten Stimme'};
+// Naming the old voice beats "old": you can see at a glance whether the row
+// is left over from Gisela or from a piper voice. A current recording is
+// by definition in the voice named in the header, so repeating it is noise.
+const stateText=it=>it.state==='stale'&&it.voice?'noch in '+it.voice
+                  :LABEL[it.state];
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
 // Several groups can be picked at once and they combine with OR: pick two books
 // and you get the phrases of both. The free text search narrows that further,
@@ -939,7 +970,7 @@ function draw(){
       'aria-expanded="false" title="Mehr" aria-label="Mehr">\\u22ee</button></div>';
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
-    d.querySelector('.state').textContent=LABEL[it.state];
+    d.querySelector('.state').textContent=stateText(it);
     const meta=d.querySelector('.meta');
     for(const t of (it.tags||[])){
       const b=document.createElement('button');
@@ -988,10 +1019,23 @@ async function load(){
   const data=await (await fetch('/api/phrases')).json();
   ALL=data.items||[];
   await loadVoices(data.voice);
+  loadFormats(data.format||'mp3');
   const live=new Set();
   for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
   for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
   draw();
+}
+const voiceNow=()=>{
+  const o=$('voice').selectedOptions[0];
+  return o&&o.text?o.text:'der aktuellen Stimme';
+};
+function loadFormats(current){
+  const sel=$('dlfmt');
+  if(sel.dataset.ready&&sel.dataset.ready===current)return;
+  sel.innerHTML='';
+  for(const f of [current,...['mp3','wav'].filter(x=>x!==current)])
+    sel.appendChild(new Option(f.toUpperCase(),f));
+  sel.dataset.ready=current;               // the recorded format goes first
 }
 async function loadVoices(current){
   const sel=$('voice');
@@ -1074,11 +1118,13 @@ $('dl').onclick=async()=>{
   if(!ids.length){say('Es ist noch nichts aufgenommen.');return}
   say(ids.length+' S\\u00e4tze werden gepackt \\u2026');
   const r=await fetch('/api/download',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids,format:$('dlfmt').value})});
   if(!r.ok){say('Fehlgeschlagen: '+await r.text());return}
   const url=URL.createObjectURL(await r.blob());
   const a=document.createElement('a');
-  a.href=url;a.download='mitreden-'+(soleTag()||(TAGS.size?'auswahl':'alle'))+'.zip';
+  a.href=url;a.download='mitreden-'+(soleTag()||(TAGS.size?'auswahl':'alle'))+
+    '-'+$('dlfmt').value+'.zip';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
   const skipped=vis.length-ids.length;
@@ -1089,7 +1135,9 @@ $('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
   const r=await post('/api/build',{force:false});
   if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Alle S\\u00e4tze mit der aktuellen Stimme neu aufnehmen?'))return;
+  if(!confirm('Alle S\\u00e4tze mit '+voiceNow()+' neu aufnehmen?\\n\\n'+
+              'Was schon in dieser Stimme aufgenommen ist, wird ebenfalls '+
+              'ersetzt.'))return;
   say('Alles wird neu aufgenommen, das dauert \\u2026');
   const r=await post('/api/build',{force:true});
   if(r){say(r.rendered+' neu aufgenommen.');load()}};
@@ -1194,7 +1242,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                               ensure_ascii=False))
 
         if self.path == "/api/download":
-            blob, n = zip_phrases(data.get("ids", []), cfg)
+            blob, n = zip_phrases(data.get("ids", []), cfg, data.get("format"))
             if not n:
                 return self._send(404, "Nothing recorded to download.", "text/plain")
             return self._send(200, blob, "application/zip")
