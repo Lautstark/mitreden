@@ -176,6 +176,16 @@ Only what actually works is offered: a cloud voice once its key is set, a
 local one once the program behind it exists. A voice you can pick that then
 fails while recording would be worse than no choice at all.
 
+A key can also be entered in the interface itself: the gear next to the
+language picker opens the settings, and there a key unlocks the voices of that
+service. For Azure the region belongs with it — a key is bound to one, and the
+wrong pairing fails with a 401. The key is checked while you are still looking
+at the field, written to the `.env` next to your sentences with permissions
+0600, and never shown again: the interface only ever learns whether one is set.
+
+Which also means: whoever reaches the interface can set a key there. It has no
+login. Home network only.
+
 **The container brings four piper voices along** — Thorsten and Kerstin in
 German, John and Kristin in English, all four CC0 or public domain. With those
 mitreden speaks immediately, without an account, without a key, without

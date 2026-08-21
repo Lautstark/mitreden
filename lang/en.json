@@ -74,5 +74,20 @@
   "failed": "Failed: {error}",
   "voice_now": "New recordings get {voice}.",
   "ask_delete_this": "Really delete {text}?\n\nThe sentence and its audio files will be removed. This cannot be undone.",
-  "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone."
+  "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone.",
+  "settings": "Settings",
+  "settings_intro": "A key adds the voices of a service. Without one the bundled voices remain — they are enough to start with.",
+  "settings_warning": "Careful: this interface has no login. Whoever reaches it can set a key here and generate voices on your account. Use it on your own network only.",
+  "key_set": "Key is set",
+  "key_unset": "No key",
+  "key_field": "Key",
+  "region_field": "Region",
+  "key_save": "Save",
+  "key_forget": "Remove key",
+  "key_hint": "Written to the .env next to your sentences and never shown again.",
+  "key_saved": "{label} unlocked — {n} voices to choose from now.",
+  "key_removed": "{label} switched off again.",
+  "key_failed": "That did not work: {error}",
+  "close": "Close",
+  "voices_available": "{n} voices available"
 }

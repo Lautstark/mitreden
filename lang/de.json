@@ -74,5 +74,20 @@
   "failed": "Fehlgeschlagen: {error}",
   "voice_now": "Neue Aufnahmen bekommen {voice}.",
   "ask_delete_this": "{text} wirklich löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.",
-  "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen."
+  "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.",
+  "settings": "Einstellungen",
+  "settings_intro": "Mit einem Schlüssel kommen die Stimmen eines Dienstes dazu. Ohne Schlüssel bleiben die mitgelieferten — die reichen für den Anfang.",
+  "settings_warning": "Achtung: Diese Oberfläche hat keine Anmeldung. Wer sie erreicht, kann hier einen Schlüssel setzen und auf deine Rechnung Stimmen erzeugen. Nur im eigenen Netz benutzen.",
+  "key_set": "Schlüssel ist gesetzt",
+  "key_unset": "Kein Schlüssel",
+  "key_field": "Schlüssel",
+  "region_field": "Region",
+  "key_save": "Speichern",
+  "key_forget": "Schlüssel entfernen",
+  "key_hint": "Wird in die .env neben deinen Sätzen geschrieben und nie wieder angezeigt.",
+  "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.",
+  "key_removed": "{label} wieder abgeschaltet.",
+  "key_failed": "Hat nicht geklappt: {error}",
+  "close": "Schließen",
+  "voices_available": "{n} Stimmen verfügbar"
 }

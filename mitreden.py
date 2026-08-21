@@ -556,6 +556,62 @@ def strings():
     return out
 
 
+# Which services can be unlocked with a key, and what else they need. Azure
+# keys are bound to a region, so asking for the key alone would hand people a
+# 401 and no idea why.
+CLOUD = {"azure": {"label": "Azure Speech", "region": True},
+         "elevenlabs": {"label": "ElevenLabs", "region": False}}
+
+
+def env_file():
+    return DATA / ".env"
+
+
+def set_env_var(name, value):
+    """Put one variable into the .env beside your phrases, keeping the rest.
+
+    The file is written for you alone (0600). An empty value removes the line;
+    the running process is updated too, so a new key works without a restart."""
+    lines = []
+    if env_file().exists():
+        lines = [l for l in env_file().read_text().splitlines()
+                 if not l.strip().startswith(f"{name}=")]
+    if value:
+        lines.append(f"{name}={value}")
+        os.environ[name] = value
+    else:
+        os.environ.pop(name, None)
+    DATA.mkdir(parents=True, exist_ok=True)
+    env_file().write_text("\n".join(lines) + ("\n" if lines else ""))
+    try:
+        env_file().chmod(0o600)
+    except OSError:
+        pass                    # some mounted filesystems do not allow it
+
+
+def azure_ok(region, key):
+    """Ask Azure whether this key works here. A key belongs to one region, and
+    the wrong pairing fails with 401 — better to say so while someone is still
+    looking at the field than at the first recording."""
+    url = f"https://{region}.tts.speech.microsoft.com/cognitiveservices/voices/list"
+    req = urllib.request.Request(url, headers={"Ocp-Apim-Subscription-Key": key})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return len(json.load(r))
+
+
+def setup_state(cfg):
+    """What can be unlocked, and what already is. Never the key itself."""
+    out = []
+    for name, meta in CLOUD.items():
+        opt = cfg.get(name) or {}
+        out.append({"id": name, "label": meta["label"],
+                    "key_env": opt.get("key_env", ""),
+                    "set": bool(os.environ.get(opt.get("key_env", ""))),
+                    "needs_region": meta["region"],
+                    "region": opt.get("region", "")})
+    return {"cloud": out, "voices": len(available_voices(cfg))}
+
+
 def piper_models():
     """Every piper model on this machine, by name. The .onnx.json beside it is
     piper's own and has to be there, so a lone .onnx is not a usable voice."""
@@ -934,7 +990,7 @@ textarea{width:100%;min-height:132px;resize:vertical;background:var(--ink);
 textarea::placeholder,input::placeholder{color:#4d5464}
 textarea:focus,input:focus,button:focus-visible{
   outline:2px solid var(--accent);outline-offset:2px}
-input[type=text],input[type=search]{width:100%;background:var(--ink);color:var(--text);
+input[type=text],input[type=search],input[type=password]{width:100%;background:var(--ink);color:var(--text);
   border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:15px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
 button{font:inherit;font-weight:600;border-radius:10px;padding:11px 18px;
@@ -954,7 +1010,24 @@ button.quiet:hover{color:var(--text)}
 .bar .count{font-weight:650;font-size:15px}
 /* Beside the title, where a page-wide setting belongs — not down at the list,
    which would suggest it changes something about the list. */
-.top{display:flex;align-items:center;gap:16px}
+.top{display:flex;align-items:center;gap:10px}
+.gear{font-size:17px;line-height:1;padding:7px 11px;border-radius:999px;
+  color:var(--muted);border-color:var(--line)}
+.gear:hover{color:var(--text)}
+/* A sheet, not a wizard: a fresh install already speaks, so this is somewhere
+   you go when you want more — never something standing in the way. */
+.sheet{background:var(--panel);color:var(--text);border:1px solid var(--line);
+  border-radius:16px;padding:24px;max-width:520px;width:calc(100% - 40px)}
+.sheet::backdrop{background:rgba(0,0,0,.6)}
+.sheet h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
+.sheet .sub{margin:0 0 14px}
+.sheet .warn{color:var(--warn);font-size:13px;line-height:1.5;margin:0 0 18px}
+.svc{border-top:1px solid var(--line-soft);padding:16px 0}
+.svc h3{margin:0 0 2px;font-size:15px}
+.svc .state{font-size:13px;color:var(--muted);margin-bottom:10px}
+.svc .state.on{color:var(--ok)}
+.svc label{margin:10px 0 6px}
+.svc .hint{color:var(--muted);font-size:12px;margin:8px 0 0}
 .langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
   color:var(--muted);background:transparent;border:1px solid var(--line);
   border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
@@ -1092,7 +1165,17 @@ button.quiet:hover{color:var(--text)}
 <div class="top">
   <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
   <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
+  <button id="gear" class="gear" data-i18n-title="settings"
+    data-i18n-aria="settings">\u2699</button>
 </div>
+
+<dialog id="setup" class="sheet">
+  <h2 data-i18n="settings"></h2>
+  <p class="sub" data-i18n="settings_intro"></p>
+  <p class="warn" data-i18n="settings_warning"></p>
+  <div id="cloud"></div>
+  <div class="row"><button id="setupclose" data-i18n="close"></button></div>
+</dialog>
 <p class="sub" data-i18n="tagline"></p>
 
 <div class="hero">
@@ -1166,6 +1249,51 @@ function applyLang(){
   draw();
 }
 
+// --- Einstellungen ----------------------------------------------------
+async function drawSetup(){
+  const st=await (await fetch('/api/setup')).json();
+  const box=$('cloud');box.innerHTML='';
+  for(const c of st.cloud){
+    const d=document.createElement('div');d.className='svc';
+    d.innerHTML='<h3></h3><p class="state"></p>'+
+      '<label></label><input type="password" autocomplete="off">'+
+      (c.needs_region?'<label class="region"></label><input class="region" type="text">':'')+
+      '<div class="row"><button class="primary save"></button>'+
+      '<button class="quiet forget"></button></div>'+
+      '<p class="hint"></p>';
+    d.querySelector('h3').textContent=c.label;
+    const state=d.querySelector('.state');
+    state.textContent=c.set?t('key_set'):t('key_unset');
+    state.className='state'+(c.set?' on':'');
+    d.querySelector('label').textContent=t('key_field');
+    const key=d.querySelector('input[type=password]');
+    const reg=d.querySelector('input.region');
+    if(reg){d.querySelector('label.region').textContent=t('region_field');
+            reg.value=c.region||''}
+    d.querySelector('.save').textContent=t('key_save');
+    const forget=d.querySelector('.forget');
+    forget.textContent=t('key_forget');forget.hidden=!c.set;
+    d.querySelector('.hint').textContent=t('key_hint');
+    d.querySelector('.save').onclick=()=>saveKey(c,key.value,reg?reg.value:'');
+    forget.onclick=()=>saveKey(c,'','');
+    box.appendChild(d);
+  }
+}
+
+async function saveKey(c,key,region){
+  const r=await fetch('/api/setup',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({backend:c.id,key,region})});
+  if(!r.ok){say(t('key_failed',{error:await r.text()}));return}
+  const d=await r.json();
+  say(d.set?t('key_saved',{label:c.label,n:d.voices})
+           :t('key_removed',{label:c.label}));
+  drawSetup();loadVoices();load();
+}
+
+$('gear').onclick=()=>{drawSetup();$('setup').showModal()};
+$('setupclose').onclick=()=>$('setup').close();
+
 async function loadStrings(){
   STR=await (await fetch('/api/strings')).json();
   const codes=Object.keys(STR);
@@ -1187,6 +1315,7 @@ async function loadStrings(){
     const u=new URL(location);u.searchParams.set('lang',LANG);
     history.replaceState(null,'',u);      // reload and sharing keep it
     applyLang();
+    if($('setup').open)drawSetup();
   };
 }
 const say=m=>{const e=$('s');e.textContent=m||'';e.hidden=!m};
@@ -1656,6 +1785,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if route == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
+        if route == "/api/setup":
+            return self._send(200, json.dumps(setup_state(load_config()),
+                                              ensure_ascii=False))
         if route == "/api/strings":
             return self._send(200, json.dumps(strings(), ensure_ascii=False))
         if route == "/api/voices":
@@ -1723,6 +1855,37 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # the next recording should sound like.
             return self._send(200, json.dumps({"ok": True, "label": label},
                                               ensure_ascii=False))
+
+        if route == "/api/setup":
+            name = (data.get("backend") or "").strip()
+            if name not in CLOUD:
+                return self._send(400, "Unknown service.", "text/plain")
+            opt = cfg.get(name) or {}
+            var = opt.get("key_env")
+            if not var:
+                return self._send(400, "No key_env in config.json.", "text/plain")
+            key = (data.get("key") or "").strip()
+            if not key:                       # empty field means: forget it
+                set_env_var(var, "")
+                return self._send(200, json.dumps({"ok": True, "set": False}))
+            region = (data.get("region") or opt.get("region") or "").strip()
+            if CLOUD[name]["region"]:
+                if not region:
+                    return self._send(400, "A region is required.", "text/plain")
+                try:
+                    azure_ok(region, key)     # say now, not at the first recording
+                except Exception as e:
+                    return self._send(400, f"{e}", "text/plain")
+                if region != opt.get("region"):
+                    raw = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+                    raw.setdefault(name, dict(opt))["region"] = region
+                    CONFIG.write_text(json.dumps(raw, indent=2,
+                                                 ensure_ascii=False) + "\n")
+            set_env_var(var, key)
+            (DATA / ".azure-voices.json").unlink(missing_ok=True)   # ask again
+            return self._send(200, json.dumps(
+                {"ok": True, "set": True,
+                 "voices": len(available_voices(load_config()))}))
 
         if route == "/api/download":
             blob, n = zip_phrases(data.get("ids", []), cfg, data.get("format"))

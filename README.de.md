@@ -178,6 +178,17 @@ wenn ihr Schlüssel gesetzt ist, eine lokale erst, wenn das Programm dahinter
 existiert. Eine Stimme in der Liste, die dann beim Aufnehmen scheitert, wäre
 schlimmer als keine Auswahl.
 
+Ein Schlüssel lässt sich auch in der Oberfläche eintragen: Das Zahnrad neben
+der Sprachwahl öffnet die Einstellungen, dort schaltet ein Schlüssel die
+Stimmen des jeweiligen Dienstes frei. Bei Azure gehört die Region dazu — ein
+Schlüssel ist an eine gebunden, die falsche Paarung scheitert mit 401. Geprüft
+wird, solange du noch auf dem Feld stehst; geschrieben wird in die `.env`
+neben deinen Sätzen, mit Rechten 0600, und angezeigt wird er nie wieder: Die
+Oberfläche erfährt nur, ob einer gesetzt ist.
+
+Was zugleich heißt: Wer die Oberfläche erreicht, kann dort einen Schlüssel
+setzen. Sie hat keine Anmeldung. Nur im Heimnetz.
+
 **Im Container sind vier Piper-Stimmen dabei** — Thorsten und Kerstin auf
 Deutsch, John und Kristin auf Englisch, alle vier gemeinfrei oder CC0. Damit
 spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas dein
