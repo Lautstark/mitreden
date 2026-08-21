@@ -43,9 +43,11 @@ import os
 import shutil
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -502,6 +504,50 @@ def pretty_piper(stem):
     return f"{name.replace('_', ' ').title()} (piper{', ' + quality if quality else ''})"
 
 
+AZURE_CACHE_DAYS = 7
+
+
+def azure_voices(cfg):
+    """The voices Azure offers for the configured language.
+
+    Asked of Azure itself rather than kept as a list in here: a hand-typed
+    list goes stale, and it would offer German voices to someone who set up
+    French. The answer is cached — this runs on every page load, and it barely
+    changes from one month to the next.
+
+    Whatever config.json names is always in the result, even offline. An empty
+    picker, or one without the voice you are currently using, would be worse
+    than a slightly old list."""
+    opt = cfg.get("azure") or {}
+    mine = opt.get("voice") or ""
+    locale = "-".join(mine.split("-")[:2])
+    cache = DATA / ".azure-voices.json"
+    try:
+        age = time.time() - cache.stat().st_mtime
+        if age < AZURE_CACHE_DAYS * 86400:
+            known = json.loads(cache.read_text())
+            if known.get("locale") == locale:
+                return known["voices"]
+    except Exception:
+        pass
+    try:
+        url = (f"https://{opt['region']}.tts.speech.microsoft.com"
+               f"/cognitiveservices/voices/list")
+        req = urllib.request.Request(
+            url, headers={"Ocp-Apim-Subscription-Key":
+                          os.environ.get(opt.get("key_env", ""), "")})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            names = sorted(v["ShortName"] for v in json.load(r)
+                           if v.get("Locale", "").startswith(locale))
+        if mine and mine not in names:
+            names.append(mine)          # configured by hand, keep it usable
+        DATA.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({"locale": locale, "voices": names}))
+        return names
+    except Exception:
+        return [mine] if mine else []
+
+
 def available_voices(cfg):
     """What this installation can actually speak with, right now.
 
@@ -512,12 +558,14 @@ def available_voices(cfg):
     for stem, path in piper_models().items():
         out.append({"id": f"piper:{stem}", "label": pretty_piper(stem),
                     "backend": "piper", "model": str(path)})
-    for backend in ("azure", "elevenlabs"):
-        opt = cfg.get(backend) or {}
-        if os.environ.get(opt.get("key_env", "")):
-            name = opt.get("voice") or backend
-            label = name.split("-")[-1].replace("Neural", "") if name.count("-") >= 2 else name
-            out.append({"id": backend, "label": f"{label} ({backend})", "backend": backend})
+    opt = cfg.get("azure") or {}
+    if os.environ.get(opt.get("key_env", "")):
+        for name in azure_voices(cfg):
+            out.append({"id": f"azure:{name}", "label": f"{short_voice(name)} (azure)",
+                        "backend": "azure", "voice": name})
+    opt = cfg.get("elevenlabs") or {}
+    if os.environ.get(opt.get("key_env", "")):
+        out.append({"id": "elevenlabs", "label": "ElevenLabs", "backend": "elevenlabs"})
     for backend in ("say", "espeak"):
         opt = cfg.get(backend) or {}
         binary = opt.get("binary") or backend
@@ -530,11 +578,27 @@ def available_voices(cfg):
     return out
 
 
+def short_voice(name):
+    """de-DE-GiselaNeural -> Gisela, de-DE-FlorianMultilingualNeural -> Florian
+    Multilingual. Nobody needs the locale twice, it is in every entry."""
+    if name.count("-") < 2:
+        return name
+    base = name.split("-")[-1].replace("Neural", "")
+    out = ""
+    for i, ch in enumerate(base):
+        if i and ch.isupper() and base[i - 1].islower():
+            out += " "
+        out += ch
+    return out
+
+
 def active_voice(cfg):
     """Which catalogue entry the config currently points at."""
     backend = cfg.get("backend")
     if backend == "piper":
         return f"piper:{Path((cfg.get('piper') or {}).get('model', '')).stem}"
+    if backend == "azure":
+        return f"azure:{(cfg.get('azure') or {}).get('voice', '')}"
     return backend
 
 
@@ -550,6 +614,8 @@ def use_voice(cfg, vid):
     cfg["backend"] = chosen["backend"]
     if chosen["backend"] == "piper":
         cfg.setdefault("piper", {})["model"] = chosen["model"]
+    if chosen["backend"] == "azure":
+        cfg.setdefault("azure", {})["voice"] = chosen["voice"]
     CONFIG.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
     return chosen["label"]
 
@@ -634,6 +700,17 @@ def selected_ids(ids):
     return [pid for pid in ids if pid in known]
 
 
+def as_format(f, fmt, cfg):
+    """One finished file in another container. The audio is not touched again
+    beyond the format change — it was trimmed and levelled when it was made."""
+    with tempfile.TemporaryDirectory() as tmp:
+        conv = Path(tmp) / f"{f.stem}.{fmt}"
+        args = output_args(dict(cfg, output=dict(cfg.get("output") or {}, format=fmt)))
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(f),
+                        *args, str(conv)], check=True)
+        return conv.read_bytes()
+
+
 def zip_phrases(ids, cfg, fmt=None):
     """The current selection as one flat download, named by id.
 
@@ -652,13 +729,7 @@ def zip_phrases(ids, cfg, fmt=None):
             if fmt == out_format(cfg):
                 z.write(f, f.name)
             else:
-                with tempfile.TemporaryDirectory() as tmp:
-                    conv = Path(tmp) / f"{pid}.{fmt}"
-                    args = output_args(dict(cfg, output=dict(cfg.get("output") or {},
-                                                             format=fmt)))
-                    subprocess.run(["ffmpeg", "-y", "-loglevel", "error",
-                                    "-i", str(f), *args, str(conv)], check=True)
-                    z.write(conv, conv.name)
+                z.writestr(f"{pid}.{fmt}", as_format(f, fmt, cfg))
             n += 1
     return buf.getvalue(), n
 
@@ -765,6 +836,10 @@ button.quiet:hover{color:var(--text)}
 .chip.fold{border-style:dashed;opacity:.8}
 .item{display:flex;gap:14px;align-items:center;padding:15px 2px;
   border-bottom:1px solid var(--line-soft)}
+.item input[type=checkbox],.selall input[type=checkbox]{
+  width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
+.selall{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;
+  cursor:pointer;user-select:none;margin:16px 2px 0}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
 .item.ok .dot{background:var(--ok)}
 .item.stale .dot{background:var(--warn)}
@@ -836,6 +911,8 @@ button.quiet:hover{color:var(--text)}
 
 <div class="chips" id="chips"></div>
 
+<label class="selall"><input type="checkbox" id="selall"><span id="selalltxt">Alle ausw\u00e4hlen</span></label>
+
 <div id="list"></div>
 
 <div class="foot">
@@ -853,6 +930,9 @@ const LABEL={ok:'aufgenommen',missing:'noch nicht aufgenommen',
 const stateText=it=>it.state==='stale'&&it.voice?'noch in '+it.voice
                   :LABEL[it.state];
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
+// Which rows are ticked. Kept across redraws, so filtering or searching does
+// not quietly drop what you picked; ids that vanish are pruned on load.
+const SEL=new Set();
 // Several groups can be picked at once and they combine with OR: pick two books
 // and you get the phrases of both. The free text search narrows that further,
 // so the two mechanisms are ANDed with each other.
@@ -954,11 +1034,13 @@ function draw(){
       :'Noch nichts da. Mehrere Zeilen auf einmal gehen auch \\u2014 '+
        'jede Zeile wird ein eigener Satz.';
     $('list').appendChild(p);
+    refreshSel();
     return;
   }
   for(const it of (SHOW_ALL?items:items.slice(0,CAP))){
     const d=document.createElement('div');d.className='item '+it.state;
-    d.innerHTML='<span class="dot"></span>'+
+    d.innerHTML='<input type="checkbox" aria-label="Ausw\\u00e4hlen">'+
+      '<span class="dot"></span>'+
       '<div class="txt"><div class="line"></div>'+
       '<div class="meta"><span class="id"></span><span class="state"></span></div></div>'+
       // The player's own \u22ee menu offers a playback speed that only affects
@@ -968,6 +1050,9 @@ function draw(){
         'disableRemotePlayback preload="none" src="/audio/'+it.id+'"></audio>')+
       '<div class="menuwrap"><button class="dots" aria-haspopup="true" '+
       'aria-expanded="false" title="Mehr" aria-label="Mehr">\\u22ee</button></div>';
+    const box=d.querySelector('input[type=checkbox]');
+    box.checked=SEL.has(it.id);
+    box.onchange=()=>{box.checked?SEL.add(it.id):SEL.delete(it.id);refreshSel()};
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.id').textContent=it.id;
     d.querySelector('.state').textContent=stateText(it);
@@ -987,6 +1072,7 @@ function draw(){
     b.onclick=()=>{SHOW_ALL=true;draw()};
     $('list').appendChild(b);
   }
+  refreshSel();
 }
 
 function closeMenus(){
@@ -1006,8 +1092,11 @@ function openMenu(btn,it){
     b.onclick=()=>{closeMenus();fn()};
     m.appendChild(b);
   };
-  add('Text \\u00e4ndern \\u2026',false,()=>editText(it));
-  add((it.tags||[]).length?'Gruppen \\u00e4ndern \\u2026':'Zu einer Gruppe hinzuf\\u00fcgen \\u2026',
+  add('Text \\u00e4ndern',false,()=>editText(it));
+  if(it.state!=='missing')
+    add('Datei herunterladen ('+$('dlfmt').value.toUpperCase()+')',false,()=>grab(it));
+  add(it.state==='missing'?'Aufnehmen':'Neu aufnehmen',false,()=>redo(it));
+  add((it.tags||[]).length?'Gruppen \\u00e4ndern':'Zu einer Gruppe hinzuf\\u00fcgen',
       false,()=>editTags(it));
   add('Satz l\\u00f6schen',true,()=>del(it));
   btn.parentNode.appendChild(m);
@@ -1023,6 +1112,8 @@ async function load(){
   const live=new Set();
   for(const i of ALL)for(const t of (i.tags||[]))live.add(t);
   for(const t of [...TAGS])if(!live.has(t))TAGS.delete(t);   // group is gone
+  const alive=new Set(ALL.map(i=>i.id));
+  for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
 }
 const voiceNow=()=>{
@@ -1068,6 +1159,16 @@ $('voice').onchange=async e=>{
   if(b)say(b.rendered+' S\\u00e4tze mit '+r.label+' aufgenommen.');
   load();
 };
+function grab(it){
+  const a=document.createElement('a');
+  a.href='/audio/'+it.id+'?dl=1&format='+encodeURIComponent($('dlfmt').value);
+  document.body.appendChild(a);a.click();a.remove();
+}
+async function redo(it){
+  say('\\u201E'+it.text+'\\u201C wird mit '+voiceNow()+' aufgenommen \\u2026');
+  const r=await post('/api/build',{ids:[it.id],force:true});
+  if(r){say(r.rendered?'Aufgenommen: '+it.id:'Nichts zu tun.');load()}
+}
 async function editText(it){
   const v=prompt('Text f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\n'+
                  'Der Satz wird sofort neu aufgenommen. '+
@@ -1134,12 +1235,39 @@ $('dl').onclick=async()=>{
 $('build').onclick=async()=>{say('Fehlende werden aufgenommen \\u2026');
   const r=await post('/api/build',{force:false});
   if(r){say(r.rendered?r.rendered+' aufgenommen.':'Es fehlte nichts.');load()}};
+function refreshSel(){
+  const vis=shown(), ids=vis.map(i=>i.id);
+  const picked=ids.filter(i=>SEL.has(i)).length;
+  const all=$('selall');
+  all.checked=ids.length>0&&picked===ids.length;
+  all.indeterminate=picked>0&&picked<ids.length;
+  // The button acts on the whole selection, so the label has to name it —
+  // including what a filter is currently hiding, or you press a button that
+  // touches a phrase you cannot see.
+  const versteckt=SEL.size-picked;
+  $('selalltxt').textContent=SEL.size
+    ? SEL.size+' ausgew\\u00e4hlt'+(versteckt?', '+versteckt+' davon ausgeblendet':'')
+    : 'Alle ausw\\u00e4hlen';
+  const b=$('rebuild');
+  b.disabled=!SEL.size;
+  b.textContent=SEL.size===ALL.length?'Alle S\\u00e4tze neu aufnehmen'
+    :SEL.size?SEL.size+(SEL.size===1?' Satz':' S\\u00e4tze')+' neu aufnehmen'
+    :'Nichts ausgew\\u00e4hlt';
+}
+$('selall').onchange=e=>{
+  for(const i of shown()) e.target.checked?SEL.add(i.id):SEL.delete(i.id);
+  draw();
+};
 $('rebuild').onclick=async()=>{
-  if(!confirm('Alle S\\u00e4tze mit '+voiceNow()+' neu aufnehmen?\\n\\n'+
+  const ids=[...SEL];
+  if(!ids.length)return;
+  const wieviele=ids.length===ALL.length?'Alle S\\u00e4tze'
+    :ids.length+(ids.length===1?' Satz':' S\\u00e4tze');
+  if(!confirm(wieviele+' mit '+voiceNow()+' neu aufnehmen?\\n\\n'+
               'Was schon in dieser Stimme aufgenommen ist, wird ebenfalls '+
               'ersetzt.'))return;
-  say('Alles wird neu aufgenommen, das dauert \\u2026');
-  const r=await post('/api/build',{force:true});
+  say(wieviele+' mit '+voiceNow()+' neu aufnehmen \\u2026');
+  const r=await post('/api/build',{force:true,ids});
   if(r){say(r.rendered+' neu aufgenommen.');load()}};
 load();
 </script>
@@ -1147,11 +1275,13 @@ load();
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", extra=None):
         if isinstance(body, str):
             body = body.encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -1168,13 +1298,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, ICON.read_bytes(), "image/svg+xml")
         if self.path.startswith("/audio/"):
             # The id alone is enough — the server knows the configured format,
-            # so the page never has to care what it is.
-            pid = Path(self.path).name
-            f = out_file(pid, load_config())
-            if ".." in self.path or "/" in pid or not f.exists():
+            # so the page never has to care what it is. ?format= asks for a
+            # different one, ?dl=1 makes the browser save instead of play.
+            url = urllib.parse.urlsplit(self.path)
+            query = urllib.parse.parse_qs(url.query)
+            pid = Path(url.path).name
+            cfg = load_config()
+            f = out_file(pid, cfg)
+            if ".." in url.path or "/" in pid or not f.exists():
                 return self._send(404, b"", "text/plain")
-            return self._send(200, f.read_bytes(),
-                              MIME.get(f.suffix.lstrip("."), "application/octet-stream"))
+            fmt = (query.get("format", [""])[0] or "").lower().lstrip(".")
+            if fmt and fmt != out_format(cfg):
+                if fmt not in MIME:
+                    return self._send(400, "Unknown format.", "text/plain")
+                body, name = as_format(f, fmt, cfg), f"{pid}.{fmt}"
+            else:
+                body, name = f.read_bytes(), f.name
+            extra = ({"Content-Disposition": f'attachment; filename="{name}"'}
+                     if query.get("dl") else None)
+            return self._send(200, body,
+                              MIME.get(name.rsplit(".", 1)[-1], "application/octet-stream"),
+                              extra)
         if self.path == "/api/phrases":
             return self._send(200, json.dumps(phrases_with_state(),
                                               ensure_ascii=False))
@@ -1249,8 +1393,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if self.path == "/api/build":
             force = bool(data.get("force"))
+            only = set(data.get("ids") or [])     # empty = everything
             rendered = 0
             for item in items:
+                if only and item["id"] not in only:
+                    continue
                 try:
                     rendered += 1 if render(item, cfg, force) else 0
                 except Exception as e:

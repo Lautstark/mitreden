@@ -128,6 +128,11 @@ Sätze, die noch in der vorherigen Stimme aufgenommen sind, sagen das in ihrer
 Zeile: „noch in Kerstin (piper, low)". So siehst du auf einen Blick, was aus
 der Reihe fällt — etwa wenn du beim Umschalten abgebrochen hast.
 
+Bei Azure stehen alle Stimmen deiner Sprache zur Wahl — für Deutsch sind das
+17. Die Liste kommt von Azure selbst und wird eine Woche lang zwischen-
+gespeichert; ohne Netz bleibt es bei der konfigurierten Stimme, damit die
+Auswahl nie leer ist.
+
 Angeboten wird nur, was auch wirklich funktioniert: eine Cloud-Stimme erst,
 wenn ihr Schlüssel gesetzt ist, eine lokale erst, wenn das Programm dahinter
 existiert. Eine Stimme in der Liste, die dann beim Aufnehmen scheitert, wäre
@@ -216,11 +221,20 @@ python3 mitreden.py dedupe --apply   # führt es wirklich zusammen
 
 Ohne `--apply` wird nichts angefasst.
 
+**Neu aufnehmen.** Vor jeder Zeile steht ein Kästchen. Was du ankreuzt, nimmt
+der Knopf unter der Liste neu auf — einen Satz, eine Handvoll oder alles über
+„Alle auswählen". Ohne Auswahl ist der Knopf ausgegraut, es passiert also
+nichts aus Versehen. Ein Filter lässt die Auswahl unangetastet und sagt dir,
+wenn etwas Ausgewähltes gerade nicht zu sehen ist. Einen einzelnen Satz nimmt
+auch das ⋮ neu auf.
+
 **Herunterladen.** Der Knopf packt genau die Sätze zusammen, die die Liste
 gerade zeigt — nach einer Suche also die Treffer, in einer Gruppe deren Sätze.
 Daneben steht das Format: MP3 oder WAV, unabhängig davon, wie die Dateien
 aufgenommen wurden. Gebraucht wird das für das eine Gerät, das aus der Reihe
-tanzt — umgerechnet wird nur für das ZIP, `out/` bleibt, wie es ist.
+tanzt — umgerechnet wird nur für den Download, `out/` bleibt, wie es ist.
+
+Eine einzelne Datei holst du über das ⋮ der Zeile, im selben Format.
 
 Auf der Kommandozeile:
 

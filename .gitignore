@@ -10,6 +10,9 @@ build/
 *.mp3
 *.aiff
 
+# Cached answer from the voice service, rebuilt whenever it is missing
+.azure-voices.json
+
 # Credentials
 .env
 .env.*
