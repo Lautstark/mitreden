@@ -150,11 +150,37 @@ def first_config():
     return cfg
 
 
+def write_atomic(path, text, mode=None):
+    """Write a file so that it is either the old one or the new one.
+
+    write_text truncates first and writes after, and everything that matters
+    here goes through it: phrases.json is the only copy these sentences have,
+    config.json is what makes them sound alike. A Ctrl-C, a full disk or a
+    container stopping in that window used to leave an empty file behind.
+    A temporary file next to it and a rename cannot land half-way.
+
+    mode is set on the temporary file, before it becomes the real one — so a
+    file that is meant for you alone is never briefly readable by everyone."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(text)
+        if mode is not None:
+            try:
+                tmp.chmod(mode)
+            except OSError:
+                pass            # some mounted filesystems do not allow it
+        tmp.replace(path)              # atomic within one filesystem
+    except BaseException:
+        tmp.unlink(missing_ok=True)    # never leave a stray half file
+        raise
+
+
 def load_config():
     if not CONFIG.exists():
         DATA.mkdir(parents=True, exist_ok=True)   # a fresh mount is empty
-        CONFIG.write_text(json.dumps(first_config(), indent=2,
-                                     ensure_ascii=False) + "\n")
+        write_atomic(CONFIG, json.dumps(first_config(), indent=2,
+                                        ensure_ascii=False) + "\n")
     cfg = json.loads(CONFIG.read_text())
     for k, v in DEFAULT_CONFIG.items():          # fill in missing keys
         if k not in cfg:
@@ -169,7 +195,7 @@ def load_phrases():
 
 
 def save_phrases(items):
-    PHRASES.write_text(json.dumps(items, indent=2, ensure_ascii=False))
+    write_atomic(PHRASES, json.dumps(items, indent=2, ensure_ascii=False))
 
 
 SLUG_WORDS = 6
@@ -437,7 +463,14 @@ def render(item, cfg, force=False, voice_id=None, voices=None):
     is missing must not quietly repaint the rest."""
     voices = available_voices(cfg) if voices is None else voices
     vid = voice_id or phrase_voice(item, cfg)
-    vcfg = voice_config(cfg, vid, voices) or cfg   # the voice may be gone here
+    vcfg = voice_config(cfg, vid, voices)
+    if vcfg is None:
+        # The voice a phrase was recorded with can be gone: a model deleted, a
+        # key removed, another machine. Recording then falls back to the one
+        # that is configured — and the phrase has to say so. Keeping the old
+        # id would label it with a voice you cannot hear in the file, and the
+        # row would read "ok" forever, so nothing would ever put it right.
+        vcfg, vid = cfg, active_voice(cfg)
     fp = fingerprint(item["text"], vcfg)
     dest = out_file(item["id"], cfg)         # the format is not the voice's business
     if not force and item.get("fingerprint") == fp and dest.exists():
@@ -582,11 +615,7 @@ def set_env_var(name, value):
     else:
         os.environ.pop(name, None)
     DATA.mkdir(parents=True, exist_ok=True)
-    env_file().write_text("\n".join(lines) + ("\n" if lines else ""))
-    try:
-        env_file().chmod(0o600)
-    except OSError:
-        pass                    # some mounted filesystems do not allow it
+    write_atomic(env_file(), "\n".join(lines) + ("\n" if lines else ""), 0o600)
 
 
 def azure_ok(region, key):
@@ -809,7 +838,7 @@ def use_voice(cfg, vid):
     raw = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
     raw["backend"] = cfg["backend"]
     raw[cfg["backend"]] = cfg[cfg["backend"]]   # complete, for the one in use
-    CONFIG.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+    write_atomic(CONFIG, json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
     return voice_name(cfg, vid)
 
 
@@ -1798,7 +1827,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                               ensure_ascii=False))
         self._send(404, b"", "text/plain")
 
+    def same_site(self):
+        """Whether this POST came from the page itself.
+
+        The interface has no login — it is yours because it listens on your
+        machine. But a browser will happily send a request to localhost on
+        behalf of any site you have open in another tab, and a POST with a
+        plain Content-Type needs no permission from us first. That was enough
+        to delete every phrase from a page nobody here wrote.
+
+        Two things a foreign page cannot fake: the Origin header, which the
+        browser sets and no script can change, and application/json, which
+        does not go out without asking us first. Requiring both leaves the
+        page working and everything else outside."""
+        origin = self.headers.get("Origin")
+        if origin and origin not in (f"http://{self.headers.get('Host', '')}",
+                                     f"https://{self.headers.get('Host', '')}"):
+            return False
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+        return ctype == "application/json"
+
     def do_POST(self):
+        if not self.same_site():
+            return self._send(403, "This request did not come from mitreden.",
+                              "text/plain")
         n = int(self.headers.get("Content-Length", 0))
         data = json.loads(self.rfile.read(n) or "{}")
         route = urllib.parse.urlsplit(self.path).path   # same rule as do_GET
@@ -1882,8 +1934,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if region != opt.get("region"):
                     raw = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
                     raw.setdefault(name, dict(opt))["region"] = region
-                    CONFIG.write_text(json.dumps(raw, indent=2,
-                                                 ensure_ascii=False) + "\n")
+                    write_atomic(CONFIG, json.dumps(raw, indent=2,
+                                                    ensure_ascii=False) + "\n")
             set_env_var(var, key)
             (DATA / ".azure-voices.json").unlink(missing_ok=True)   # ask again
             return self._send(200, json.dumps(
