@@ -16,6 +16,7 @@ one audio file, no matter how many groups point at it.
 
 Usage:
     python3 mitreden.py ui              # web interface at http://localhost:8770
+    python3 mitreden.py ui --host 0.0.0.0 --port 8770   # reachable from the network
     python3 mitreden.py add "Nochmal!" --tags spiel,zuhause
     python3 mitreden.py build           # render only new/changed phrases
     python3 mitreden.py build --all     # re-render everything (after a voice change)
@@ -1014,9 +1015,28 @@ def main():
 
     if cmd == "ui":
         load_config()
-        port = 8770
-        print(f"mitreden is running at http://localhost:{port}  (Ctrl-C to stop)")
-        http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+        host, port, rest, i = "127.0.0.1", 8770, args[1:], 0
+        while i < len(rest):
+            a = rest[i]
+            if a == "--host" and i + 1 < len(rest):
+                i += 1
+                host = rest[i]
+            elif a.startswith("--host="):
+                host = a.split("=", 1)[1]
+            elif a == "--port" and i + 1 < len(rest):
+                i += 1
+                port = int(rest[i])
+            elif a.startswith("--port="):
+                port = int(a.split("=", 1)[1])
+            i += 1
+        # Localhost by default: the interface has no login, so it stays on this
+        # machine unless you say otherwise. In a container --host 0.0.0.0 is
+        # the only way the port forward reaches it.
+        shown = "localhost" if host in ("127.0.0.1", "0.0.0.0") else host
+        print(f"mitreden is running at http://{shown}:{port}  (Ctrl-C to stop)")
+        if host == "0.0.0.0":
+            print("Listening on every address — keep this off the open internet.")
+        http.server.HTTPServer((host, port), Handler).serve_forever()
     elif cmd == "add":
         text, tags, rest, i = None, [], args[1:], 0
         while i < len(rest):

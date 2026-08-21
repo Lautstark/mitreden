@@ -171,6 +171,39 @@ python3 mitreden.py export kindergarten ~/Desktop/kiga
 python3 mitreden.py export all ~/Desktop/alles
 ```
 
+## Auf dem NAS laufen lassen
+
+mitreden ist ein Werkzeug, kein Dienst — für den Hausgebrauch reicht es, es auf
+dem Rechner zu starten. Wenn es aber dauerhaft laufen soll, damit du auch vom
+Handy aus Sätze hinzufügen kannst und `phrases.json` in der NAS-Sicherung
+liegt, gibt es ein Abbild:
+
+```
+docker compose up -d          # http://localhost:8770
+```
+
+Compose reicht den Projektordner als `/app` hinein. `phrases.json`,
+`config.json` und `out/` liegen damit auf dem NAS und überstehen jedes
+Neubauen; der Azure-Schlüssel kommt aus der `.env` in genau diesem Ordner und
+steckt nie im Abbild. Gebaut wird das Abbild in der CI für amd64 und arm64 und
+liegt danach in der GitHub Container Registry.
+
+Auf einer Synology sind zwei Dinge zu tun. Erstens die eigene Kennung: sonst
+läuft der Container als root, und was er anlegt, gehört danach root und ist
+über die Netzfreigabe nicht mehr zu bearbeiten. Per SSH `id` aufrufen und die
+`user:`-Zeile in `docker-compose.yml` einkommentieren. Zweitens die
+Portfreigabe — nur im Heimnetz.
+
+Denn: **die Oberfläche hat keine Anmeldung.** Wer den Port erreicht, kann
+Sätze anlegen, löschen und über deinen Schlüssel rendern lassen. Im eigenen
+Netz oder über VPN ist das in Ordnung, im offenen Internet nicht. Deshalb
+lauscht mitreden von sich aus nur auf `localhost` und muss ausdrücklich
+aufgefordert werden, ans Netz zu gehen:
+
+```
+python3 mitreden.py ui --host 0.0.0.0 --port 8770
+```
+
 ## Deine Inhalte bleiben lokal
 
 Im Repo liegt nur `phrases.example.json` als Startpunkt. Deine eigene

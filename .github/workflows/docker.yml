@@ -1,0 +1,44 @@
+name: Container image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - mitreden.py
+      - .github/workflows/docker.yml
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Docker-Tags müssen klein geschrieben sein, GitHub-Benutzernamen
+      # nicht — deshalb hier umsetzen.
+      - name: Lowercase the image name
+        run: |
+          echo "ABBILD=ghcr.io/$(echo '${{ github.repository }}' \
+            | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      # amd64 und arm64, damit auch NAS-Modelle mit ARM es ziehen können,
+      # statt es selbst zu bauen.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.ABBILD }}:latest
