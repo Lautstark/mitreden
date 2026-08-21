@@ -262,17 +262,32 @@ def add_lines(items, lines, tags=()):
     return fresh, twins
 
 
-def set_tags(pid, tags):
-    """Replace the groups of one phrase. Returns the new list, or None if the
-    id does not exist."""
+def change_tags(ids, tags, mode="set"):
+    """Groups for one phrase or many. Returns the ids that were touched.
+
+    "set" replaces and is what a single row does, where the current groups are
+    filled in and you can see what disappears. Over a selection that would be
+    a silent deletion — the phrases have different groups, and a filter may be
+    hiding some of them — so a selection adds or removes instead, which only
+    ever touches the groups you named."""
+    clean = [t for t in dict.fromkeys(norm_tag(x) for x in tags) if t]
+    wanted = set(ids)
     items = load_phrases()
+    hit = []
     for i in items:
-        if i.get("id") == pid:
-            clean = [t for t in dict.fromkeys(norm_tag(x) for x in tags) if t]
+        if i.get("id") not in wanted:
+            continue
+        cur = list(i.get("tags") or [])
+        if mode == "add":
+            i["tags"] = cur + [t for t in clean if t not in cur]
+        elif mode == "remove":
+            i["tags"] = [t for t in cur if t not in clean]
+        else:
             i["tags"] = clean
-            save_phrases(items)
-            return clean
-    return None
+        hit.append(i["id"])
+    if hit:
+        save_phrases(items)
+    return hit
 
 
 def edit_text(items, pid, text):
@@ -1321,13 +1336,18 @@ async function grabMany(ids,fmt){
   say(ids.length+' als '+fmt.toUpperCase()+' heruntergeladen.');
 }
 
-async function tagsMany(ids){
-  const v=prompt('Gruppen f\\u00fcr '+ids.length+' ausgew\\u00e4hlte S\\u00e4tze\\n\\n'+
-                 'Mit Komma getrennt. Leer entfernt alle Gruppen.','');
+async function tagsMany(ids,mode){
+  const rein=mode==='add';
+  const v=prompt((rein?'Welche Gruppen bekommen diese ':'Welche Gruppen verlieren diese ')+
+                 ids.length+' S\\u00e4tze?\\n\\nMit Komma getrennt. '+
+                 (rein?'Vorhandene Gruppen bleiben.':'Andere Gruppen bleiben.'),'');
   if(v===null)return;
-  say('Gruppen werden gesetzt \\u2026');
-  for(const id of ids)await post('/api/tags',{id,tags:v.split(',')});
-  say(ids.length+' S\\u00e4tze angepasst.');load();
+  const tags=v.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!tags.length){say('Keine Gruppe genannt.');return}
+  say(rein?'Wird hinzugef\\u00fcgt \\u2026':'Wird entfernt \\u2026');
+  const r=await post('/api/tags',{ids,tags,mode});
+  if(r){say(r.ids.length+(rein?' S\\u00e4tze sind jetzt in ':' S\\u00e4tze nicht mehr in ')+
+            tags.join(', ')+'.');load()}
 }
 
 async function delMany(ids){
@@ -1348,14 +1368,18 @@ $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
   if(fertig.length)
     add('Als WAV herunterladen',false,()=>{closeMenus();grabMany(fertig,'wav')});
   add('Stimme \\u00e4ndern',false,mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
-  add('Gruppen \\u00e4ndern',false,()=>{closeMenus();tagsMany(ids)});
+  add('Zu Gruppe hinzuf\\u00fcgen',false,()=>{closeMenus();tagsMany(ids,'add')});
+  add('Aus Gruppe entfernen',false,()=>{closeMenus();tagsMany(ids,'remove')});
   add(ids.length===1?'Satz l\\u00f6schen':ids.length+' S\\u00e4tze l\\u00f6schen',
       true,()=>{closeMenus();delMany(ids)});
 });
 
 function closeMenus(){
   for(const m of document.querySelectorAll('.menu'))m.remove();
-  for(const b of document.querySelectorAll('.dots'))b.setAttribute('aria-expanded','false');
+  // Every button that opens one, not just the row's — the one in the action
+  // bar kept saying "open" after the first click and refused to open again.
+  for(const b of document.querySelectorAll('[aria-haspopup="true"]'))
+    b.setAttribute('aria-expanded','false');
 }
 function openMenu(btn,it){
   menuOn(btn,(m,add)=>{
@@ -1431,8 +1455,10 @@ async function editTags(it){
   const v=prompt('Gruppen f\\u00fcr \\u201E'+it.text+'\\u201C\\n\\nMit Komma getrennt. '+
                  'Leer entfernt alle Gruppen.',(it.tags||[]).join(', '));
   if(v===null)return;
-  const r=await post('/api/tags',{id:it.id,tags:v.split(',')});
-  if(r){say(r.tags.length?'Jetzt in: '+r.tags.join(', '):'Keine Gruppen mehr.');load()}
+  const tags=v.split(',');
+  const r=await post('/api/tags',{ids:[it.id],tags,mode:'set'});
+  if(r){const rest=tags.map(t=>t.trim()).filter(Boolean);
+        say(rest.length?'Jetzt in: '+rest.join(', '):'Keine Gruppen mehr.');load()}
 }
 async function del(it){
   if(!confirm('\\u201E'+it.text+'\\u201C wirklich l\\u00f6schen?\\n\\nDer Satz und seine '+
@@ -1564,12 +1590,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                "merged": len(twins)}))
 
         if self.path == "/api/tags":
-            pid = (data.get("id") or "").strip()
-            tags = set_tags(pid, data.get("tags", []))
-            if tags is None:
-                return self._send(404, f"No phrase with the id '{pid}'.", "text/plain")
-            return self._send(200, json.dumps({"ok": True, "id": pid, "tags": tags},
-                                              ensure_ascii=False))
+            ids = data.get("ids") or [data.get("id") or ""]
+            ids = [str(i).strip() for i in ids if str(i).strip()]
+            mode = data.get("mode", "set")
+            if mode not in ("set", "add", "remove"):
+                return self._send(400, "Unknown mode.", "text/plain")
+            hit = change_tags(ids, data.get("tags", []), mode)
+            if not hit:
+                return self._send(404, "No phrase with that id.", "text/plain")
+            return self._send(200, json.dumps({"ok": True, "ids": hit,
+                                               "mode": mode}, ensure_ascii=False))
 
         if self.path == "/api/edit":
             pid = (data.get("id") or "").strip()

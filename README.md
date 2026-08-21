@@ -248,8 +248,15 @@ einen Text geändert hast. Die Kästchen vor den Zeilen brauchst du für die
 beiden Dinge, die sich auf mehrere Sätze beziehen: herunterladen und **auf
 eine andere Stimme umstellen**. Beide Knöpfe erscheinen, sobald etwas
 angekreuzt ist: „Als MP3 herunterladen" direkt, alles Seltenere hinter dem
-Pfeil daneben — als WAV, Stimme ändern, Gruppen ändern, löschen. Es ist
-dasselbe Menü, das das ⋮ einer Zeile für einen einzelnen Satz zeigt.
+Pfeil daneben — als WAV, Stimme ändern, zu einer Gruppe hinzufügen, aus einer
+entfernen, löschen. Es ist dasselbe Menü, das das ⋮ einer Zeile für einen
+einzelnen Satz zeigt.
+
+Für mehrere Sätze gibt es **hinzufügen und entfernen, aber kein Ersetzen**.
+Markierte Sätze haben meist verschiedene Gruppen, und ein Filter kann welche
+ausblenden — Ersetzen würde dort still etwas wegwerfen, das du nicht siehst.
+In der Zeile ersetzt „Gruppen ändern" weiterhin, denn dort stehen die
+vorhandenen Gruppen im Feld.
 
 Sollte doch einmal eine Aufnahme scheitern, sagt es die Pille „Nicht
 aufgenommen" in der Stimmenreihe. Anklicken, auswählen, Stimme setzen — und
