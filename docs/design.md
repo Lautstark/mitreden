@@ -14,6 +14,41 @@ here and `src/ui/Logo.tsx` there, filled pink in one and orange in the other.
 The goal is that they read as siblings: same look, same interaction patterns, same
 words for the same things. The method is a written rule set, not shared code.
 
+## The thesis
+
+**mitreden and bildhaft are one tool with two outputs.** You type a sentence; one
+gives it a voice, the other gives it symbols. Everything else — how sentences are
+kept, grouped, searched, corrected, backed up, how the page is laid out and what
+the words for all of it are — should be the same, and where it differs today that
+is an accident to be removed rather than a difference to be justified.
+
+An earlier draft of this document worked from a weaker premise: that the two are
+different *kinds* of tool (a document editor and a batch archive) and should
+converge selectively. Several recommendations below were written under it and have
+been overruled. Where that happened the original reasoning is kept, because the
+costs it identified are real and someone will have to pay them — but it no longer
+decides the outcome. Section 6 collects those costs.
+
+### Decisions
+
+| Question | Decision |
+| --- | --- |
+| What is a group of sentences called? | **Sammlung** / *Collection*, in both |
+| Can a sentence be in several? | **Yes, in both.** bildhaft relaxes `collectionId` to a list |
+| Light or dark? | **Both, in both.** One token set, two schemes, `prefers-color-scheme` |
+| Confirmations and editing | **Real in-page dialogs.** mitreden drops native `confirm()` / `prompt()` |
+| Page layout | **A sidebar shell in both**, so the two open looking like one application |
+
+Two consequences worth naming up front. bildhaft renames its symbol sets to
+**Symbolquellen**, which frees *Sammlung* for the thing both products actually
+share. And mitreden keeps `tags` as the field name inside `phrases.json` and the
+`--tags` flag on the CLI: those files are already sitting on people's disks as
+their only backup, and a word on a screen is not worth a migration. Code stays
+English in both repositories, as it already does — only what a person reads
+changes.
+
+---
+
 ## Ground rules this document works under
 
 These are constraints, not preferences. Every proposal below is measured against
@@ -33,13 +68,12 @@ pull`. There is no staged rollout and no way for a user to keep the old interfac
 short of pinning an image tag. That is the container impact every item on the
 change list has to answer for.
 
-**Correction to a common assumption:** on `main` there is *no* `tools/build-site.py`
-and no `docs/app/`. `docs/` is the marketing site only — `index.html`, `de.html`,
-`style.css`, the videos and posters. A static build of the interface exists only on
-the `spike/piper-wasm` branch (`docs/app/index.html`, plus `docs/spike/README.md`).
-So today an interface change lands in exactly one place, the container. If that
-spike ever merges, every item below gains a second landing place, and the items
-marked *server-shaped* are the ones that would not survive there.
+**`ui.html` also ships as a website.** `tools/build-site.py` builds
+`docs/app/index.html` from the same file, and `docs/app/backend-local.js` answers
+the same routes out of the browser with no server at all. So an interface change
+lands in *two* places, and anything marked *server-shaped* below has to work in
+both or be gated. (This was written when that build lived only on a branch; it is
+now on the same branch as this document, so the conditional is spent.)
 
 **mitreden's interface is bilingual, bildhaft's is not.** Every user-facing string
 in mitreden lives in `lang/de.json` and `lang/en.json` with English keys, and there
@@ -382,7 +416,20 @@ tags and can be in several groups at once, and the chips combine with OR. In
 bildhaft `Sentence.collectionId` is a single string, so a sentence is in exactly one
 collection and the sidebar single-selects to match.
 
-**Recommendation: `Gruppe`. bildhaft changes.**
+**Decided: `Sammlung`, and a sentence can be in several. Both products change.**
+
+*The recommendation below was `Gruppe`; it was overruled. The reasoning is kept
+because points 1 and 3 are still costs someone pays.* Point 2 does not survive
+scrutiny: a song sits in several playlists and a photo in several albums, and
+nobody reads that as three copies. Arity was the real question hiding behind the
+word, and it is settled by making both many-to-many — which is what bildhaft's own
+"the sentence is the unit of reuse" principle already asks for, and which a single
+`collectionId` quietly contradicts. Point 1 is a genuine collision and is paid by
+renaming bildhaft's symbol sets to **Symbolquellen**; that is a smaller change than
+renaming the concept the two products share. Point 3's cost is avoided entirely by
+leaving `tags` alone in `phrases.json` and on the CLI, and changing only labels.
+
+The superseded argument:
 
 Reasons, in order of weight:
 
@@ -496,11 +543,14 @@ oversight. So the rule to write down is not "never a save button" but:
 | concept | mitreden today | bildhaft today | recommended | who moves |
 | --- | --- | --- | --- | --- |
 | a stored utterance | Satz | Satz / Zeile | **Satz** | bildhaft |
-| a named grouping of them | Gruppe | Sammlung | **Gruppe** | bildhaft |
-| making the grouping current | filter chips („Alle") | sidebar selection | both allowed, see §5 | neither |
+| light or dark | dark only | light, dark supported | **both, in both** | mitreden |
+| a named grouping of them | Gruppe | Sammlung | **Sammlung** | mitreden (labels only) |
+| can it be in several at once | yes | no | **yes** | bildhaft (`collectionId` → list) |
+| making a grouping current | filter chips („Alle") | sidebar selection | **multi-select sidebar** | both |
 | the produced artefact leaving | herunterladen | drucken | **herunterladen** | neither |
-| a subset leaving as data | export (CLI only) | „Sammlung exportieren" | **Gruppe exportieren** | both, slightly |
+| a subset leaving as data | export (CLI only) | „Sammlung exportieren" | **Sammlung exportieren** | mitreden |
 | everything leaving as data | — | „Alles exportieren" (called Sicherung in prose) | **Sicherung** | both |
+| the symbol sets bildhaft draws from | — | Symbolsammlung | **Symbolquelle**, to free *Sammlung* | bildhaft |
 | the settings surface | Einstellungen (⚙ beside title) | Einstellungen (sidebar foot) | **Einstellungen, ⚙ beside the mark** | bildhaft |
 | more actions on a thing | ⋮ | ⋯ | one glyph, pick **⋯** | mitreden (one character) |
 | a destructive confirmation | native confirm, „OK" | dialog, button named for the act | **name the act on the button** | mitreden |
@@ -865,12 +915,31 @@ effort grounds.
   sidebar entirely under 820px. A 268px rail would be dead weight in mitreden's
   primary case.
 
-What *should* be shared is not the furniture but the four things underneath it, and
-three of them already are: the name-plus-count shape, the accent tint marking the
-current one, an explicit "Alle" reset, and search that matches group names as well
-as content. mitreden does all four. bildhaft's sidebar has the first two.
+*Decided the other way: both products get the sidebar shell.* The objections above
+are not wrong, they are the specification for doing it properly:
 
-**A light theme.** Not recommended as a convergence goal. `color-scheme: dark` in
+- **The rail must multi-select**, because both products are now many-to-many. A
+  Sammlung in the rail is a toggle, not a destination, and several can be lit at
+  once. That is the chip row's semantics in a vertical arrangement — which is the
+  point, since the semantics were never the thing that differed.
+- **It collapses below 820px**, exactly as bildhaft's already does, so the phone
+  case mitreden sells keeps the single column it has today.
+- **It folds past a dozen**, carrying over the existing `+ n more` behaviour rather
+  than listing forty entries sorted by nothing.
+
+The four things underneath were already shared and stay shared: the
+name-plus-count shape, the accent tint marking a live one, an explicit "Alle"
+reset, and search that matches Sammlung names as well as content. mitreden does all
+four today; bildhaft's sidebar has the first two.
+
+The superseded objection:
+
+**A light theme.** *Decided the other way: both products support both schemes.*
+The costs below are real and are the work, not an argument against it. A light
+palette is the one thing a visitor judges before reading a word, so leaving the two
+products on opposite ones defeats everything else in this document. The videos and
+posters stay valid — dark stops being the only rendering, it does not stop being a
+rendering. The original objection: `color-scheme: dark` in
 `ui.html` is deliberate and is documented in the file itself; `docs/style.css`
 mirrors the dark palette so the landing page looks like the program; and the two
 demo videos and their poster frames (`poster-de.jpg`, `poster-en.jpg`) show a dark
@@ -879,12 +948,14 @@ interface. A light mode is not a token change — it is a second palette, a seco
 matches. The family resemblance has to be carried by shape, spacing, vocabulary and
 interaction instead. That is achievable and is what §4 is built to do.
 
-**Card rows and hover-revealed row actions.** Not recommended. mitreden's list runs
+**Card rows and hover-revealed row actions.** Still not recommended, and this one
+stands: it is density, not identity, and the reasoning survives the new thesis. mitreden's list runs
 to 200 rows before it caps (`CAP = 200`) and is scanned, not worked through; hairline
 separators are the right density for that. Hover-revealed actions assume a pointer,
 and mitreden is used on a phone.
 
-**A footer in the interface.** Not recommended for symmetry's sake. bildhaft's
+**A footer in the interface.** Not recommended for symmetry's sake, and this one
+stands too. bildhaft's
 exists because the ARASAAC licence requires attribution on screen; mitreden has no
 such obligation. If mitreden ever wants one, the honest content is the same
 reassurance bildhaft ends on — that nothing leaves the machine — and not a copy of
