@@ -19,7 +19,7 @@ in two places would be two phrases, and two phrases drift into two voices.
 Usage:
     python3 mitreden.py ui              # web interface at http://localhost:8770
     python3 mitreden.py ui --host 0.0.0.0 --port 8770   # reachable from the network
-    python3 mitreden.py add "Nochmal!" --tags spiel,zuhause
+    python3 mitreden.py add "Nochmal!" --collections spiel,zuhause
     python3 mitreden.py edit hallo "Hallo!"
     python3 mitreden.py voices          # which voices are usable here?
     python3 mitreden.py voice piper:de_DE-thorsten-medium
@@ -239,7 +239,7 @@ def slug(text, fallback="phrase"):
     return "-".join(short)[:SLUG_CHARS].strip("-") or fallback
 
 
-def norm_tag(text):
+def norm_collection(text):
     """Collections get the same treatment as ids, so "Kindergarten" and
     "kindergarten " are one collection and not two.
 
@@ -261,17 +261,17 @@ def find_twin(items, text):
     return next((i for i in items if norm_text(i["text"]) == key), None)
 
 
-def add_tags(item, tags):
+def add_collections(item, collections):
     """Union, order kept. True if anything was actually new."""
-    cur = list(item.get("tags") or [])
-    new = [t for t in tags if t not in cur]
+    cur = list(item.get("collections") or [])
+    new = [t for t in collections if t not in cur]
     if not new:
         return False
-    item["tags"] = cur + new
+    item["collections"] = cur + new
     return True
 
 
-def add_lines(items, lines, tags=()):
+def add_lines(items, lines, collections=()):
     """Append phrases to `items`, in place.
 
     A line whose text already exists does not become a second entry — the
@@ -279,7 +279,7 @@ def add_lines(items, lines, tags=()):
     text at one audio file, however many collections it belongs to.
 
     Returns (new items, phrases that were already there)."""
-    tags = [t for t in (norm_tag(x) for x in tags) if t]
+    collections = [t for t in (norm_collection(x) for x in collections) if t]
     existing = {i["id"] for i in items}
     fresh, twins = [], []
     for raw in lines:
@@ -288,21 +288,21 @@ def add_lines(items, lines, tags=()):
             continue
         twin = find_twin(items, line)
         if twin:
-            add_tags(twin, tags)
+            add_collections(twin, collections)
             twins.append(twin)
             continue
         base = sid = slug(line)
         n = 2
         while sid in existing:            # different texts can still slug alike
             sid, n = f"{base}-{n}", n + 1
-        item = {"id": sid, "text": line, "tags": list(tags)}
+        item = {"id": sid, "text": line, "collections": list(collections)}
         items.append(item)
         existing.add(sid)
         fresh.append(item)
     return fresh, twins
 
 
-def change_tags(ids, tags, mode="set"):
+def change_collections(ids, collections, mode="set"):
     """Collections for one phrase or many. Returns the ids that were touched.
 
     "set" replaces and is what a single row does, where the current collections are
@@ -310,20 +310,20 @@ def change_tags(ids, tags, mode="set"):
     a silent deletion — the phrases have different collections, and a filter may be
     hiding some of them — so a selection adds or removes instead, which only
     ever touches the collections you named."""
-    clean = [t for t in dict.fromkeys(norm_tag(x) for x in tags) if t]
+    clean = [t for t in dict.fromkeys(norm_collection(x) for x in collections) if t]
     wanted = set(ids)
     items = load_phrases()
     hit = []
     for i in items:
         if i.get("id") not in wanted:
             continue
-        cur = list(i.get("tags") or [])
+        cur = list(i.get("collections") or [])
         if mode == "add":
-            i["tags"] = cur + [t for t in clean if t not in cur]
+            i["collections"] = cur + [t for t in clean if t not in cur]
         elif mode == "remove":
-            i["tags"] = [t for t in cur if t not in clean]
+            i["collections"] = [t for t in cur if t not in clean]
         else:
-            i["tags"] = clean
+            i["collections"] = clean
         hit.append(i["id"])
     if hit:
         save_phrases(items)
@@ -709,9 +709,9 @@ def label_of(name, backend, lang=""):
     return " \u00b7 ".join(p for p in (name, backend, lang) if p)
 
 
-def lang_of(tag):
+def lang_of(collection):
     """de_DE-thorsten-medium, de-DE-GiselaNeural, de -> de"""
-    return tag.replace("_", "-").split("-")[0].lower() if tag else ""
+    return collection.replace("_", "-").split("-")[0].lower() if collection else ""
 
 
 AZURE_CACHE_DAYS = 7
@@ -905,7 +905,7 @@ def phrases_with_state():
     every single phrase."""
     cfg = load_config()
     voices = available_voices(cfg)
-    items = [dict(i, tags=i.get("tags") or [],
+    items = [dict(i, collections=i.get("collections") or [],
                   state=phrase_state(i, cfg, voices),
                   voice=voice_name(cfg, phrase_voice(i, cfg), voices))
              for i in load_phrases()]
@@ -970,7 +970,7 @@ def dedupe(apply=False):
     for it in load_phrases():
         twin = seen.get(norm_text(it["text"]))
         if twin:
-            add_tags(twin, it.get("tags") or [])   # in memory until we save
+            add_collections(twin, it.get("collections") or [])   # in memory until we save
             merges.append((it, twin))
         else:
             seen[norm_text(it["text"])] = it
@@ -982,8 +982,8 @@ def dedupe(apply=False):
     return keep, merges
 
 
-def in_collection(item, tag):
-    return not tag or tag in (item.get("tags") or [])
+def in_collection(item, collection):
+    return not collection or collection in (item.get("collections") or [])
 
 
 def selected_ids(ids):
@@ -1026,16 +1026,16 @@ def zip_phrases(ids, cfg, fmt=None):
     return buf.getvalue(), n
 
 
-def export_collection(tag, dest, cfg):
+def export_collection(collection, dest, cfg):
     """Copy one collection into a folder, for carrying it somewhere else.
 
     Returns (copied names, ids that are not recorded yet)."""
-    tag = norm_tag(tag) if tag else ""
+    collection = norm_collection(collection) if collection else ""
     dest = Path(dest).expanduser()
     dest.mkdir(parents=True, exist_ok=True)
     copied, missing = [], []
     for item in load_phrases():
-        if not in_collection(item, tag):
+        if not in_collection(item, collection):
             continue
         f = out_file(item["id"], cfg)
         if f.exists():
@@ -1217,7 +1217,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if route == "/api/phrases":
             fresh, twins = add_lines(items, data.get("lines", []),
-                                     data.get("tags", []))
+                                     data.get("collections", []))
             # A phrase that cannot be recorded is still a phrase: it is in the
             # file, it shows up in the list, and it asks to be recorded again.
             # Failing the whole request over one of them meant the others were
@@ -1236,13 +1236,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                "failed": failed},
                                               ensure_ascii=False))
 
-        if route == "/api/tags":
+        if route == "/api/collections":
             ids = data.get("ids") or [data.get("id") or ""]
             ids = [str(i).strip() for i in ids if str(i).strip()]
             mode = data.get("mode", "set")
             if mode not in ("set", "add", "remove"):
                 return self._send(400, "Unknown mode.", "text/plain")
-            hit = change_tags(ids, data.get("tags", []), mode)
+            hit = change_collections(ids, data.get("collections", []), mode)
             if not hit:
                 return self._send(404, "No phrase with that id.", "text/plain")
             return self._send(200, json.dumps({"ok": True, "ids": hit,
@@ -1397,20 +1397,20 @@ def main():
         # playing, nothing. Now only the recording waits for the recording.
         http.server.ThreadingHTTPServer((host, port), Handler).serve_forever()
     elif cmd == "add":
-        text, tags, rest, i = None, [], args[1:], 0
+        text, collections, rest, i = None, [], args[1:], 0
         while i < len(rest):
             a = rest[i]
-            if a in ("--tag", "--tags") and i + 1 < len(rest):
+            if a in ("--collection", "--collections") and i + 1 < len(rest):
                 i += 1
-                tags = rest[i].split(",")
-            elif a.startswith("--tag=") or a.startswith("--tags="):
-                tags = a.split("=", 1)[1].split(",")
+                collections = rest[i].split(",")
+            elif a.startswith("--collection=") or a.startswith("--collections="):
+                collections = a.split("=", 1)[1].split(",")
             elif a.startswith("-"):
-                # Without this, `add --tag` with nothing after it fell through
-                # and became a phrase that says "--tag", recorded and all.
+                # Without this, `add --collection` with nothing after it fell through
+                # and became a phrase that says "--collection", recorded and all.
                 sys.exit(f"'{a}' is not an option here, or it is missing its "
                          f"value.\nUsage: mitreden.py add \"The phrase\" "
-                         f"[--tags kindergarten,spiel]")
+                         f"[--collections kindergarten,spiel]")
             elif text is None:
                 text = a
             else:
@@ -1419,16 +1419,16 @@ def main():
                          f"phrases.json, or use the web interface.")
             i += 1
         if not text:
-            sys.exit('Usage: mitreden.py add "The phrase" [--tags kindergarten,spiel]')
+            sys.exit('Usage: mitreden.py add "The phrase" [--collections kindergarten,spiel]')
         items = load_phrases()
-        fresh, twins = add_lines(items, [text], tags)
+        fresh, twins = add_lines(items, [text], collections)
         save_phrases(items)
         for item in fresh:
             print(f"added: {item['id']}" +
-                  (f"  [{', '.join(item['tags'])}]" if item["tags"] else ""))
+                  (f"  [{', '.join(item['collections'])}]" if item["collections"] else ""))
         for item in twins:
             print(f"already there: {item['id']} — \"{item['text']}\"" +
-                  (f"  [{', '.join(item['tags'])}]" if item.get("tags") else ""))
+                  (f"  [{', '.join(item['collections'])}]" if item.get("collections") else ""))
         build()
     elif cmd == "delete":
         if len(args) < 2:
@@ -1470,7 +1470,7 @@ def main():
         for dropped, twin in merges:
             print(f"  {dropped['id']} — \"{dropped['text']}\"")
             print(f"    joins {twin['id']}" +
-                  (f"  [{', '.join(twin['tags'])}]" if twin.get("tags") else ""))
+                  (f"  [{', '.join(twin['collections'])}]" if twin.get("collections") else ""))
         if apply:
             print(f"\n{len(merges)} merged away, {len(keep)} phrases left.")
         else:
@@ -1480,8 +1480,8 @@ def main():
     elif cmd == "export":
         if len(args) < 3:
             sys.exit("Usage: mitreden.py export <collection|all> <folder>")
-        tag = "" if args[1] in ("all", "*") else args[1]
-        copied, missing = export_collection(tag, args[2], load_config())
+        collection = "" if args[1] in ("all", "*") else args[1]
+        copied, missing = export_collection(collection, args[2], load_config())
         print(f"exported {len(copied)} files to {args[2]}")
         for pid in missing:
             print(f"  not recorded yet   {pid}", file=sys.stderr)

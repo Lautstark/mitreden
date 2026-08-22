@@ -105,7 +105,7 @@ def seed(folder: Path) -> None:
         {"backend": "espeak", "output": {"format": "mp3", "sample_rate": 44100,
                                          "channels": 1, "bitrate": "192k"}}))
     (folder / "phrases.json").write_text(json.dumps([
-        {"id": f"satz-{n}", "text": f"Satz {n}", "tags": ["test"],
+        {"id": f"satz-{n}", "text": f"Satz {n}", "collections": ["test"],
          "fingerprint": "x" * 12, "backend": "espeak", "voice_id": "espeak"}
         for n in (1, 2)]))
     for n in (1, 2):
@@ -119,11 +119,11 @@ def seed(folder: Path) -> None:
 # --- The cases ---------------------------------------------------------------
 
 def check_torn_requests() -> None:
-    status, body = post("/api/tags", b"not json at all", JSON)
+    status, body = post("/api/collections", b"not json at all", JSON)
     check("a body that is not JSON is answered", status == 400, f"HTTP {status}")
     check("and says so in words", b"JSON" in body, body[:40].decode("utf-8", "replace"))
 
-    status, _ = post("/api/tags", b"{}", dict(JSON, **{"Content-Length": "abc"}))
+    status, _ = post("/api/collections", b"{}", dict(JSON, **{"Content-Length": "abc"}))
     check("a Content-Length that is not a number is answered",
           400 <= status < 500, f"HTTP {status}")
 
@@ -185,7 +185,7 @@ def check_a_recording_that_fails(folder: Path) -> None:
 
     status, body = post("/api/phrases",
                         json.dumps({"lines": ["Geht nicht"],
-                                    "tags": ["test"]}).encode(), JSON)
+                                    "collections": ["test"]}).encode(), JSON)
     answer = json.loads(body) if status == 200 else {}
     check("adding still answers", status == 200, f"HTTP {status}")
     check("the phrase was added anyway", answer.get("added") == 1, str(answer))

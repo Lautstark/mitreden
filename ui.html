@@ -182,10 +182,10 @@ button.quiet:hover{color:var(--text)}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .item .state{font-size:12px;color:var(--text-dim)}
 .item.stale .state{color:var(--warn)}
-.item .tag{font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);
+.item .collection{font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);
   background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
   padding:2px 10px;cursor:pointer}
-.item .tag:hover{background:#1e222c;color:var(--text)}
+.item .collection:hover{background:#1e222c;color:var(--text)}
 .item audio{height:32px;flex:0 1 auto;width:clamp(170px,30%,280px);min-width:0;
   filter:invert(.92) hue-rotate(180deg);opacity:.85}
 .menuwrap{position:relative;flex:none}
@@ -245,8 +245,8 @@ button.quiet:hover{color:var(--text)}
 <div class="hero">
   <label for="t" data-i18n="new_phrases"></label>
   <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
-  <label class="tight" for="nt" data-i18n="groups_label"></label>
-  <input id="nt" type="text" data-i18n-ph="groups_hint" autocomplete="off">
+  <label class="tight" for="nt" data-i18n="collections_label"></label>
+  <input id="nt" type="text" data-i18n-ph="collections_hint" autocomplete="off">
   <div class="row">
     <button class="primary" id="add" data-i18n="add_phrase"></button>
     <select id="voice" class="asbutton" data-i18n-aria="voice_label"
@@ -264,7 +264,7 @@ button.quiet:hover{color:var(--text)}
 </div>
 
 <div class="filters">
-  <div class="frow"><span class="flabel" data-i18n="filter_groups"></span><span class="chips" id="chips"></span></div>
+  <div class="frow"><span class="flabel" data-i18n="filter_collections"></span><span class="chips" id="chips"></span></div>
   <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
 </div>
 
@@ -400,7 +400,7 @@ const SEL=new Set();
 // Several collections can be picked at once and they combine with OR: two books
 // and you get the phrases of both. The free text search narrows that further,
 // so the two mechanisms are ANDed with each other.
-const TAGS=new Set();
+const COLLECTIONS=new Set();
 // One collection per picture book adds up fast. Only the most used are on
 // screen; the rest is one click away, and the search finds their names too.
 const CHIP_CAP=12;
@@ -418,7 +418,7 @@ const bare=s=>s.toLowerCase().replace(/ß/g,'ss')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const umlaut=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe')
   .replace(/ü/g,'ue').replace(/ß/g,'ss');
-const hay=i=>bare(i.text)+' | '+umlaut(i.text)+' | '+(i.tags||[]).join(' ');
+const hay=i=>bare(i.text)+' | '+umlaut(i.text)+' | '+(i.collections||[]).join(' ');
 
 function found(){
   const q=$('q').value.trim();
@@ -431,21 +431,21 @@ function found(){
 const voiceOf=i=>i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
 const shown=()=>{
   let f=found();
-  if(TAGS.size)f=f.filter(i=>(i.tags||[]).some(x=>TAGS.has(x)));
+  if(COLLECTIONS.size)f=f.filter(i=>(i.collections||[]).some(x=>COLLECTIONS.has(x)));
   if(VOICES.size)f=f.filter(i=>VOICES.has(voiceOf(i)));
   return f;
 };
 
-function chip(label,n,tag,set,where){
+function chip(label,n,collection,set,where){
   const b=document.createElement('button');
-  b.className='chip'+((tag===null?!set.size:set.has(tag))?' on':'');
+  b.className='chip'+((collection===null?!set.size:set.has(collection))?' on':'');
   b.textContent=label;
   const s=document.createElement('span');s.className='n';s.textContent=n;
   b.appendChild(s);
   b.onclick=()=>{
-    if(tag===null)set.clear();
-    else if(set.has(tag))set.delete(tag);
-    else set.add(tag);
+    if(collection===null)set.clear();
+    else if(set.has(collection))set.delete(collection);
+    else set.add(collection);
     draw();
   };
   $(where).appendChild(b);
@@ -489,20 +489,20 @@ function drawVoiceChips(hits){
 
 function drawChips(hits){
   const counts={};
-  for(const i of hits)for(const x of (i.tags||[]))counts[x]=(counts[x]||0)+1;
-  for(const x of TAGS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
+  for(const i of hits)for(const x of (i.collections||[]))counts[x]=(counts[x]||0)+1;
+  for(const x of COLLECTIONS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
   // Most used first — those are the everyday ones. Alphabetical within a tie.
   const names=Object.keys(counts)
     .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
   $('chips').innerHTML='';
   if(!names.length)return;
-  chip(t('chip_all'),hits.length,null,TAGS,'chips');
+  chip(t('chip_all'),hits.length,null,COLLECTIONS,'chips');
   let vis=names;
   if(!ALL_TAGS&&names.length>CHIP_CAP){
     const top=names.slice(0,CHIP_CAP);
-    vis=top.concat([...TAGS].filter(x=>!top.includes(x)));
+    vis=top.concat([...COLLECTIONS].filter(x=>!top.includes(x)));
   }
-  for(const n of vis)chip(n,counts[n],n,TAGS,'chips');
+  for(const n of vis)chip(n,counts[n],n,COLLECTIONS,'chips');
   if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
     const b=document.createElement('button');
     b.className='chip fold';
@@ -557,10 +557,10 @@ function draw(){
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.state').textContent=stateText(it);
     const meta=d.querySelector('.meta');
-    for(const tag of (it.tags||[])){
+    for(const collection of (it.collections||[])){
       const b=document.createElement('button');
-      b.className='tag';b.textContent=tag;b.title=t('tag_title');
-      b.onclick=()=>{TAGS.clear();TAGS.add(tag);draw()};
+      b.className='collection';b.textContent=collection;b.title=t('collection_title');
+      b.onclick=()=>{COLLECTIONS.clear();COLLECTIONS.add(collection);draw()};
       meta.appendChild(b);
     }
     d.querySelector('.dots').onclick=ev=>openMenu(ev.currentTarget,it);
@@ -630,14 +630,14 @@ async function grabMany(ids,fmt){
 
 async function tagsMany(ids,mode){
   const rein=mode==='add';
-  const v=prompt(t(rein?'ask_groups_add':'ask_groups_remove',{n:ids.length}),'');
+  const v=prompt(t(rein?'ask_collections_add':'ask_collections_remove',{n:ids.length}),'');
   if(v===null)return;
-  const tags=v.split(',').map(t=>t.trim()).filter(Boolean);
-  if(!tags.length){say(t('no_group_named'));return}
-  say(t(rein?'busy_group_add':'busy_group_remove'));
-  const r=await post('/api/tags',{ids,tags,mode});
-  if(r){say(t(rein?'done_group_add':'done_group_remove',
-                {n:r.ids.length,groups:tags.join(', ')}));load()}
+  const collections=v.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!collections.length){say(t('no_collection_named'));return}
+  say(t(rein?'busy_collection_add':'busy_collection_remove'));
+  const r=await post('/api/collections',{ids,collections,mode});
+  if(r){say(t(rein?'done_collection_add':'done_collection_remove',
+                {n:r.ids.length,collections:collections.join(', ')}));load()}
 }
 
 async function delMany(ids){
@@ -660,8 +660,8 @@ $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
     add(t('download_wav'),false,()=>{closeMenus();grabMany(fertig,'wav')});
   add(t('menu_change_voice'),false,
       mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
-  add(t('menu_add_group'),false,()=>{closeMenus();tagsMany(ids,'add')});
-  add(t('menu_remove_group'),false,()=>{closeMenus();tagsMany(ids,'remove')});
+  add(t('menu_add_collection'),false,()=>{closeMenus();tagsMany(ids,'add')});
+  add(t('menu_remove_collection'),false,()=>{closeMenus();tagsMany(ids,'remove')});
   add(tn('menu_delete',ids.length),true,()=>{closeMenus();delMany(ids)});
 });
 
@@ -681,7 +681,7 @@ function openMenu(btn,it){
     }
     add(t('menu_change_voice'),false,
         mm=>voiceMenu(mm,(id,label)=>switchTo([it.id],id,label)));
-    add((it.tags||[]).length?t('menu_change_groups'):t('menu_add_to_group'),
+    add((it.collections||[]).length?t('menu_change_collections'):t('menu_add_to_collection'),
         false,()=>{closeMenus();editTags(it)});
     add(t('menu_delete_one'),true,()=>{closeMenus();del(it)});
   });
@@ -694,8 +694,8 @@ async function load(){
   ALL=data.items||[];
   await loadVoices(data.voice);
   const live=new Set();
-  for(const i of ALL)for(const x of (i.tags||[]))live.add(x);
-  for(const x of [...TAGS])if(!live.has(x))TAGS.delete(x);   // collection gone
+  for(const i of ALL)for(const x of (i.collections||[]))live.add(x);
+  for(const x of [...COLLECTIONS])if(!live.has(x))COLLECTIONS.delete(x);   // collection gone
   const alive=new Set(ALL.map(i=>i.id));
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
@@ -744,14 +744,14 @@ async function editText(it){
         load()}
 }
 async function editTags(it){
-  const v=prompt(t('ask_groups_one',{text:'\u201E'+it.text+'\u201C'}),
-                 (it.tags||[]).join(', '));
+  const v=prompt(t('ask_collections_one',{text:'\u201E'+it.text+'\u201C'}),
+                 (it.collections||[]).join(', '));
   if(v===null)return;
-  const tags=v.split(',');
-  const r=await post('/api/tags',{ids:[it.id],tags,mode:'set'});
-  if(r){const rest=tags.map(t=>t.trim()).filter(Boolean);
-        say(rest.length?t('done_groups_one',{groups:rest.join(', ')})
-                       :t('done_groups_none'));load()}
+  const collections=v.split(',');
+  const r=await post('/api/collections',{ids:[it.id],collections,mode:'set'});
+  if(r){const rest=collections.map(t=>t.trim()).filter(Boolean);
+        say(rest.length?t('done_collections_one',{groups:rest.join(', ')})
+                       :t('done_collections_none'));load()}
 }
 async function del(it){
   if(!confirm(t('ask_delete_this',{text:'\u201E'+it.text+'\u201C'})))return;
@@ -771,9 +771,9 @@ $('add').onclick=async()=>{
   if(!lines.length){say(t('type_first'));return}
   // Only what stands in the field. A filter further down is a way of looking
   // at the list, not a hidden instruction about the phrase you are typing.
-  const tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const collections=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
   say(t('busy_add'));
-  const res=await post('/api/phrases',{lines,tags});
+  const res=await post('/api/phrases',{lines,collections});
   if(res){
     $('t').value='';
     // A phrase that could not be recorded was still added, so the list has to

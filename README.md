@@ -92,7 +92,7 @@ That is everything. For a permanent setup, see
 It works the same without the interface:
 
 ```
-python3 mitreden.py add "I need help." --tags emergency
+python3 mitreden.py add "I need help." --collections emergency
 python3 mitreden.py edit look "Look!"
 python3 mitreden.py build        # only new or changed ones
 python3 mitreden.py build --all  # everything again, after a voice change
@@ -103,7 +103,7 @@ In the container the same commands run inside it, so there is nothing to
 install and nothing to clone — `mitreden` is the container's name:
 
 ```
-docker exec mitreden python mitreden.py add "I need help." --tags emergency
+docker exec mitreden python mitreden.py add "I need help." --collections emergency
 ```
 
 **Typo?** The ⋮ at the right edge of a row changes the text without creating
@@ -280,13 +280,10 @@ nursery *and* at home would be two sentences, and two sentences are two
 recordings that can drift into two different voices. One text stays one
 sentence and one audio file, however many collections it belongs to.
 
-In the file the field is still called `tags`, and it will stay that way: those
-files are sitting on other people's disks as their only backup, and a word on
-a screen is not worth a migration.
 
 ```json
 { "id": "i-need-help", "text": "I need help.",
-  "tags": ["nursery", "home", "emergency"] }
+  "collections": ["nursery", "home", "emergency"] }
 ```
 
 Above the list are two rows to click: **Collections** and **Voices**, plus a

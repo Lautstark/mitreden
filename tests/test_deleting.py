@@ -45,7 +45,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 def seed(count: int) -> dict:
     """A handful of phrases that look recorded, with a file each."""
     cfg = m.load_config()
-    items = [{"id": f"satz-{n}", "text": f"Satz {n}", "tags": ["test"],
+    items = [{"id": f"satz-{n}", "text": f"Satz {n}", "collections": ["test"],
               "fingerprint": "x" * 12, "backend": "say", "voice_id": "say"}
              for n in range(count)]
     m.save_phrases(items)
@@ -107,9 +107,9 @@ def check_blank_ids() -> None:
 def check_dedupe_keeps_the_oldest(cfg) -> None:
     """Merging duplicates is the other place that removes files."""
     m.save_phrases([
-        {"id": "a", "text": "Nochmal!", "tags": ["spiel"]},
-        {"id": "b", "text": "nochmal!", "tags": ["zuhause"]},   # the same phrase
-        {"id": "c", "text": "Nochmal.", "tags": []},            # not the same
+        {"id": "a", "text": "Nochmal!", "collections": ["spiel"]},
+        {"id": "b", "text": "nochmal!", "collections": ["zuhause"]},   # the same phrase
+        {"id": "c", "text": "Nochmal.", "collections": []},            # not the same
     ])
     m.OUT.mkdir(parents=True, exist_ok=True)
     for pid in ("a", "b", "c"):
@@ -123,8 +123,8 @@ def check_dedupe_keeps_the_oldest(cfg) -> None:
     m.dedupe(apply=True)
     check("applying keeps the oldest", ids_now() == ["a", "c"], str(ids_now()))
     check("the merged one takes over the groups",
-          m.load_phrases()[0]["tags"] == ["spiel", "zuhause"],
-          str(m.load_phrases()[0]["tags"]))
+          m.load_phrases()[0]["collections"] == ["spiel", "zuhause"],
+          str(m.load_phrases()[0]["collections"]))
     check("and its file goes", not m.out_file("b", cfg).exists())
 
 
