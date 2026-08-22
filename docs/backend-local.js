@@ -18,22 +18,32 @@
 
   // ---------------------------------------------------------------- voices
   //
-  // A tested list, not the piper catalogue. voices.json lies in both
-  // directions: it offers models whose files are missing, and models whose
-  // phoneme table the phonemizer here cannot drive. Every entry below was
-  // recorded once by hand before it was allowed in.
+  // A tested list, not the piper catalogue. Two questions have to be answered
+  // before a voice belongs here, and voices.json answers neither of them.
   //
-  // Only medium and high survive. Every low and x_low model fails the same
-  // way — the phonemizer works from a fixed symbol table instead of the
-  // phoneme_id_map inside each model's own .onnx.json, and the older tables
-  // are smaller. That is also why Kerstin is missing: she is published as low
-  // only. Fixing the phonemizer brings her back, along with models a third of
-  // the size. See docs/spike/README.md.
+  // DOES IT RUN? Only medium and high survive. Every low and x_low model fails
+  // the same way — the phonemizer works from a fixed symbol table instead of
+  // the phoneme_id_map inside each model's own .onnx.json, and the older
+  // tables are smaller. That is why Kerstin is missing: she is published as
+  // low only, and fixing the phonemizer is what would bring her back. See
+  // docs/spike/README.md.
+  //
+  // MAY IT BE HANDED ON? A page that gives somebody a finished audio file is
+  // passing the voice on, exactly as the container image does, so the rule in
+  // the README applies here word for word: read the MODEL_CARD next to the
+  // model, not the file name. en_US-hfc_female-medium stood in this list on
+  // the strength of running perfectly. Its card says CC BY-NC-SA 4.0 — non
+  // commercial, share-alike — which is not a condition a recording made for
+  // somebody else's child can carry. It is out, and the question is written
+  // down here so that working again is not enough to bring it back.
+  //
+  // The two questions are independent. A voice can run and be unusable, and
+  // the licence one is the easier to forget, because nothing fails when it is
+  // got wrong.
   const VOICES = [
     { id: 'piper:de_DE-thorsten-medium', name: 'Thorsten', lang: 'de', mb: 63 },
     { id: 'piper:de_DE-thorsten_emotional-medium', name: 'Thorsten (emotional)', lang: 'de', mb: 63 },
     { id: 'piper:en_US-kristin-medium', name: 'Kristin', lang: 'en', mb: 63 },
-    { id: 'piper:en_US-hfc_female-medium', name: 'HFC female', lang: 'en', mb: 63 },
   ];
   const DEFAULT_VOICE = VOICES[0].id;
   const modelOf = id => id.replace(/^piper:/, '');

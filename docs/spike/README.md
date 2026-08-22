@@ -37,12 +37,37 @@ and only `medium` and `high` survive:
 ```
 OK    de_DE-thorsten-medium              OK    de_DE-thorsten-high
 OK    de_DE-thorsten_emotional-medium    OK    de_DE-mls-medium
-OK    en_US-kristin-medium               OK    en_US-hfc_female-medium
+OK    en_US-kristin-medium               OK    en_US-hfc_female-medium  (runs,
+                                                but see the licence below)
 FAIL  de_DE-kerstin-low                  FAIL  de_DE-thorsten-low
 FAIL  de_DE-eva_k-x_low                  FAIL  de_DE-ramona-low
-FAIL  de_DE-karlsson-low                 FAIL  en_US-john-medium  (files missing
-                                                from the mirror, listed anyway)
+FAIL  de_DE-karlsson-low                 FAIL  en_US-john-medium  (not in
+                                                vits-web's PATH_MAP)
 ```
+
+Two of those lines were first written wrong, and both are corrected above.
+
+`en_US-john-medium` is **not** missing from the mirror. The files are there,
+63,531,379 bytes, on rhasspy's repository and on the one vits-web fetches from.
+What is missing is its entry in vits-web's hardcoded `PATH_MAP`: `predict()`
+looks the id up, finds nothing, and asks for `undefined.json`. Its `voices()`
+call returns the mirror's index instead — 124 entries against 119 in the map —
+so five voices are advertised by the library and cannot be downloaded by it.
+Found in vorlaut's `docs/browser-tts.md`, which took this table as its starting
+point.
+
+`en_US-hfc_female-medium` runs and **must not ship.** Its `MODEL_CARD` says
+CC BY-NC-SA 4.0 — non-commercial, share-alike — and mitreden's own rule is that
+a voice under such a licence does not belong in anything passed on. A page that
+hands somebody a finished audio file is passing it on exactly as the image does.
+It was in `docs/app/backend-local.js` on the strength of the OK above, and it
+has been taken out.
+
+**A voice that runs is not a voice that can ship.** This table only ever
+answered the first question, and reading it as though it answered both is the
+mistake that put a non-commercial voice in the app. `de_DE-mls-medium` is the
+next one to watch: it works, it may be handed on, and it is CC-BY 4.0, so it
+owes an attribution that nothing here yet renders.
 
 Two consequences. A voice picker here has to be a tested list, not the piper
 catalogue — `voices.json` lies in both directions. And of the container's four
