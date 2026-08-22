@@ -6,10 +6,10 @@
  * server of ours, because there is not one.
  */
 
-import { azureVoices } from '@lautstark/stimmquelle/browser';
 import { loadPhrases, wipe } from '../db/db.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
-import { LANGUAGES, lang, setLang, t, type Lang } from '../i18n/index.ts';
+import { probeAzure } from '../core/voices.ts';
+import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 import { loadVoices } from './composer.ts';
 import { load } from './state.ts';
@@ -37,6 +37,7 @@ export async function drawSetup(): Promise<void> {
   card.className = 'card';
   card.innerHTML = `
     <div class="card__head"><h3>Azure Speech</h3><span class="badge state"></span></div>
+    <p class="hint probe" role="status"></p>
     <p class="sub body"></p><p class="warn"></p>
     <label for="azurekey"></label>
     <input id="azurekey" type="password" autocomplete="off">
@@ -46,10 +47,27 @@ export async function drawSetup(): Promise<void> {
     <p class="hint region"></p>
     <div class="row"><button class="primary save"></button><button class="quiet forget"></button></div>`;
 
-  const set = Boolean(saved.azure?.key);
+  const azure = saved.azure;
   const state = card.querySelector<HTMLElement>('.state')!;
-  state.textContent = set ? t('key_set') : t('key_unset');
-  state.hidden = !set;
+  // Which key, not merely that there is one: the last four characters tell
+  // two keys apart without giving either away.
+  state.textContent = azure ? t('key_hint', { hint: azure.key.slice(-4) }) : '';
+  state.hidden = !azure;
+
+  const probe = card.querySelector<HTMLElement>('.probe')!;
+  probe.hidden = !azure;
+  if (azure) {
+    // The person who stored a key has one question — does Azure answer? —
+    // and the badge's "stored" was never it. Memoised per key and region, so
+    // this line and the picker's own ask share a single request.
+    probe.textContent = t('azure_asking');
+    void probeAzure(azure).then((answer) => {
+      probe.textContent = answer.ok
+        ? tn('azure_answers', answer.count)
+        : t(answer.code === 'unreachable' ? 'azure_unreachable'
+          : answer.code === 'refused' ? 'azure_refused' : 'azure_failed');
+    });
+  }
   card.querySelector<HTMLElement>('.body')!.textContent = t('azure_body');
   card.querySelector<HTMLElement>('.warn')!.textContent = t('azure_warn');
   card.querySelector<HTMLElement>('label[for=azurekey]')!.textContent = t('key_field');
@@ -64,9 +82,9 @@ export async function drawSetup(): Promise<void> {
   const forget = card.querySelector<HTMLButtonElement>('.forget')!;
   save.textContent = t('key_save');
   forget.textContent = t('key_forget');
-  forget.hidden = !set;
+  forget.hidden = !azure;
   save.onclick = () => void saveKey(key.value, region.value, save);
-  forget.onclick = () => void saveKey('', region.value, forget);
+  forget.onclick = () => void forgetKey();
 
   box.appendChild(card);
 }
@@ -77,34 +95,51 @@ export async function drawSetup(): Promise<void> {
  * network round trip, and a button that does nothing visible for two seconds is
  * a button you press again.
  */
-async function saveKey(key: string, region: string, button: HTMLButtonElement): Promise<void> {
-  const trimmed = key.trim();
-  if (!trimmed) {
-    await saveAzure(undefined);
-    say(t('key_removed', { label: 'Azure Speech' }));
-    await Promise.all([drawSetup(), loadVoices()]);
+async function saveKey(typed: string, region: string, button: HTMLButtonElement): Promise<void> {
+  // The field is empty every time the card draws, so an untouched field must
+  // not mean "no key": a save that only moves the region keeps the key it
+  // already has. Removing the key is its own button, not a way to save.
+  const key = typed.trim() || (await settings()).azure?.key;
+  if (!key) {
+    say(t('type_first'));
     return;
   }
+  const where = region.trim() || 'westeurope';
   const was = button.textContent;
   button.disabled = true;
   button.textContent = t('key_checking');
   say(t('key_checking'));
   try {
-    const voices = await azureVoices({ key: trimmed, region: region.trim() || 'westeurope' });
-    await saveAzure({ key: trimmed, region: region.trim() || 'westeurope' });
-    say(t('key_saved', { label: 'Azure Speech', n: voices.length }));
+    const answer = await probeAzure({ key, region: where });
+    if (!answer.ok) {
+      // A key is bound to one region, and the wrong pairing answers exactly
+      // the same 401 as a wrong key — saying which is more use than repeating
+      // Azure. A region name that is not one never answers at all, and that
+      // difference is worth its own sentence too.
+      say(t('key_failed', { error:
+        answer.code === 'refused' ? t('azure_bad_pair')
+          : answer.code === 'unreachable' ? t('azure_unreachable')
+            : t('azure_no_answer', { error: answer.words }) }));
+      return;
+    }
+    await saveAzure({ key, region: where });
+    say(t('key_saved', { label: 'Azure Speech', n: answer.count }));
+    // The card and the picker are what this save feeds. The dialog stays
+    // open, so the state line and the new voices land on the screen the key
+    // was typed into; the probe is already answered, so neither asks again.
     await Promise.all([drawSetup(), loadVoices()]);
   } catch (error) {
-    // A key is bound to one region, and the wrong pairing answers exactly the
-    // same 401 as a wrong key. Saying which is more use than repeating Azure.
-    const status = error instanceof Error && /401|403/.test(error.message);
-    say(t('key_failed', { error: status ? t('azure_bad_pair') : t('azure_no_answer', {
-      error: error instanceof Error ? error.message : String(error),
-    }) }));
+    say(t('key_failed', { error: error instanceof Error ? error.message : String(error) }));
   } finally {
     button.disabled = false;
     button.textContent = was;
   }
+}
+
+async function forgetKey(): Promise<void> {
+  await saveAzure(undefined);
+  say(t('key_removed', { label: 'Azure Speech' }));
+  await Promise.all([drawSetup(), loadVoices()]);
 }
 
 // ------------------------------------------------------------------- data
