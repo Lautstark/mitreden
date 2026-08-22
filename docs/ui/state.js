@@ -26,7 +26,6 @@ export let DECLARED=[];   // [{key,name,count}] — key is what a sentence point
 // not quietly drop what you picked; ids that vanish are pruned on load.
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
-export const SEL=new Set();
 // Several collections can be picked at once and they combine with OR: two books
 // and you get the phrases of both. The free text search narrows that further,
 // so the two mechanisms are ANDed with each other.
@@ -104,7 +103,5 @@ export async function load(){
   // selected has gone, fall into the first Sammlung rather than showing a
   // list that belongs to nobody.
   if(!COLLECTIONS.size&&DECLARED.length)COLLECTIONS.add(DECLARED[0].key);
-  const alive=new Set(ALL.map(i=>i.id));
-  for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   notify();
 }

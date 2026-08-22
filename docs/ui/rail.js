@@ -43,7 +43,9 @@ export function drawRail(){
     rows.appendChild(b);
   };
 
-  $('chint1').textContent=t('compose_hint').replace('Enter ','').replace(/^· /,'');
+  // "Enter nimmt auf · Shift + Enter neue Zeile", with both keys drawn as keys.
+  $('chint1').textContent=t('compose_records');
+  $('chint2').textContent=t('compose_newline');
   for(const c of DECLARED) row(c.key,c.name,c.count,COLLECTIONS.has(c.key));
 
   // The header names where you are. There is always somewhere to be.

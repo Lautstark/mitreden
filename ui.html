@@ -82,6 +82,13 @@
 .row:hover .row__more,.row.on .row__more{opacity:.75}
 .newname{width:100%;margin-top:6px}
 .into{margin:0 0 8px;font-size:13px;color:var(--accent-strong)}
+/* The sentence is the control: click it and type. Same idea as the Sammlung's
+   title, so there is one way to change a name in this program, not two. */
+.item .line{cursor:text;border-radius:var(--radius-sm);padding:1px 5px;margin:-1px -5px;
+  border:1px solid transparent}
+.item .line:hover{border-color:var(--line)}
+.item .line[contenteditable]{border-color:var(--accent);background:var(--surface);
+  outline:none;cursor:text}
 .sheet__head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .sheet__head h2{margin:0;flex:1}
 /* One row of tabs, the shape bildhaft uses: a track with the live one lifted
@@ -284,6 +291,8 @@ button.quiet:hover{color:var(--text)}
 /* The everyday action is a button you press, not an entry you go looking for.
    Everything rarer sits behind the chevron next to it. */
 .split{display:flex}
+.split{display:inline-flex;align-items:center;gap:2px}
+.chev{padding:6px 5px;font-size:12px}
 .split #dlmp3{border-top-right-radius:0;border-bottom-right-radius:0;
   border-right-color:transparent;padding:9px 14px;font-size:14px}
 .acts #bulk{border-top-left-radius:0;border-bottom-left-radius:0;
@@ -447,7 +456,8 @@ button.quiet:hover{color:var(--text)}
       data-i18n-title="add_phrase">→</button>
   </div>
   <p class="chint">
-    <span><kbd>Enter</kbd> <span id="chint1"></span></span>
+    <span><kbd>Enter</kbd> <span id="chint1"></span> ·
+      <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2"></span></span>
     <span class="right"><select id="voice" class="asbutton"
       data-i18n-aria="voice_label" data-i18n-title="voice_title"></select></span>
   </p>
@@ -461,7 +471,12 @@ button.quiet:hover{color:var(--text)}
   <input id="colname" class="title-input" data-i18n-ph="collection_name_hint"
     data-i18n-aria="collection_name_hint" autocomplete="off">
   <span class="count" id="count"></span>
-  <span class="menuwrap"><button id="dlall" class="flat" data-i18n="download_all"></button></span>
+  <span class="split menuwrap">
+    <button id="dlall" class="flat" data-i18n="download_all"></button>
+    <button id="dlallmore" class="flat chev" aria-haspopup="true"
+      aria-expanded="false" data-i18n-title="download_wav"
+      data-i18n-aria="download_wav">⌄</button>
+  </span>
   <span class="menuwrap"><button id="colmore" class="icon" aria-haspopup="true"
     aria-expanded="false" data-i18n-title="more_actions"
     data-i18n-aria="more_actions">⋯</button></span>
@@ -471,14 +486,6 @@ button.quiet:hover{color:var(--text)}
   <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
 </div>
 
-<div class="acts">
-  <label class="selall"><input type="checkbox" id="selall"><span id="selalltxt"></span></label>
-  <span class="split menuwrap" id="doing" hidden>
-    <button id="dlmp3" data-i18n="download_mp3"></button>
-    <button id="bulk" aria-haspopup="true" aria-expanded="false"
-      data-i18n-title="more_actions" data-i18n-aria="more_actions"></button>
-  </span>
-</div>
 
 <div id="list"></div>
 
