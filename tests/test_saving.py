@@ -51,7 +51,7 @@ def strays() -> list[str]:
 def check_interrupted_save() -> None:
     """The old file survives a save that dies half way through."""
     m.DATA.mkdir(parents=True, exist_ok=True)
-    m.save_phrases([{"id": "hallo", "text": "Hallo", "tags": []}])
+    m.save_phrases([{"id": "hallo", "text": "Hallo", "collections": []}])
     before = m.PHRASES.read_text()
 
     real = pathlib.Path.write_text
@@ -64,7 +64,7 @@ def check_interrupted_save() -> None:
 
     pathlib.Path.write_text = dies_half_way
     try:
-        m.save_phrases([{"id": "neu", "text": "Neu", "tags": []}])
+        m.save_phrases([{"id": "neu", "text": "Neu", "collections": []}])
         check("an interrupted save raises", False, "it returned quietly")
     except KeyboardInterrupt:
         check("an interrupted save raises", True)
@@ -73,7 +73,7 @@ def check_interrupted_save() -> None:
 
     check("the old phrases.json is untouched", m.PHRASES.read_text() == before)
     check("and still loads", m.load_phrases() == [{"id": "hallo", "text": "Hallo",
-                                                   "tags": []}])
+                                                   "collections": []}])
     check("no half file is left behind", not strays(), ", ".join(strays()))
 
 

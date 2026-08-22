@@ -176,7 +176,7 @@
       const name = single ? (single.name || '') : (named.get(s.collectionId || s.sessionId) || '');
       // No id: bildhaft's are internal, ours are file names. And no voice —
       // bildhaft has none, so these take whatever is selected here.
-      out.push({ text, tags: name ? [name] : [] });
+      out.push({ text, collections: name ? [name] : [] });
     }
     return out;
   }
@@ -437,7 +437,7 @@
     const out = [];
     for (const i of items) {
       const v = voiceById(i.voice_id || active);
-      out.push({ ...i, tags: i.tags || [], state: await state(i),
+      out.push({ ...i, collections: i.collections || [], state: await state(i),
                  voice: v ? labelOf(v) : (i.voice_id || '') });
     }
     await refreshUrls(out);        // the player asks for these while drawing
@@ -472,18 +472,18 @@
     const items = await loadPhrases();
 
     if (route === '/api/phrases') {
-      const tags = (body.tags || []).map(normTag).filter(Boolean);
+      const collections = (body.collections || []).map(normTag).filter(Boolean);
       const fresh = [], twins = [];
       for (const line of body.lines || []) {
         const text = line.trim();
         if (!text) continue;
         const twin = findTwin(items, text);
         if (twin) {
-          for (const t of tags) if (!(twin.tags || []).includes(t)) (twin.tags ||= []).push(t);
+          for (const t of collections) if (!(twin.collections || []).includes(t)) (twin.collections ||= []).push(t);
           twins.push(twin);
           continue;
         }
-        const item = { id: freeId(items, text), text, tags: [...tags] };
+        const item = { id: freeId(items, text), text, collections: [...collections] };
         items.push(item); fresh.push(item);
       }
       // A sentence that cannot be recorded is still a sentence: it is in the
@@ -524,18 +524,18 @@
       return json({ ok: true, id: item.id, text: item.text, rendered, failed });
     }
 
-    if (route === '/api/tags') {
+    if (route === '/api/collections') {
       const ids = (body.ids || [body.id || '']).map(i => String(i).trim()).filter(Boolean);
       const mode = body.mode || 'set';
       if (!['set', 'add', 'remove'].includes(mode)) return fail('Unknown mode.', 400);
-      const tags = (body.tags || []).map(normTag).filter(Boolean);
+      const collections = (body.collections || []).map(normTag).filter(Boolean);
       const hit = [];
       for (const item of items) {
         if (!ids.includes(item.id)) continue;
-        const cur = item.tags || [];
-        item.tags = mode === 'set' ? [...tags]
-                  : mode === 'add' ? cur.concat(tags.filter(t => !cur.includes(t)))
-                                   : cur.filter(t => !tags.includes(t));
+        const cur = item.collections || [];
+        item.collections = mode === 'set' ? [...collections]
+                  : mode === 'add' ? cur.concat(collections.filter(t => !cur.includes(t)))
+                                   : cur.filter(t => !collections.includes(t));
         hit.push(item.id);
       }
       if (!hit.length) return fail('No phrase with that id.', 404);
@@ -593,11 +593,11 @@
         const text = typeof raw === 'string' ? raw.trim()
                    : (raw && typeof raw.text === 'string') ? raw.text.trim() : '';
         if (!text) continue;
-        const tags = (Array.isArray(raw && raw.tags) ? raw.tags : []).map(normTag).filter(Boolean);
+        const collections = (Array.isArray(raw && raw.collections) ? raw.collections : []).map(normTag).filter(Boolean);
 
         const twin = findTwin(items, text);
         if (twin) {
-          for (const t of tags) if (!(twin.tags || []).includes(t)) (twin.tags ||= []).push(t);
+          for (const t of collections) if (!(twin.collections || []).includes(t)) (twin.collections ||= []).push(t);
           merged++;
           continue;
         }
@@ -606,7 +606,7 @@
         // the whole reason for carrying sentences between the two.
         const wanted = typeof (raw && raw.id) === 'string' ? raw.id.trim() : '';
         const id = wanted && !items.some(i => i.id === wanted) ? wanted : freeId(items, text);
-        const item = { id, text, tags };
+        const item = { id, text, collections };
 
         // A voice this page cannot speak with would fail at the first
         // recording. The container has voices we do not — Kerstin, Azure —

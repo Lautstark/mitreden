@@ -122,33 +122,33 @@ def check_each_half() -> None:
     # page can send without being asked anything first.
     for kind in ("text/plain", "application/x-www-form-urlencoded",
                  "multipart/form-data", ""):
-        status, _ = as_json("/api/tags", {"ids": ["hallo"], "tags": ["x"]},
+        status, _ = as_json("/api/collections", {"ids": ["hallo"], "collections": ["x"]},
                             kind=kind)
         check(f"a {kind or 'missing'} content type is refused",
               status == 403, f"HTTP {status}")
 
     # The right content type, the wrong origin.
-    status, _ = as_json("/api/tags", {"ids": ["hallo"], "tags": ["x"]},
+    status, _ = as_json("/api/collections", {"ids": ["hallo"], "collections": ["x"]},
                         origin=ELSEWHERE)
     check("a foreign Origin is refused", status == 403, f"HTTP {status}")
 
-    status, _ = as_json("/api/tags", {"ids": ["hallo"], "tags": ["x"]},
+    status, _ = as_json("/api/collections", {"ids": ["hallo"], "collections": ["x"]},
                         origin="null")
     check("an opaque Origin is refused", status == 403, f"HTTP {status}")
 
 
 def check_the_page_itself(folder: Path) -> None:
     """The shape the interface actually sends has to keep working."""
-    status, _ = as_json("/api/tags", {"ids": ["hallo"], "tags": ["spiel"],
+    status, _ = as_json("/api/collections", {"ids": ["hallo"], "collections": ["spiel"],
                                       "mode": "add"}, origin=f"http://{HERE}")
     check("the interface's own request goes through", status == 200,
           f"HTTP {status}")
-    tags = json.loads((folder / "phrases.json").read_text())[0].get("tags")
-    check("and it took effect", "spiel" in tags, str(tags))
+    collections = json.loads((folder / "phrases.json").read_text())[0].get("collections")
+    check("and it took effect", "spiel" in collections, str(collections))
 
     # curl on the machine itself sends no Origin. That is not a browser and
     # not the hole, so it stays allowed.
-    status, _ = as_json("/api/tags", {"ids": ["hallo"], "tags": ["zuhause"],
+    status, _ = as_json("/api/collections", {"ids": ["hallo"], "collections": ["zuhause"],
                                       "mode": "add"})
     check("a request without an Origin still goes through", status == 200,
           f"HTTP {status}")
@@ -172,7 +172,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as name:
         folder = Path(name)
         (folder / "phrases.json").write_text(json.dumps(
-            [{"id": "hallo", "text": "Hallo", "tags": []}]), encoding="utf-8")
+            [{"id": "hallo", "text": "Hallo", "collections": []}]), encoding="utf-8")
         process = serve(folder)
         try:
             check_the_exploit(folder)

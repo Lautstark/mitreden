@@ -184,10 +184,10 @@ button.quiet:hover{color:var(--text)}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .item .state{font-size:12px;color:var(--text-dim)}
 .item.stale .state{color:var(--warn)}
-.item .tag{font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);
+.item .collection{font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);
   background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
   padding:2px 10px;cursor:pointer}
-.item .tag:hover{background:#1e222c;color:var(--text)}
+.item .collection:hover{background:#1e222c;color:var(--text)}
 .item audio{height:32px;flex:0 1 auto;width:clamp(170px,30%,280px);min-width:0;
   filter:invert(.92) hue-rotate(180deg);opacity:.85}
 .menuwrap{position:relative;flex:none}
@@ -259,8 +259,8 @@ button.quiet:hover{color:var(--text)}
 <div class="hero">
   <label for="t" data-i18n="new_phrases"></label>
   <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
-  <label class="tight" for="nt" data-i18n="groups_label"></label>
-  <input id="nt" type="text" data-i18n-ph="groups_hint" autocomplete="off">
+  <label class="tight" for="nt" data-i18n="collections_label"></label>
+  <input id="nt" type="text" data-i18n-ph="collections_hint" autocomplete="off">
   <div class="row">
     <button class="primary" id="add" data-i18n="add_phrase"></button>
     <select id="voice" class="asbutton" data-i18n-aria="voice_label"
@@ -278,7 +278,7 @@ button.quiet:hover{color:var(--text)}
 </div>
 
 <div class="filters">
-  <div class="frow"><span class="flabel" data-i18n="filter_groups"></span><span class="chips" id="chips"></span></div>
+  <div class="frow"><span class="flabel" data-i18n="filter_collections"></span><span class="chips" id="chips"></span></div>
   <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
 </div>
 
@@ -293,7 +293,7 @@ button.quiet:hover{color:var(--text)}
 
 <div id="list"></div>
 </main>
-<script>window.MITREDEN_STRINGS = {"de": {"add_phrase": "Satz hinzufügen", "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_other": "{n} Sätze löschen?\n\nDie Sätze und ihre Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_this": "{text} wirklich löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_edit_text": "Text für {text}\n\nDer Satz wird sofort neu aufgenommen. Der Dateiname bleibt {id}.", "ask_groups_add": "In welche Sammlungen kommen diese {n} Sätze?\n\nMit Komma getrennt. Vorhandene Sammlungen bleiben.", "ask_groups_one": "Sammlungen für {text}\n\nMit Komma getrennt. Leer nimmt den Satz aus allen heraus.", "ask_groups_remove": "Aus welchen Sammlungen fliegen diese {n} Sätze?\n\nMit Komma getrennt. Andere Sammlungen bleiben.", "ask_switch_one": "1 Satz auf {voice} umstellen?\n\nDie bestehende Aufnahme wird ersetzt.", "ask_switch_other": "{n} Sätze auf {voice} umstellen?\n\nDie bestehenden Aufnahmen werden ersetzt.", "backup_export": "Sätze in einer Datei sichern", "backup_hint": "Dieselbe phrases.json wie im Container, die beiden können also tauschen.", "backup_import": "Sätze aus einer Datei laden", "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.", "backup_title": "Deine Sätze", "busy_add": "Wird aufgenommen …", "busy_build": "Nehme {n} auf …", "busy_delete": "Wird gelöscht …", "busy_group_add": "Wird hinzugefügt …", "busy_group_remove": "Wird entfernt …", "busy_import": "Lese …", "busy_pack": "{n} wird gepackt …", "busy_record": "Wird neu aufgenommen …", "busy_switch": "Wird auf {voice} umgestellt …", "chip_all": "Alle", "chip_less": "weniger", "chip_more": "+ {n} weitere", "chip_not_recorded": "Nicht aufgenommen", "close": "Schließen", "count_all_recorded": ", alle aufgenommen", "count_filtered": "{n} von {all} Sätzen", "count_none": "Noch keine Sätze", "count_one": "1 Satz", "count_open": ", {n} offen", "count_other": "{n} Sätze", "done_add": "{added} hinzugefügt, {rendered} aufgenommen", "done_add_twins": ", {n} gab es schon", "done_build": "{n} aufgenommen.", "done_delete": "{n} gelöscht.", "done_delete_one": "Gelöscht: {text}", "done_edit": "Geändert: {text}", "done_group_add": "{n} Sätze liegen jetzt in {groups}.", "done_group_remove": "{n} Sätze liegen nicht mehr in {groups}.", "done_groups_none": "In keiner Sammlung mehr.", "done_groups_one": "Liegt jetzt in: {groups}", "done_import": "{added} hinzugefügt, {merged} gab es schon.", "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.", "done_pack": "{n} als {format} heruntergeladen.", "done_switch": "{n} umgestellt auf {voice}.", "download_mp3": "Als MP3 herunterladen", "download_wav": "Als WAV herunterladen", "empty_no_match": "Kein Satz passt.", "empty_start": "Noch nichts da. Mehrere Zeilen auf einmal gehen auch — jede Zeile wird ein eigener Satz.", "failed": "Fehlgeschlagen: {error}", "filter_groups": "Sammlungen", "filter_voices": "Stimmen", "groups_hint": "kindergarten, spiel", "groups_label": "Sammlungen (optional, mit Komma getrennt)", "import_empty": "Keine Sätze in dieser Datei.", "import_failed": "Diese Datei ließ sich nicht lesen: {error}", "key_failed": "Hat nicht geklappt: {error}", "key_field": "Schlüssel", "key_forget": "Schlüssel entfernen", "key_hint": "Wird in die .env neben deinen Sätzen geschrieben und nie wieder angezeigt.", "key_removed": "{label} wieder abgeschaltet.", "key_save": "Speichern", "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.", "key_set": "Schlüssel ist gesetzt", "key_unset": "Kein Schlüssel", "menu_add_group": "Zu Sammlung hinzufügen", "menu_add_to_group": "Zu einer Sammlung hinzufügen", "menu_change_groups": "Sammlungen ändern", "menu_change_voice": "Stimme ändern", "menu_delete_one": "Satz löschen", "menu_delete_other": "{n} Sätze löschen", "menu_edit_text": "Text ändern", "menu_record": "Jetzt aufnehmen", "menu_remove_group": "Aus Sammlung entfernen", "more_actions": "Weitere Aktionen", "new_phrases": "Neue Sätze, einer pro Zeile", "new_phrases_hint": "Nochmal!\nIch bin dran.\nLass mich in Ruhe.", "no_group_named": "Keine Sammlung genannt.", "not_recorded_one": "Aufnehmen ging nicht: {why}", "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}", "nothing_recorded": "Davon ist nichts aufgenommen.", "nothing_to_record": "Die sind alle schon aufgenommen.", "region_field": "Region", "search_hint": "Sätze und Sammlungen durchsuchen…", "select_all": "Alle auswählen", "select_one": "Auswählen", "selected": "{n} ausgewählt", "selected_hidden": "{n} ausgewählt, {hidden} davon ausgeblendet", "settings": "Einstellungen", "settings_intro": "Mit einem Schlüssel kommen die Stimmen eines Dienstes dazu. Ohne Schlüssel bleiben die mitgelieferten — die reichen für den Anfang.", "settings_warning": "Achtung: Diese Oberfläche hat keine Anmeldung. Wer sie erreicht, kann hier einen Schlüssel setzen und auf deine Rechnung Stimmen erzeugen. Nur im eigenen Netz benutzen.", "show_all": "Alle {n} Sätze zeigen", "state_missing": "noch nicht aufgenommen", "state_recorded": "aufgenommen", "state_stale": "geändert seit der Aufnahme", "switch_to": "Auf {voice} umstellen", "tag_title": "Nur diese Sammlung zeigen", "tagline": "Ein Satz, eine Stimme, eine Audiodatei.", "type_first": "Erst etwas eintippen.", "voice_label": "Stimme", "voice_now": "Neue Aufnahmen bekommen {voice}.", "voice_title": "Womit aufgenommen wird"}, "en": {"add_phrase": "Add sentence", "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_delete_other": "Delete {n} sentences?\n\nThe sentences and their audio files will be removed. This cannot be undone.", "ask_delete_this": "Really delete {text}?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_edit_text": "Text for {text}\n\nThe sentence is recorded again right away. The file name stays {id}.", "ask_groups_add": "Which collections should these {n} sentences join?\n\nComma separated. Existing collections stay.", "ask_groups_one": "Collections for {text}\n\nComma separated. Empty takes the sentence out of all of them.", "ask_groups_remove": "Which collections should these {n} sentences leave?\n\nComma separated. Other collections stay.", "ask_switch_one": "Switch 1 sentence to {voice}?\n\nThe existing recording will be replaced.", "ask_switch_other": "Switch {n} sentences to {voice}?\n\nThe existing recordings will be replaced.", "backup_export": "Save sentences to a file", "backup_hint": "The same phrases.json the container uses, so the two can trade.", "backup_import": "Load sentences from a file", "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.", "backup_title": "Your sentences", "busy_add": "Recording …", "busy_build": "Recording {n} …", "busy_delete": "Deleting …", "busy_group_add": "Adding …", "busy_group_remove": "Removing …", "busy_import": "Reading …", "busy_pack": "Packing {n} …", "busy_record": "Recording again …", "busy_switch": "Switching to {voice} …", "chip_all": "All", "chip_less": "fewer", "chip_more": "+ {n} more", "chip_not_recorded": "Not recorded", "close": "Close", "count_all_recorded": ", all recorded", "count_filtered": "{n} of {all} sentences", "count_none": "No sentences yet", "count_one": "1 sentence", "count_open": ", {n} open", "count_other": "{n} sentences", "done_add": "{added} added, {rendered} recorded", "done_add_twins": ", {n} already existed", "done_build": "{n} recorded.", "done_delete": "{n} deleted.", "done_delete_one": "Deleted: {text}", "done_edit": "Changed: {text}", "done_group_add": "{n} sentences are now in {groups}.", "done_group_remove": "{n} sentences no longer in {groups}.", "done_groups_none": "In no collection any more.", "done_groups_one": "Now in: {groups}", "done_import": "{added} added, {merged} already there.", "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.", "done_pack": "{n} downloaded as {format}.", "done_switch": "{n} switched to {voice}.", "download_mp3": "Download as MP3", "download_wav": "Download as WAV", "empty_no_match": "No sentence matches.", "empty_start": "Nothing here yet. Several lines at once work too — each line becomes its own sentence.", "failed": "Failed: {error}", "filter_groups": "Collections", "filter_voices": "Voices", "groups_hint": "nursery, play", "groups_label": "Collections (optional, comma separated)", "import_empty": "No sentences in that file.", "import_failed": "That file could not be read: {error}", "key_failed": "That did not work: {error}", "key_field": "Key", "key_forget": "Remove key", "key_hint": "Written to the .env next to your sentences and never shown again.", "key_removed": "{label} switched off again.", "key_save": "Save", "key_saved": "{label} unlocked — {n} voices to choose from now.", "key_set": "Key is set", "key_unset": "No key", "menu_add_group": "Add to collection", "menu_add_to_group": "Add to a collection", "menu_change_groups": "Change collections", "menu_change_voice": "Change voice", "menu_delete_one": "Delete sentence", "menu_delete_other": "Delete {n} sentences", "menu_edit_text": "Change text", "menu_record": "Record now", "menu_remove_group": "Remove from collection", "more_actions": "More actions", "new_phrases": "New sentences, one per line", "new_phrases_hint": "Again!\nIt's my turn.\nLeave me alone.", "no_group_named": "No collection named.", "not_recorded_one": "Recording failed: {why}", "not_recorded_other": "{n} could not be recorded: {why}", "nothing_recorded": "None of those are recorded.", "nothing_to_record": "Those are all recorded already.", "region_field": "Region", "search_hint": "Search sentences and collections…", "select_all": "Select all", "select_one": "Select", "selected": "{n} selected", "selected_hidden": "{n} selected, {hidden} of them hidden", "settings": "Settings", "settings_intro": "A key adds the voices of a service. Without one the bundled voices remain — they are enough to start with.", "settings_warning": "Careful: this interface has no login. Whoever reaches it can set a key here and generate voices on your account. Use it on your own network only.", "show_all": "Show all {n} sentences", "state_missing": "not recorded yet", "state_recorded": "recorded", "state_stale": "changed since it was recorded", "switch_to": "Switch to {voice}", "tag_title": "Show only this collection", "tagline": "One sentence, one voice, one audio file.", "type_first": "Type something first.", "voice_label": "Voice", "voice_now": "New recordings get {voice}.", "voice_title": "What new recordings are made with"}};</script>
+<script>window.MITREDEN_STRINGS = {"de": {"add_phrase": "Satz hinzufügen", "ask_collections_add": "In welche Sammlungen kommen diese {n} Sätze?\n\nMit Komma getrennt. Vorhandene Sammlungen bleiben.", "ask_collections_one": "Sammlungen für {text}\n\nMit Komma getrennt. Leer nimmt den Satz aus allen heraus.", "ask_collections_remove": "Aus welchen Sammlungen fliegen diese {n} Sätze?\n\nMit Komma getrennt. Andere Sammlungen bleiben.", "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_other": "{n} Sätze löschen?\n\nDie Sätze und ihre Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_this": "{text} wirklich löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_edit_text": "Text für {text}\n\nDer Satz wird sofort neu aufgenommen. Der Dateiname bleibt {id}.", "ask_switch_one": "1 Satz auf {voice} umstellen?\n\nDie bestehende Aufnahme wird ersetzt.", "ask_switch_other": "{n} Sätze auf {voice} umstellen?\n\nDie bestehenden Aufnahmen werden ersetzt.", "backup_export": "Sätze in einer Datei sichern", "backup_hint": "Dieselbe phrases.json wie im Container, die beiden können also tauschen.", "backup_import": "Sätze aus einer Datei laden", "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.", "backup_title": "Deine Sätze", "busy_add": "Wird aufgenommen …", "busy_build": "Nehme {n} auf …", "busy_collection_add": "Wird hinzugefügt …", "busy_collection_remove": "Wird entfernt …", "busy_delete": "Wird gelöscht …", "busy_import": "Lese …", "busy_pack": "{n} wird gepackt …", "busy_record": "Wird neu aufgenommen …", "busy_switch": "Wird auf {voice} umgestellt …", "chip_all": "Alle", "chip_less": "weniger", "chip_more": "+ {n} weitere", "chip_not_recorded": "Nicht aufgenommen", "close": "Schließen", "collection_title": "Nur diese Sammlung zeigen", "collections_hint": "kindergarten, spiel", "collections_label": "Sammlungen (optional, mit Komma getrennt)", "count_all_recorded": ", alle aufgenommen", "count_filtered": "{n} von {all} Sätzen", "count_none": "Noch keine Sätze", "count_one": "1 Satz", "count_open": ", {n} offen", "count_other": "{n} Sätze", "done_add": "{added} hinzugefügt, {rendered} aufgenommen", "done_add_twins": ", {n} gab es schon", "done_build": "{n} aufgenommen.", "done_collection_add": "{n} Sätze liegen jetzt in {collections}.", "done_collection_remove": "{n} Sätze liegen nicht mehr in {collections}.", "done_collections_none": "In keiner Sammlung mehr.", "done_collections_one": "Liegt jetzt in: {collections}", "done_delete": "{n} gelöscht.", "done_delete_one": "Gelöscht: {text}", "done_edit": "Geändert: {text}", "done_import": "{added} hinzugefügt, {merged} gab es schon.", "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.", "done_pack": "{n} als {format} heruntergeladen.", "done_switch": "{n} umgestellt auf {voice}.", "download_mp3": "Als MP3 herunterladen", "download_wav": "Als WAV herunterladen", "empty_no_match": "Kein Satz passt.", "empty_start": "Noch nichts da. Mehrere Zeilen auf einmal gehen auch — jede Zeile wird ein eigener Satz.", "failed": "Fehlgeschlagen: {error}", "filter_collections": "Sammlungen", "filter_voices": "Stimmen", "import_empty": "Keine Sätze in dieser Datei.", "import_failed": "Diese Datei ließ sich nicht lesen: {error}", "key_failed": "Hat nicht geklappt: {error}", "key_field": "Schlüssel", "key_forget": "Schlüssel entfernen", "key_hint": "Wird in die .env neben deinen Sätzen geschrieben und nie wieder angezeigt.", "key_removed": "{label} wieder abgeschaltet.", "key_save": "Speichern", "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.", "key_set": "Schlüssel ist gesetzt", "key_unset": "Kein Schlüssel", "menu_add_collection": "Zu Sammlung hinzufügen", "menu_add_to_collection": "Zu einer Sammlung hinzufügen", "menu_change_collections": "Sammlungen ändern", "menu_change_voice": "Stimme ändern", "menu_delete_one": "Satz löschen", "menu_delete_other": "{n} Sätze löschen", "menu_edit_text": "Text ändern", "menu_record": "Jetzt aufnehmen", "menu_remove_collection": "Aus Sammlung entfernen", "more_actions": "Weitere Aktionen", "new_phrases": "Neue Sätze, einer pro Zeile", "new_phrases_hint": "Nochmal!\nIch bin dran.\nLass mich in Ruhe.", "no_collection_named": "Keine Sammlung genannt.", "not_recorded_one": "Aufnehmen ging nicht: {why}", "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}", "nothing_recorded": "Davon ist nichts aufgenommen.", "nothing_to_record": "Die sind alle schon aufgenommen.", "region_field": "Region", "search_hint": "Sätze und Sammlungen durchsuchen…", "select_all": "Alle auswählen", "select_one": "Auswählen", "selected": "{n} ausgewählt", "selected_hidden": "{n} ausgewählt, {hidden} davon ausgeblendet", "settings": "Einstellungen", "settings_intro": "Mit einem Schlüssel kommen die Stimmen eines Dienstes dazu. Ohne Schlüssel bleiben die mitgelieferten — die reichen für den Anfang.", "settings_warning": "Achtung: Diese Oberfläche hat keine Anmeldung. Wer sie erreicht, kann hier einen Schlüssel setzen und auf deine Rechnung Stimmen erzeugen. Nur im eigenen Netz benutzen.", "show_all": "Alle {n} Sätze zeigen", "state_missing": "noch nicht aufgenommen", "state_recorded": "aufgenommen", "state_stale": "geändert seit der Aufnahme", "switch_to": "Auf {voice} umstellen", "tagline": "Ein Satz, eine Stimme, eine Audiodatei.", "type_first": "Erst etwas eintippen.", "voice_label": "Stimme", "voice_now": "Neue Aufnahmen bekommen {voice}.", "voice_title": "Womit aufgenommen wird"}, "en": {"add_phrase": "Add sentence", "ask_collections_add": "Which collections should these {n} sentences join?\n\nComma separated. Existing collections stay.", "ask_collections_one": "Collections for {text}\n\nComma separated. Empty takes the sentence out of all of them.", "ask_collections_remove": "Which collections should these {n} sentences leave?\n\nComma separated. Other collections stay.", "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_delete_other": "Delete {n} sentences?\n\nThe sentences and their audio files will be removed. This cannot be undone.", "ask_delete_this": "Really delete {text}?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_edit_text": "Text for {text}\n\nThe sentence is recorded again right away. The file name stays {id}.", "ask_switch_one": "Switch 1 sentence to {voice}?\n\nThe existing recording will be replaced.", "ask_switch_other": "Switch {n} sentences to {voice}?\n\nThe existing recordings will be replaced.", "backup_export": "Save sentences to a file", "backup_hint": "The same phrases.json the container uses, so the two can trade.", "backup_import": "Load sentences from a file", "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.", "backup_title": "Your sentences", "busy_add": "Recording …", "busy_build": "Recording {n} …", "busy_collection_add": "Adding …", "busy_collection_remove": "Removing …", "busy_delete": "Deleting …", "busy_import": "Reading …", "busy_pack": "Packing {n} …", "busy_record": "Recording again …", "busy_switch": "Switching to {voice} …", "chip_all": "All", "chip_less": "fewer", "chip_more": "+ {n} more", "chip_not_recorded": "Not recorded", "close": "Close", "collection_title": "Show only this collection", "collections_hint": "nursery, play", "collections_label": "Collections (optional, comma separated)", "count_all_recorded": ", all recorded", "count_filtered": "{n} of {all} sentences", "count_none": "No sentences yet", "count_one": "1 sentence", "count_open": ", {n} open", "count_other": "{n} sentences", "done_add": "{added} added, {rendered} recorded", "done_add_twins": ", {n} already existed", "done_build": "{n} recorded.", "done_collection_add": "{n} sentences are now in {collections}.", "done_collection_remove": "{n} sentences no longer in {collections}.", "done_collections_none": "In no collection any more.", "done_collections_one": "Now in: {collections}", "done_delete": "{n} deleted.", "done_delete_one": "Deleted: {text}", "done_edit": "Changed: {text}", "done_import": "{added} added, {merged} already there.", "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.", "done_pack": "{n} downloaded as {format}.", "done_switch": "{n} switched to {voice}.", "download_mp3": "Download as MP3", "download_wav": "Download as WAV", "empty_no_match": "No sentence matches.", "empty_start": "Nothing here yet. Several lines at once work too — each line becomes its own sentence.", "failed": "Failed: {error}", "filter_collections": "Collections", "filter_voices": "Voices", "import_empty": "No sentences in that file.", "import_failed": "That file could not be read: {error}", "key_failed": "That did not work: {error}", "key_field": "Key", "key_forget": "Remove key", "key_hint": "Written to the .env next to your sentences and never shown again.", "key_removed": "{label} switched off again.", "key_save": "Save", "key_saved": "{label} unlocked — {n} voices to choose from now.", "key_set": "Key is set", "key_unset": "No key", "menu_add_collection": "Add to collection", "menu_add_to_collection": "Add to a collection", "menu_change_collections": "Change collections", "menu_change_voice": "Change voice", "menu_delete_one": "Delete sentence", "menu_delete_other": "Delete {n} sentences", "menu_edit_text": "Change text", "menu_record": "Record now", "menu_remove_collection": "Remove from collection", "more_actions": "More actions", "new_phrases": "New sentences, one per line", "new_phrases_hint": "Again!\nIt's my turn.\nLeave me alone.", "no_collection_named": "No collection named.", "not_recorded_one": "Recording failed: {why}", "not_recorded_other": "{n} could not be recorded: {why}", "nothing_recorded": "None of those are recorded.", "nothing_to_record": "Those are all recorded already.", "region_field": "Region", "search_hint": "Search sentences and collections…", "select_all": "Select all", "select_one": "Select", "selected": "{n} selected", "selected_hidden": "{n} selected, {hidden} of them hidden", "settings": "Settings", "settings_intro": "A key adds the voices of a service. Without one the bundled voices remain — they are enough to start with.", "settings_warning": "Careful: this interface has no login. Whoever reaches it can set a key here and generate voices on your account. Use it on your own network only.", "show_all": "Show all {n} sentences", "state_missing": "not recorded yet", "state_recorded": "recorded", "state_stale": "changed since it was recorded", "switch_to": "Switch to {voice}", "tagline": "One sentence, one voice, one audio file.", "type_first": "Type something first.", "voice_label": "Voice", "voice_now": "New recordings get {voice}.", "voice_title": "What new recordings are made with"}};</script>
 <script src="backend-local.js"></script>
 <script>
 const $=id=>document.getElementById(id);
@@ -467,7 +467,7 @@ const SEL=new Set();
 // Several collections can be picked at once and they combine with OR: two books
 // and you get the phrases of both. The free text search narrows that further,
 // so the two mechanisms are ANDed with each other.
-const TAGS=new Set();
+const COLLECTIONS=new Set();
 // One collection per picture book adds up fast. Only the most used are on
 // screen; the rest is one click away, and the search finds their names too.
 const CHIP_CAP=12;
@@ -485,7 +485,7 @@ const bare=s=>s.toLowerCase().replace(/ß/g,'ss')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const umlaut=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe')
   .replace(/ü/g,'ue').replace(/ß/g,'ss');
-const hay=i=>bare(i.text)+' | '+umlaut(i.text)+' | '+(i.tags||[]).join(' ');
+const hay=i=>bare(i.text)+' | '+umlaut(i.text)+' | '+(i.collections||[]).join(' ');
 
 function found(){
   const q=$('q').value.trim();
@@ -498,21 +498,21 @@ function found(){
 const voiceOf=i=>i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
 const shown=()=>{
   let f=found();
-  if(TAGS.size)f=f.filter(i=>(i.tags||[]).some(x=>TAGS.has(x)));
+  if(COLLECTIONS.size)f=f.filter(i=>(i.collections||[]).some(x=>COLLECTIONS.has(x)));
   if(VOICES.size)f=f.filter(i=>VOICES.has(voiceOf(i)));
   return f;
 };
 
-function chip(label,n,tag,set,where){
+function chip(label,n,collection,set,where){
   const b=document.createElement('button');
-  b.className='chip'+((tag===null?!set.size:set.has(tag))?' on':'');
+  b.className='chip'+((collection===null?!set.size:set.has(collection))?' on':'');
   b.textContent=label;
   const s=document.createElement('span');s.className='n';s.textContent=n;
   b.appendChild(s);
   b.onclick=()=>{
-    if(tag===null)set.clear();
-    else if(set.has(tag))set.delete(tag);
-    else set.add(tag);
+    if(collection===null)set.clear();
+    else if(set.has(collection))set.delete(collection);
+    else set.add(collection);
     draw();
   };
   $(where).appendChild(b);
@@ -556,20 +556,20 @@ function drawVoiceChips(hits){
 
 function drawChips(hits){
   const counts={};
-  for(const i of hits)for(const x of (i.tags||[]))counts[x]=(counts[x]||0)+1;
-  for(const x of TAGS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
+  for(const i of hits)for(const x of (i.collections||[]))counts[x]=(counts[x]||0)+1;
+  for(const x of COLLECTIONS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
   // Most used first — those are the everyday ones. Alphabetical within a tie.
   const names=Object.keys(counts)
     .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
   $('chips').innerHTML='';
   if(!names.length)return;
-  chip(t('chip_all'),hits.length,null,TAGS,'chips');
+  chip(t('chip_all'),hits.length,null,COLLECTIONS,'chips');
   let vis=names;
   if(!ALL_TAGS&&names.length>CHIP_CAP){
     const top=names.slice(0,CHIP_CAP);
-    vis=top.concat([...TAGS].filter(x=>!top.includes(x)));
+    vis=top.concat([...COLLECTIONS].filter(x=>!top.includes(x)));
   }
-  for(const n of vis)chip(n,counts[n],n,TAGS,'chips');
+  for(const n of vis)chip(n,counts[n],n,COLLECTIONS,'chips');
   if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
     const b=document.createElement('button');
     b.className='chip fold';
@@ -624,10 +624,10 @@ function draw(){
     d.querySelector('.line').textContent=it.text;
     d.querySelector('.state').textContent=stateText(it);
     const meta=d.querySelector('.meta');
-    for(const tag of (it.tags||[])){
+    for(const collection of (it.collections||[])){
       const b=document.createElement('button');
-      b.className='tag';b.textContent=tag;b.title=t('tag_title');
-      b.onclick=()=>{TAGS.clear();TAGS.add(tag);draw()};
+      b.className='collection';b.textContent=collection;b.title=t('collection_title');
+      b.onclick=()=>{COLLECTIONS.clear();COLLECTIONS.add(collection);draw()};
       meta.appendChild(b);
     }
     d.querySelector('.dots').onclick=ev=>openMenu(ev.currentTarget,it);
@@ -705,14 +705,14 @@ async function grabMany(ids,fmt){
 
 async function tagsMany(ids,mode){
   const rein=mode==='add';
-  const v=prompt(t(rein?'ask_groups_add':'ask_groups_remove',{n:ids.length}),'');
+  const v=prompt(t(rein?'ask_collections_add':'ask_collections_remove',{n:ids.length}),'');
   if(v===null)return;
-  const tags=v.split(',').map(t=>t.trim()).filter(Boolean);
-  if(!tags.length){say(t('no_group_named'));return}
-  say(t(rein?'busy_group_add':'busy_group_remove'));
-  const r=await post('/api/tags',{ids,tags,mode});
-  if(r){say(t(rein?'done_group_add':'done_group_remove',
-                {n:r.ids.length,groups:tags.join(', ')}));load()}
+  const collections=v.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!collections.length){say(t('no_collection_named'));return}
+  say(t(rein?'busy_collection_add':'busy_collection_remove'));
+  const r=await post('/api/collections',{ids,collections,mode});
+  if(r){say(t(rein?'done_collection_add':'done_collection_remove',
+                {n:r.ids.length,collections:collections.join(', ')}));load()}
 }
 
 async function delMany(ids){
@@ -741,8 +741,8 @@ $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
     add(t('menu_record'),false,()=>{closeMenus();recordMany(offen)});
   add(t('menu_change_voice'),false,
       mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
-  add(t('menu_add_group'),false,()=>{closeMenus();tagsMany(ids,'add')});
-  add(t('menu_remove_group'),false,()=>{closeMenus();tagsMany(ids,'remove')});
+  add(t('menu_add_collection'),false,()=>{closeMenus();tagsMany(ids,'add')});
+  add(t('menu_remove_collection'),false,()=>{closeMenus();tagsMany(ids,'remove')});
   add(tn('menu_delete',ids.length),true,()=>{closeMenus();delMany(ids)});
 });
 
@@ -762,7 +762,7 @@ function openMenu(btn,it){
     }
     add(t('menu_change_voice'),false,
         mm=>voiceMenu(mm,(id,label)=>switchTo([it.id],id,label)));
-    add((it.tags||[]).length?t('menu_change_groups'):t('menu_add_to_group'),
+    add((it.collections||[]).length?t('menu_change_collections'):t('menu_add_to_collection'),
         false,()=>{closeMenus();editTags(it)});
     add(t('menu_delete_one'),true,()=>{closeMenus();del(it)});
   });
@@ -775,8 +775,8 @@ async function load(){
   ALL=data.items||[];
   await loadVoices(data.voice);
   const live=new Set();
-  for(const i of ALL)for(const x of (i.tags||[]))live.add(x);
-  for(const x of [...TAGS])if(!live.has(x))TAGS.delete(x);   // collection gone
+  for(const i of ALL)for(const x of (i.collections||[]))live.add(x);
+  for(const x of [...COLLECTIONS])if(!live.has(x))COLLECTIONS.delete(x);   // collection gone
   const alive=new Set(ALL.map(i=>i.id));
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
@@ -829,14 +829,14 @@ async function editText(it){
         load()}
 }
 async function editTags(it){
-  const v=prompt(t('ask_groups_one',{text:'\u201E'+it.text+'\u201C'}),
-                 (it.tags||[]).join(', '));
+  const v=prompt(t('ask_collections_one',{text:'\u201E'+it.text+'\u201C'}),
+                 (it.collections||[]).join(', '));
   if(v===null)return;
-  const tags=v.split(',');
-  const r=await post('/api/tags',{ids:[it.id],tags,mode:'set'});
-  if(r){const rest=tags.map(t=>t.trim()).filter(Boolean);
-        say(rest.length?t('done_groups_one',{groups:rest.join(', ')})
-                       :t('done_groups_none'));load()}
+  const collections=v.split(',');
+  const r=await post('/api/collections',{ids:[it.id],collections,mode:'set'});
+  if(r){const rest=collections.map(t=>t.trim()).filter(Boolean);
+        say(rest.length?t('done_collections_one',{groups:rest.join(', ')})
+                       :t('done_collections_none'));load()}
 }
 async function del(it){
   if(!confirm(t('ask_delete_this',{text:'\u201E'+it.text+'\u201C'})))return;
@@ -855,9 +855,9 @@ $('add').onclick=async()=>{
   if(!lines.length){say(t('type_first'));return}
   // Only what stands in the field. A filter further down is a way of looking
   // at the list, not a hidden instruction about the phrase you are typing.
-  const tags=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const collections=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
   say(t('busy_add'));
-  const res=await post('/api/phrases',{lines,tags});
+  const res=await post('/api/phrases',{lines,collections});
   if(res){
     $('t').value='';
     // A phrase that could not be recorded was still added, so the list has to

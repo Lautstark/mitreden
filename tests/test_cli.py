@@ -3,16 +3,16 @@
 
 Anything that was not recognised as an option became the text:
 
-    $ mitreden.py add --tag
-    added: tag
+    $ mitreden.py add --collection
+    added: collection
 
-— a phrase that says "--tag", recorded in your voice and sitting in the list
+— a phrase that says "--collection", recorded in your voice and sitting in the list
 until somebody notices. The flag was missing its value, which is worth saying
 out loud rather than acting on.
 
 Checked here: a flag with nothing after it stops instead of being spoken, a
 second phrase in one call stops rather than being dropped in silence, and the
-ordinary spellings of --tags all still work.
+ordinary spellings of --collections all still work.
 """
 
 from __future__ import annotations
@@ -54,9 +54,9 @@ def phrases(folder: Path) -> list[str]:
 # --- The cases ---------------------------------------------------------------
 
 def check_flag_without_a_value(folder: Path) -> None:
-    code, said = run(folder, "add", "--tag")
+    code, said = run(folder, "add", "--collection")
     check("a flag with no value stops", code != 0, f"exit {code}")
-    check("and says what it wanted", "--tag" in said and "value" in said.lower(),
+    check("and says what it wanted", "--collection" in said and "value" in said.lower(),
           said.strip().splitlines()[0][:60] if said.strip() else "(nothing)")
     check("no phrase was made from it", phrases(folder) == [], str(phrases(folder)))
 
@@ -79,9 +79,9 @@ def check_two_phrases_at_once(folder: Path) -> None:
 def check_the_ordinary_spellings(folder: Path) -> None:
     """Both spellings, both forms — these have to keep working."""
     for n, args in enumerate([
-            ("add", "Satz A", "--tags", "spiel,zuhause"),
-            ("add", "Satz B", "--tag", "spiel"),
-            ("add", "Satz C", "--tags=spiel"),
+            ("add", "Satz A", "--collections", "spiel,zuhause"),
+            ("add", "Satz B", "--collection", "spiel"),
+            ("add", "Satz C", "--collections=spiel"),
             ("add", "Satz D"),
     ]):
         code, said = run(folder, *args)

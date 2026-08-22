@@ -1,10 +1,10 @@
 [
-  { "id": "nochmal",        "text": "Nochmal!",            "tags": ["spiel"] },
-  { "id": "ich-bin-dran",   "text": "Ich bin dran.",       "tags": ["spiel"] },
-  { "id": "du-bist-dran",   "text": "Du bist dran.",       "tags": ["spiel"] },
-  { "id": "hoer-auf",       "text": "Hör auf.",            "tags": ["kindergarten", "zuhause"] },
-  { "id": "ich-brauche-hilfe", "text": "Ich brauche Hilfe.", "tags": ["kindergarten", "zuhause", "notfall"] },
-  { "id": "komm-mal-her",   "text": "Komm mal her.",       "tags": ["zuhause"] },
-  { "id": "das-mag-ich-nicht", "text": "Das mag ich nicht.", "tags": ["kindergarten", "zuhause"] },
-  { "id": "guck-mal",       "text": "Guck mal!",           "tags": ["spiel"] }
+  { "id": "nochmal",        "text": "Nochmal!",            "collections": ["spiel"] },
+  { "id": "ich-bin-dran",   "text": "Ich bin dran.",       "collections": ["spiel"] },
+  { "id": "du-bist-dran",   "text": "Du bist dran.",       "collections": ["spiel"] },
+  { "id": "hoer-auf",       "text": "Hör auf.",            "collections": ["kindergarten", "zuhause"] },
+  { "id": "ich-brauche-hilfe", "text": "Ich brauche Hilfe.", "collections": ["kindergarten", "zuhause", "notfall"] },
+  { "id": "komm-mal-her",   "text": "Komm mal her.",       "collections": ["zuhause"] },
+  { "id": "das-mag-ich-nicht", "text": "Das mag ich nicht.", "collections": ["kindergarten", "zuhause"] },
+  { "id": "guck-mal",       "text": "Guck mal!",           "collections": ["spiel"] }
 ]

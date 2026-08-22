@@ -39,13 +39,15 @@ decides the outcome. Section 6 collects those costs.
 | Confirmations and editing | **Real in-page dialogs.** mitreden drops native `confirm()` / `prompt()` |
 | Page layout | **A sidebar shell in both**, so the two open looking like one application |
 
-Two consequences worth naming up front. bildhaft renames its symbol sets to
+One consequence worth naming up front: bildhaft renames its symbol sets to
 **Symbolquellen**, which frees *Sammlung* for the thing both products actually
-share. And mitreden keeps `tags` as the field name inside `phrases.json` and the
-`--tags` flag on the CLI: those files are already sitting on people's disks as
-their only backup, and a word on a screen is not worth a migration. Code stays
-English in both repositories, as it already does — only what a person reads
-changes.
+share. Code stays English in both repositories, as it already does, so the
+English word is *collection* everywhere the code says it — the field in
+`phrases.json`, the `--collections` flag, the `/api/collections` route.
+
+Neither product has users yet, so nothing here carries a compatibility burden
+and no fallbacks were kept. That is worth writing down, because several
+decisions would be different if it stopped being true.
 
 ---
 
@@ -544,7 +546,7 @@ oversight. So the rule to write down is not "never a save button" but:
 | --- | --- | --- | --- | --- |
 | a stored utterance | Satz | Satz / Zeile | **Satz** | bildhaft |
 | light or dark | dark only | light, dark supported | **both, in both** | mitreden |
-| a named grouping of them | Gruppe | Sammlung | **Sammlung** | mitreden (labels only) |
+| a named grouping of them | Gruppe / `tags` | Sammlung | **Sammlung** / `collections` | mitreden |
 | can it be in several at once | yes | no | **yes** | bildhaft (`collectionId` → list) |
 | making a grouping current | filter chips („Alle") | sidebar selection | **multi-select sidebar** | both |
 | the produced artefact leaving | herunterladen | drucken | **herunterladen** | neither |
