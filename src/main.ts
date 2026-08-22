@@ -11,7 +11,9 @@ import './styles/app.css';
 import { ensureCollection } from './db/repo.ts';
 import { lang, setLang, type Lang } from './i18n/index.ts';
 import { loadVoices, wireComposer } from './ui/composer.ts';
+import { draw as drawList, wireList } from './ui/list.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
+import { wireSettings } from './ui/settings.ts';
 import { applyLang } from './ui/dom.ts';
 import { load, subscribe } from './ui/state.ts';
 
@@ -28,7 +30,10 @@ export async function start(): Promise<void> {
   applyLang();
   wireRail();
   wireComposer();
+  wireList();
+  wireSettings();
   subscribe(drawRail);
+  subscribe(drawList);
   await ensureCollection(lang() === 'de');
   await loadVoices();
   await load();

@@ -82,9 +82,14 @@
 .title-input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
 .workhead .count{margin-left:auto;font-size:13.5px;color:var(--text-faint)}
 .danger__title{margin:22px 0 4px;font-size:15px}
-.linkdanger{background:none;border:0;color:var(--danger);font:inherit;
-  padding:6px 0;cursor:pointer;text-align:left;border-radius:0}
-.linkdanger:hover{background:none;color:var(--danger);text-decoration:underline}
+/* bildhaft's danger button: a pill that is transparent until you reach for it,
+   then a soft red ground. Not an underlined line of text — that read as a
+   broken link, and the shared button hover was drawing a grey box behind it. */
+.linkdanger{background:transparent;border:0;color:var(--danger);font:inherit;
+  font-weight:600;font-size:13.5px;padding:5px 11px;cursor:pointer;
+  border-radius:var(--radius-pill);text-decoration:none}
+.linkdanger:hover{background:var(--danger-soft);color:var(--danger);
+  text-decoration:none}
 
 /* The composer: one field you type into, and an arrow. bildhaft's shape, and
    right for the same reason — there is only ever one thing to do here. */
