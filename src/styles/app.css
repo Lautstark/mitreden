@@ -1,5 +1,10 @@
-/* Ported from the hand-built page. The design tokens live next door in
-   tokens.css, written by the design repository. */
+/* mitreden's own styling. The design tokens are not here: they come from
+   @lautstark/design, imported ahead of this file in main.ts, and are generated
+   from one declaration shared with bildhaft and vorlaut.
+
+   --sidebar-w is the exception, because it is this page's layout rather than a
+   value any other product shares. */
+:root{ --sidebar-w:268px; }
 
 *{box-sizing:border-box}
 /* The shell: a rail beside the work.

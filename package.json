@@ -14,7 +14,9 @@
     "test:e2e:only": "playwright test"
   },
   "dependencies": {
+    "@diffusionstudio/piper-wasm": "^1.0.0",
     "@diffusionstudio/vits-web": "1.0.3",
+    "@lautstark/design": "github:Lautstark/design#v1.0.1",
     "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#26d7819a7564f51486c837a225806d89e284c398",
     "idb": "^8.0.3"
   },
