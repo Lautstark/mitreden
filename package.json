@@ -14,17 +14,12 @@
     "test:e2e:only": "playwright test"
   },
   "dependencies": {
-    "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#26d7819a7564f51486c837a225806d89e284c398",
     "@diffusionstudio/vits-web": "1.0.3",
-    "idb": "^8.0.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#26d7819a7564f51486c837a225806d89e284c398",
+    "idb": "^8.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "vite": "^6.0.7"
   },

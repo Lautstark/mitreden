@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import { copyFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -9,7 +8,6 @@ const base = process.env.BASE_PATH ?? '/';
 export default defineConfig({
   base,
   plugins: [
-    react(),
     {
       // GitHub Pages has no rewrite rules. Serving the SPA shell as 404.html
       // makes deep links resolve to the app instead of a Pages error page.

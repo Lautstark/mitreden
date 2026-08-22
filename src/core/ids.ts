@@ -5,6 +5,8 @@
  * file name, and the file it names may long since be sitting on a talker.
  */
 
+import { ENGINE_VERSION, OUT } from './settings.ts';
+import { modelOf } from './voices.ts';
 import type { Collection, Phrase } from './types.ts';
 
 export const SLUG_WORDS = 6;
@@ -63,4 +65,21 @@ export function freeId(items: Phrase[], text: string): string {
   const taken = new Set(items.map((item) => item.id));
   if (!taken.has(base)) return base;
   for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+}
+
+/**
+ * What "still counts as recorded" means: the text, the voice, and how it was
+ * made. Change any of them and the recording is stale rather than wrong.
+ *
+ * Azure renders on somebody else's machine, so which engine is bundled here
+ * says nothing about how those recordings came out. Naming it would re-record
+ * every cloud-spoken sentence on an upgrade that cannot have changed them.
+ */
+export async function fingerprint(text: string, voiceId: string): Promise<string> {
+  const cloud = voiceId.startsWith('azure:');
+  const payload = JSON.stringify(cloud
+    ? [text, 'azure', voiceId.slice(6), OUT]
+    : [text, 'piper', modelOf(voiceId), ENGINE_VERSION, OUT]);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
 }
