@@ -45,7 +45,6 @@
   // talkers, reading pens and phone apps expect.
   const OUT = { format: 'mp3', sample_rate: 44100, channels: 1, bitrate: 192 };
 
-  const TARGET_LUFS = -16, TARGET_PEAK_DB = -1.5;
 
   // ------------------------------------------------------------------ store
   //
@@ -216,11 +215,11 @@
 
   // ------------------------------------------------- trim, level and encode
   //
-  // What ffmpeg does in the container, done here by hand. Not by preference:
-  // the newest ffmpeg.wasm is built from ffmpeg 5.1.4, whose loudnorm gets the
-  // gain wrong on about half of all short sentences — around 13.6 dB too
-  // quiet, silently. Measurements in docs/spike/README.md. This path tracks
-  // the container within half a decibel.
+  // The arithmetic lives in audio.js, so it can be checked without a browser —
+  // see tests/browser/audio.test.mjs. Decoding and resampling stay here,
+  // because they are the parts that need an AudioContext.
+  let dspp = null;
+  const dsp = () => (dspp ||= import('./audio.js'));
 
   async function resample(buf, rate) {
     const ctx = new OfflineAudioContext(1, Math.ceil(buf.duration * rate), rate);
@@ -229,59 +228,9 @@
     return ctx.startRendering();
   }
 
-  // silenceremove at both ends: the first and last sample above -50 dB, with
-  // 50 ms of the quiet left either side so the word does not start abruptly.
-  function trim(x, rate, thresholdDb = -50, padSec = 0.05) {
-    const th = Math.pow(10, thresholdDb / 20), pad = Math.round(padSec * rate);
-    let a = 0, b = x.length - 1;
-    while (a < x.length && Math.abs(x[a]) < th) a++;
-    while (b > a && Math.abs(x[b]) < th) b--;
-    if (a >= b) return x;                      // all silence — leave it alone
-    return x.subarray(Math.max(0, a - pad), Math.min(x.length, b + pad + 1));
-  }
-
-  function biquad(x, b0, b1, b2, a1, a2) {
-    const y = new Float32Array(x.length);
-    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-    for (let i = 0; i < x.length; i++) {
-      const v = b0 * x[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-      x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
-    }
-    return y;
-  }
-
-  // ITU-R BS.1770-4 integrated loudness. The coefficients are the 48 kHz ones,
-  // so the signal has to be at 48 kHz when this runs.
-  function integratedLufs(x) {
-    let k = biquad(x, 1.53512485958697, -2.69169618940638, 1.19839281085285,
-                      -1.69065929318241, 0.73248077421585);          // head shelf
-    k = biquad(k, 1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621);  // RLB
-    const block = 0.4 * 48000, step = 0.1 * 48000, z = [];
-    for (let s = 0; s + block <= k.length; s += step) {
-      let sum = 0;
-      for (let i = s; i < s + block; i++) sum += k[i] * k[i];
-      z.push(sum / block);
-    }
-    if (!z.length) return -Infinity;
-    const L = v => -0.691 + 10 * Math.log10(v || 1e-12);
-    const mean = a => a.reduce((p, c) => p + c, 0) / a.length;
-    let g = z.filter(v => L(v) > -70);                    // absolute gate
-    if (!g.length) return -Infinity;
-    g = g.filter(v => L(v) > L(mean(g)) - 10);            // relative gate
-    return g.length ? L(mean(g)) : -Infinity;
-  }
-
-  function toPcm16(samples) {
-    const pcm = new Int16Array(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      const v = Math.max(-1, Math.min(1, samples[i]));
-      pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
-    }
-    return pcm;
-  }
-
   async function encodeMp3(samples, rate) {
     const { Mp3Encoder } = await lame();
+    const { toPcm16 } = await dsp();
     const enc = new Mp3Encoder(1, rate, OUT.bitrate);
     const pcm = toPcm16(samples), parts = [];
     for (let i = 0; i < pcm.length; i += 1152) {
@@ -293,40 +242,19 @@
     return new Blob(parts, { type: 'audio/mpeg' });
   }
 
-  function encodeWav(samples, rate) {
-    const pcm = toPcm16(samples);
-    const buf = new ArrayBuffer(44 + pcm.byteLength), dv = new DataView(buf);
-    const str = (off, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(off + i, s.charCodeAt(i)); };
-    str(0, 'RIFF'); dv.setUint32(4, 36 + pcm.byteLength, true); str(8, 'WAVEfmt ');
-    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-    dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
-    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-    str(36, 'data'); dv.setUint32(40, pcm.byteLength, true);
-    new Uint8Array(buf, 44).set(new Uint8Array(pcm.buffer));
-    return new Blob([buf], { type: 'audio/wav' });
-  }
-
   // One recording, start to finish: piper's raw wav in, the finished file out.
   async function process(wavBlob) {
+    const { level, MEASURE_RATE } = await dsp();
     const ctx = new AudioContext();
     const decoded = await ctx.decodeAudioData(await wavBlob.arrayBuffer());
     await ctx.close();
 
-    const at48 = await resample(decoded, 48000);          // measure at 48 kHz
-    const cut = trim(at48.getChannelData(0), 48000);
-    const lufs = integratedLufs(cut);
+    const measured = await resample(decoded, MEASURE_RATE);   // BS.1770 wants 48 kHz
+    const { samples } = level(measured.getChannelData(0), MEASURE_RATE);
 
-    let gain = Number.isFinite(lufs) ? Math.pow(10, (TARGET_LUFS - lufs) / 20) : 1;
-    let peak = 0;
-    for (let i = 0; i < cut.length; i++) peak = Math.max(peak, Math.abs(cut[i]));
-    const ceiling = Math.pow(10, TARGET_PEAK_DB / 20);
-    if (peak * gain > ceiling) gain = ceiling / peak;      // clamp, never clip
-    const levelled = new Float32Array(cut.length);
-    for (let i = 0; i < cut.length; i++) levelled[i] = cut[i] * gain;
-
-    const tmp = new AudioContext({ sampleRate: 48000 });
-    const buf = tmp.createBuffer(1, levelled.length, 48000);
-    buf.copyToChannel(levelled, 0);
+    const tmp = new AudioContext({ sampleRate: MEASURE_RATE });
+    const buf = tmp.createBuffer(1, samples.length, MEASURE_RATE);
+    buf.copyToChannel(samples, 0);
     await tmp.close();
     const final = await resample(buf, OUT.sample_rate);
     return encodeMp3(final.getChannelData(0), OUT.sample_rate);
@@ -343,6 +271,7 @@
     await ctx.close();
     const at = decoded.sampleRate === OUT.sample_rate ? decoded
                                                      : await resample(decoded, OUT.sample_rate);
+    const { encodeWav } = await dsp();
     return encodeWav(at.getChannelData(0), OUT.sample_rate);
   }
 
