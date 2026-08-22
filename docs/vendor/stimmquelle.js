@@ -445,7 +445,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.0.2";
+var VERSION = "2.1.0";
 var PIPELINE_VERSION = 1;
 
 // src/level.ts
@@ -1012,6 +1012,7 @@ async function azureVoices(o) {
     // network for every sentence instead of once for the model.
     downloadBytes: 0,
     needsKey: true,
+    makesFile: true,
     // Azure publishes hundreds and this package has no opinion on which to
     // put in front of somebody. The catalogue's picks are about the four
     // voices it can actually vouch for.
@@ -1023,6 +1024,11 @@ async function speak(text, vid, options = {}) {
   const parsed = parseVoiceId(vid);
   const backend = parsed?.backend ?? "piper";
   const model = parsed?.model ?? vid;
+  if (backend === "system") {
+    throw new Error(
+      `${vid} is one of the operating system's own voices, which return no audio. Use say() \u2014 it speaks and hands back nothing, because that is all the Web Speech API does. Nothing is levelled and nothing can be saved.`
+    );
+  }
   if (backend !== "piper" && backend !== "azure") {
     throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
   }
@@ -1066,6 +1072,72 @@ async function speak(text, vid, options = {}) {
 }
 var asBlob = (wav) => new Blob([wav], { type: "audio/wav" });
 
+// src/system.ts
+var speech = () => globalThis.speechSynthesis ?? null;
+var hasSystemVoices = () => !!speech();
+var asOffered = (v) => ({
+  id: `system:${v.voiceURI}`,
+  name: v.name,
+  lang: (v.lang || "").split("-")[0].toLowerCase(),
+  locale: v.lang || "",
+  // The API does not say, so neither do we. A gender filter will exclude these
+  // rather than be told something nobody checked.
+  gender: "",
+  source: "system",
+  downloadBytes: 0,
+  needsKey: false,
+  makesFile: false,
+  recommended: false
+});
+function systemVoices() {
+  const s = speech();
+  if (!s) return [];
+  return s.getVoices().map(asOffered);
+}
+function loadSystemVoices(timeoutMs = 1e3) {
+  const s = speech();
+  if (!s) return Promise.resolve([]);
+  const now = systemVoices();
+  if (now.length) return Promise.resolve(now);
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      s.removeEventListener("voiceschanged", done);
+      resolve(systemVoices());
+    };
+    const timer = setTimeout(done, timeoutMs);
+    s.addEventListener("voiceschanged", done);
+  });
+}
+function say(text, vid, o = {}) {
+  const s = speech();
+  if (!s) throw new Error("This runtime has no speech synthesis.");
+  if (!text || !text.trim()) throw new Error("Nothing to say.");
+  if (!vid.startsWith("system:")) {
+    throw new Error(
+      `say() speaks the operating system's own voices, and ${vid} is not one. Use speak() for a piper: or azure: voice \u2014 it returns a levelled file, which is the thing say() cannot do.`
+    );
+  }
+  const uri = vid.slice("system:".length);
+  const voice = s.getVoices().find((v) => v.voiceURI === uri);
+  if (!voice) {
+    throw new Error(
+      `${vid} is not among this system's voices. They are the user's own and differ per device, so a saved id may not exist here \u2014 offer a fallback.`
+    );
+  }
+  return new Promise((resolve, reject) => {
+    const u = new SpeechSynthesisUtterance(text.trim());
+    u.voice = voice;
+    u.lang = voice.lang;
+    if (o.speed !== void 0) u.rate = o.speed;
+    if (o.pitch !== void 0) u.pitch = o.pitch;
+    if (o.volume !== void 0) u.volume = o.volume;
+    u.onend = () => resolve();
+    u.onerror = (e) => reject(new Error(`The browser stopped speaking: ${e.error ?? "unknown"}`));
+    s.speak(u);
+  });
+}
+
 // src/list.ts
 var language = (s) => s.toLowerCase().replace(/_/g, "-").split("-")[0];
 function matches(v, o) {
@@ -1084,12 +1156,17 @@ function piperVoices(offering = {}) {
     source: "piper",
     downloadBytes: v.bytes,
     needsKey: false,
+    makesFile: true,
     recommended: v.recommended === true,
     ...v.licence.attribution ? { attribution: v.licence.attribution } : {}
   }));
 }
 async function listVoices(o = {}) {
-  const all = [...piperVoices(o), ...o.azure ? await azureVoices(o.azure) : []];
+  const all = [
+    ...piperVoices(o),
+    ...o.azure ? await azureVoices(o.azure) : [],
+    ...o.system ? await loadSystemVoices() : []
+  ];
   return all.filter((v) => matches(v, o));
 }
 
@@ -1147,9 +1224,11 @@ export {
   forget,
   forgetModels,
   hasPiperRuntime,
+  hasSystemVoices,
   integratedLufs,
   isAllowed,
   listVoices,
+  loadSystemVoices,
   localeOf,
   modelUrls,
   pad,
@@ -1161,9 +1240,11 @@ export {
   refuse,
   remapPhonemeIds,
   resample,
+  say,
   shippable,
   speak,
   synthesize,
+  systemVoices,
   toPcm16,
   trim,
   truePeakDb,
