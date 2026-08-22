@@ -1,0 +1,557 @@
+/* mitreden without a server.
+ *
+ * The same interface as the container serves, answering out of the browser
+ * itself: piper compiled to WASM does the speaking, the trimming and levelling
+ * happen in JavaScript, and the sentences live in IndexedDB. Nothing is
+ * uploaded and there is nothing to install.
+ *
+ * It answers the routes mitreden.py answers, and hands back a Response, so
+ * ui.html cannot tell the difference. Where behaviour is copied from the
+ * container the function keeps its name, so the two can be read side by side.
+ *
+ * What is deliberately not here: cloud voices (a key on a public page is a
+ * different conversation), and `out/` (there is no folder to write to — the
+ * download button is the folder).
+ */
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------- voices
+  //
+  // A tested list, not the piper catalogue. voices.json lies in both
+  // directions: it offers models whose files are missing, and models whose
+  // phoneme table the phonemizer here cannot drive. Every entry below was
+  // recorded once by hand before it was allowed in.
+  //
+  // Only medium and high survive. Every low and x_low model fails the same
+  // way — the phonemizer works from a fixed symbol table instead of the
+  // phoneme_id_map inside each model's own .onnx.json, and the older tables
+  // are smaller. That is also why Kerstin is missing: she is published as low
+  // only. Fixing the phonemizer brings her back, along with models a third of
+  // the size. See docs/spike/README.md.
+  const VOICES = [
+    { id: 'piper:de_DE-thorsten-medium', name: 'Thorsten', lang: 'de', mb: 63 },
+    { id: 'piper:de_DE-thorsten_emotional-medium', name: 'Thorsten (emotional)', lang: 'de', mb: 63 },
+    { id: 'piper:en_US-kristin-medium', name: 'Kristin', lang: 'en', mb: 63 },
+    { id: 'piper:en_US-hfc_female-medium', name: 'HFC female', lang: 'en', mb: 63 },
+  ];
+  const DEFAULT_VOICE = VOICES[0].id;
+  const modelOf = id => id.replace(/^piper:/, '');
+  const labelOf = v => [v.name, 'piper', v.lang].join(' · ');
+  const voiceById = id => VOICES.find(v => v.id === id);
+
+  // Output settings. The container keeps these in config.json; here they are
+  // fixed, because there is no file to edit and mp3 at 44.1 kHz mono is what
+  // talkers, reading pens and phone apps expect.
+  const OUT = { format: 'mp3', sample_rate: 44100, channels: 1, bitrate: 192 };
+
+  const TARGET_LUFS = -16, TARGET_PEAK_DB = -1.5;
+
+  // ------------------------------------------------------------------ store
+  //
+  // Two stores: the sentences, which are the only irreplaceable thing here,
+  // and the audio, which can always be made again. Keeping the audio means a
+  // reload does not re-record everything, and a voice change only re-records
+  // what actually changed.
+  const DB_NAME = 'mitreden', DB_VERSION = 1;
+  let dbp = null;
+
+  function db() {
+    if (dbp) return dbp;
+    dbp = new Promise((resolve, reject) => {
+      const r = indexedDB.open(DB_NAME, DB_VERSION);
+      r.onupgradeneeded = () => {
+        const d = r.result;
+        if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
+        if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
+      };
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+    return dbp;
+  }
+
+  async function idb(store, mode, fn) {
+    const d = await db();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(store, mode);
+      const req = fn(tx.objectStore(store));
+      tx.oncomplete = () => resolve(req && req.result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+
+  const loadPhrases = () => idb('meta', 'readonly', s => s.get('phrases')).then(v => v || []);
+  const savePhrases = items => idb('meta', 'readwrite', s => s.put(items, 'phrases'));
+  const loadSettings = () => idb('meta', 'readonly', s => s.get('settings')).then(v => v || {});
+  const saveSettings = v => idb('meta', 'readwrite', s => s.put(v, 'settings'));
+  const getAudio = id => idb('audio', 'readonly', s => s.get(id));
+  const putAudio = (id, blob) => idb('audio', 'readwrite', s => s.put(blob, id));
+  const dropAudio = id => idb('audio', 'readwrite', s => s.delete(id));
+
+  const activeVoice = async () => (await loadSettings()).voice || DEFAULT_VOICE;
+
+  // ---------------------------------------------------------- ids and twins
+  //
+  // Ported from mitreden.py, unchanged in behaviour on purpose: an id is a
+  // file name, and a file name may long since be sitting on a talker.
+  const SLUG_WORDS = 6, SLUG_CHARS = 40;
+
+  function slug(text, fallback = 'phrase') {
+    const keep = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const sub = { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss', 'é': 'e', 'è': 'e' };
+    let out = '';
+    for (const ch of text.toLowerCase().trim())
+      for (const c of (sub[ch] || ch)) out += keep.includes(c) ? c : '-';
+    const words = out.split('-').filter(Boolean);
+    const short = [];
+    for (const w of words.slice(0, SLUG_WORDS)) {
+      if (short.length && short.concat(w).join('-').length > SLUG_CHARS) break;
+      short.push(w);
+    }
+    return short.join('-').slice(0, SLUG_CHARS).replace(/^-+|-+$/g, '') || fallback;
+  }
+
+  const normTag = text => slug(text, '').slice(0, 24);
+  // Punctuation stays in: "Nochmal!" and "Nochmal." are spoken differently.
+  const normText = text => text.split(/\s+/).filter(Boolean).join(' ').toLowerCase();
+  const findTwin = (items, text) => {
+    const key = normText(text);
+    return items.find(i => normText(i.text) === key) || null;
+  };
+
+  function freeId(items, text) {
+    const base = slug(text);
+    const taken = new Set(items.map(i => i.id));
+    if (!taken.has(base)) return base;
+    for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+  }
+
+  // Changes when the text, the voice or the output format changes — the same
+  // three things the container hashes, so "what still has to be recorded"
+  // means the same here.
+  async function fingerprint(text, voiceId) {
+    const payload = JSON.stringify([text, 'piper', modelOf(voiceId), OUT]);
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+  }
+
+  // ------------------------------------------------------------------ piper
+  let ttsp = null;
+  const tts = () => (ttsp ||= import('https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/vits-web.js'));
+
+  let lamep = null;
+  const lame = () => (lamep ||= import('https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.js'));
+
+  let onProgress = null;   // set while a batch is running, so the page can say so
+
+  async function speak(text, voiceId) {
+    const t = await tts();
+    return t.predict({ text, voiceId: modelOf(voiceId) }, p => {
+      if (onProgress && p && p.total)
+        onProgress(Math.round(p.loaded * 100 / p.total));
+    });
+  }
+
+  // ------------------------------------------------- trim, level and encode
+  //
+  // What ffmpeg does in the container, done here by hand. Not by preference:
+  // the newest ffmpeg.wasm is built from ffmpeg 5.1.4, whose loudnorm gets the
+  // gain wrong on about half of all short sentences — around 13.6 dB too
+  // quiet, silently. Measurements in docs/spike/README.md. This path tracks
+  // the container within half a decibel.
+
+  async function resample(buf, rate) {
+    const ctx = new OfflineAudioContext(1, Math.ceil(buf.duration * rate), rate);
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.connect(ctx.destination); src.start();
+    return ctx.startRendering();
+  }
+
+  // silenceremove at both ends: the first and last sample above -50 dB, with
+  // 50 ms of the quiet left either side so the word does not start abruptly.
+  function trim(x, rate, thresholdDb = -50, padSec = 0.05) {
+    const th = Math.pow(10, thresholdDb / 20), pad = Math.round(padSec * rate);
+    let a = 0, b = x.length - 1;
+    while (a < x.length && Math.abs(x[a]) < th) a++;
+    while (b > a && Math.abs(x[b]) < th) b--;
+    if (a >= b) return x;                      // all silence — leave it alone
+    return x.subarray(Math.max(0, a - pad), Math.min(x.length, b + pad + 1));
+  }
+
+  function biquad(x, b0, b1, b2, a1, a2) {
+    const y = new Float32Array(x.length);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const v = b0 * x[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+    }
+    return y;
+  }
+
+  // ITU-R BS.1770-4 integrated loudness. The coefficients are the 48 kHz ones,
+  // so the signal has to be at 48 kHz when this runs.
+  function integratedLufs(x) {
+    let k = biquad(x, 1.53512485958697, -2.69169618940638, 1.19839281085285,
+                      -1.69065929318241, 0.73248077421585);          // head shelf
+    k = biquad(k, 1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621);  // RLB
+    const block = 0.4 * 48000, step = 0.1 * 48000, z = [];
+    for (let s = 0; s + block <= k.length; s += step) {
+      let sum = 0;
+      for (let i = s; i < s + block; i++) sum += k[i] * k[i];
+      z.push(sum / block);
+    }
+    if (!z.length) return -Infinity;
+    const L = v => -0.691 + 10 * Math.log10(v || 1e-12);
+    const mean = a => a.reduce((p, c) => p + c, 0) / a.length;
+    let g = z.filter(v => L(v) > -70);                    // absolute gate
+    if (!g.length) return -Infinity;
+    g = g.filter(v => L(v) > L(mean(g)) - 10);            // relative gate
+    return g.length ? L(mean(g)) : -Infinity;
+  }
+
+  function toPcm16(samples) {
+    const pcm = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      const v = Math.max(-1, Math.min(1, samples[i]));
+      pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+    }
+    return pcm;
+  }
+
+  async function encodeMp3(samples, rate) {
+    const { Mp3Encoder } = await lame();
+    const enc = new Mp3Encoder(1, rate, OUT.bitrate);
+    const pcm = toPcm16(samples), parts = [];
+    for (let i = 0; i < pcm.length; i += 1152) {
+      const b = enc.encodeBuffer(pcm.subarray(i, i + 1152));
+      if (b.length) parts.push(new Uint8Array(b));
+    }
+    const end = enc.flush();
+    if (end.length) parts.push(new Uint8Array(end));
+    return new Blob(parts, { type: 'audio/mpeg' });
+  }
+
+  function encodeWav(samples, rate) {
+    const pcm = toPcm16(samples);
+    const buf = new ArrayBuffer(44 + pcm.byteLength), dv = new DataView(buf);
+    const str = (off, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(off + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + pcm.byteLength, true); str(8, 'WAVEfmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    str(36, 'data'); dv.setUint32(40, pcm.byteLength, true);
+    new Uint8Array(buf, 44).set(new Uint8Array(pcm.buffer));
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  // One recording, start to finish: piper's raw wav in, the finished file out.
+  async function process(wavBlob) {
+    const ctx = new AudioContext();
+    const decoded = await ctx.decodeAudioData(await wavBlob.arrayBuffer());
+    await ctx.close();
+
+    const at48 = await resample(decoded, 48000);          // measure at 48 kHz
+    const cut = trim(at48.getChannelData(0), 48000);
+    const lufs = integratedLufs(cut);
+
+    let gain = Number.isFinite(lufs) ? Math.pow(10, (TARGET_LUFS - lufs) / 20) : 1;
+    let peak = 0;
+    for (let i = 0; i < cut.length; i++) peak = Math.max(peak, Math.abs(cut[i]));
+    const ceiling = Math.pow(10, TARGET_PEAK_DB / 20);
+    if (peak * gain > ceiling) gain = ceiling / peak;      // clamp, never clip
+    const levelled = new Float32Array(cut.length);
+    for (let i = 0; i < cut.length; i++) levelled[i] = cut[i] * gain;
+
+    const tmp = new AudioContext({ sampleRate: 48000 });
+    const buf = tmp.createBuffer(1, levelled.length, 48000);
+    buf.copyToChannel(levelled, 0);
+    await tmp.close();
+    const final = await resample(buf, OUT.sample_rate);
+    return encodeMp3(final.getChannelData(0), OUT.sample_rate);
+  }
+
+  // Decoding a finished file back to samples, for a download in another
+  // format. Same rule as the container: the audio is not touched again beyond
+  // the format change — it was trimmed and levelled when it was made.
+  async function asFormat(blob, fmt) {
+    if (fmt === OUT.format || !fmt) return blob;
+    if (fmt !== 'wav') throw new Error(`This page can only write mp3 and wav, not ${fmt}.`);
+    const ctx = new AudioContext();
+    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    await ctx.close();
+    const at = decoded.sampleRate === OUT.sample_rate ? decoded
+                                                     : await resample(decoded, OUT.sample_rate);
+    return encodeWav(at.getChannelData(0), OUT.sample_rate);
+  }
+
+  // ------------------------------------------------------------- recording
+  async function render(item, force = false, voiceId = null) {
+    const vid = voiceId || item.voice_id || await activeVoice();
+    const fp = await fingerprint(item.text, vid);
+    if (!force && item.fingerprint === fp && await getAudio(item.id)) return false;
+    const wav = await speak(item.text, vid);
+    await putAudio(item.id, await process(wav));
+    item.fingerprint = fp;
+    item.backend = 'piper';
+    item.voice_id = vid;
+    return true;
+  }
+
+  async function state(item) {
+    if (!(await getAudio(item.id))) return 'missing';
+    const vid = item.voice_id || await activeVoice();
+    return item.fingerprint === await fingerprint(item.text, vid) ? 'ok' : 'stale';
+  }
+
+  // ------------------------------------------------------------------- zip
+  //
+  // Stored, not deflated: mp3 and wav-from-mp3 do not compress, so the only
+  // thing deflate would buy is a dependency.
+  const CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function zip(files) {
+    const enc = new TextEncoder(), chunks = [], central = [];
+    // A zip carries an MS-DOS timestamp. Left at zero it reads as day 0 of
+    // month 0, which some extractors show and others refuse.
+    const d = new Date();
+    const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    let offset = 0;
+    for (const { name, bytes } of files) {
+      const nb = enc.encode(name), crc = crc32(bytes);
+      const local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true);
+      local.setUint16(4, 20, true);
+      local.setUint16(6, 0x0800, true);        // the name is UTF-8
+      local.setUint16(8, 0, true);             // stored
+      local.setUint16(10, time, true);
+      local.setUint16(12, date, true);
+      local.setUint32(14, crc, true);
+      local.setUint32(18, bytes.length, true);
+      local.setUint32(22, bytes.length, true);
+      local.setUint16(26, nb.length, true);
+      chunks.push(new Uint8Array(local.buffer), nb, bytes);
+
+      const dir = new DataView(new ArrayBuffer(46));
+      dir.setUint32(0, 0x02014b50, true);
+      dir.setUint16(4, 20, true); dir.setUint16(6, 20, true);
+      dir.setUint16(8, 0x0800, true);
+      dir.setUint16(12, time, true);
+      dir.setUint16(14, date, true);
+      dir.setUint32(16, crc, true);
+      dir.setUint32(20, bytes.length, true);
+      dir.setUint32(24, bytes.length, true);
+      dir.setUint16(28, nb.length, true);
+      dir.setUint32(42, offset, true);
+      central.push(new Uint8Array(dir.buffer), nb);
+      offset += 30 + nb.length + bytes.length;
+    }
+    const dirBytes = central.reduce((n, c) => n + c.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, dirBytes, true);
+    end.setUint32(16, offset, true);
+    return new Blob([...chunks, ...central, new Uint8Array(end.buffer)],
+                    { type: 'application/zip' });
+  }
+
+  // ---------------------------------------------------------------- routes
+  const json = (obj, status = 200) =>
+    new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+  const fail = (msg, status = 400) => new Response(msg, { status });
+
+  async function listVoices() {
+    const active = await activeVoice();
+    return VOICES.map(v => ({ id: v.id, label: labelOf(v), backend: 'piper',
+                              active: v.id === active }));
+  }
+
+  async function phrasesWithState() {
+    const items = await loadPhrases();
+    const active = await activeVoice();
+    const out = [];
+    for (const i of items) {
+      const v = voiceById(i.voice_id || active);
+      out.push({ ...i, tags: i.tags || [], state: await state(i),
+                 voice: v ? labelOf(v) : (i.voice_id || '') });
+    }
+    await refreshUrls(out);        // the player asks for these while drawing
+    const av = voiceById(active);
+    return { items: out, voice: av ? labelOf(av) : active, format: OUT.format };
+  }
+
+  async function get(route) {
+    if (route === '/api/strings') return json(window.MITREDEN_STRINGS || {});
+    // No cloud services here. A key typed into a public page would be a
+    // different promise than the one the container makes, so the panel stays
+    // empty rather than half-true.
+    if (route === '/api/setup') return json({ cloud: [], voices: VOICES.length });
+    if (route === '/api/voices') return json(await listVoices());
+    if (route === '/api/phrases') return json(await phrasesWithState());
+    return fail('Unknown route.', 404);
+  }
+
+  async function post(route, body) {
+    body = body || {};
+    const items = await loadPhrases();
+
+    if (route === '/api/phrases') {
+      const tags = (body.tags || []).map(normTag).filter(Boolean);
+      const fresh = [], twins = [];
+      for (const line of body.lines || []) {
+        const text = line.trim();
+        if (!text) continue;
+        const twin = findTwin(items, text);
+        if (twin) {
+          for (const t of tags) if (!(twin.tags || []).includes(t)) (twin.tags ||= []).push(t);
+          twins.push(twin);
+          continue;
+        }
+        const item = { id: freeId(items, text), text, tags: [...tags] };
+        items.push(item); fresh.push(item);
+      }
+      // A sentence that cannot be recorded is still a sentence: it is in the
+      // list and asks to be recorded again. One failure does not lose the rest.
+      let rendered = 0; const failed = [];
+      for (const item of fresh) {
+        try { rendered += await render(item) ? 1 : 0; }
+        catch (e) { failed.push(`${item.id}: ${e.message || e}`); }
+      }
+      await savePhrases(items);
+      return json({ added: fresh.length, rendered, merged: twins.length, failed });
+    }
+
+    if (route === '/api/build') {
+      const only = new Set(body.ids || []);
+      const vid = (body.voice || '').trim() || null;
+      if (vid && !voiceById(vid)) return fail('That voice is not available here.', 404);
+      let rendered = 0;
+      for (const item of items) {
+        if (only.size && !only.has(item.id)) continue;
+        try { rendered += await render(item, !!body.force, vid) ? 1 : 0; }
+        catch (e) { await savePhrases(items); return fail(String(e.message || e), 500); }
+      }
+      await savePhrases(items);
+      return json({ rendered });
+    }
+
+    if (route === '/api/edit') {
+      const item = items.find(i => i.id === (body.id || '').trim());
+      if (!item) return fail('No phrase with that id.', 404);
+      const text = (body.text || '').trim();
+      if (!text) return fail('A sentence cannot be empty.', 400);
+      item.text = text;                       // the id stays: it is a file name
+      let rendered = false; const failed = [];
+      try { rendered = await render(item, true); }
+      catch (e) { failed.push(`${item.id}: ${e.message || e}`); }
+      await savePhrases(items);
+      return json({ ok: true, id: item.id, text: item.text, rendered, failed });
+    }
+
+    if (route === '/api/tags') {
+      const ids = (body.ids || [body.id || '']).map(i => String(i).trim()).filter(Boolean);
+      const mode = body.mode || 'set';
+      if (!['set', 'add', 'remove'].includes(mode)) return fail('Unknown mode.', 400);
+      const tags = (body.tags || []).map(normTag).filter(Boolean);
+      const hit = [];
+      for (const item of items) {
+        if (!ids.includes(item.id)) continue;
+        const cur = item.tags || [];
+        item.tags = mode === 'set' ? [...tags]
+                  : mode === 'add' ? cur.concat(tags.filter(t => !cur.includes(t)))
+                                   : cur.filter(t => !tags.includes(t));
+        hit.push(item.id);
+      }
+      if (!hit.length) return fail('No phrase with that id.', 404);
+      await savePhrases(items);
+      return json({ ok: true, ids: hit, mode });
+    }
+
+    if (route === '/api/voice') {
+      const v = voiceById((body.id || '').trim());
+      if (!v) return fail('That voice is not available here.', 404);
+      // Nothing is recorded and nothing turns stale: this only says what the
+      // next recording should sound like.
+      await saveSettings({ ...await loadSettings(), voice: v.id });
+      return json({ ok: true, label: labelOf(v) });
+    }
+
+    if (route === '/api/delete') {
+      const ids = (body.ids || [body.id || '']).map(i => String(i).trim()).filter(Boolean);
+      if (!ids.length) return fail('No id provided.', 400);
+      const gone = items.filter(i => ids.includes(i.id)).map(i => i.id);
+      if (!gone.length) return fail('No phrase with that id.', 404);
+      const left = items.filter(i => !gone.includes(i.id));
+      await savePhrases(left);
+      for (const id of gone) await dropAudio(id);
+      return json({ ok: true, ids: gone });
+    }
+
+    if (route === '/api/download') {
+      const fmt = (body.format || OUT.format).toLowerCase().replace(/^\./, '');
+      const known = new Set(items.map(i => i.id));
+      const files = [];
+      for (const id of body.ids || []) {
+        if (!known.has(id)) continue;         // never build a name from raw input
+        const blob = await getAudio(id);
+        if (!blob) continue;
+        const out = await asFormat(blob, fmt);
+        files.push({ name: `${id}.${fmt}`, bytes: new Uint8Array(await out.arrayBuffer()) });
+      }
+      if (!files.length) return fail('Nothing recorded to download.', 404);
+      return new Response(zip(files), { status: 200, headers: { 'Content-Type': 'application/zip' } });
+    }
+
+    if (route === '/api/setup')
+      return fail('This page has no cloud services.', 400);
+
+    return fail('Unknown route.', 404);
+  }
+
+  // Audio comes out of IndexedDB, so the page needs an object URL rather than
+  // a path. The player asks while a row is being drawn and cannot wait, so the
+  // URLs are made when the list is fetched and handed out from here. The ones
+  // from the previous draw are let go at the same time — a blob URL keeps its
+  // blob in memory until it is revoked.
+  let urls = new Map();
+
+  async function refreshUrls(items) {
+    const old = urls;
+    urls = new Map();
+    for (const i of items) {
+      const blob = await getAudio(i.id);
+      if (blob) urls.set(i.id, URL.createObjectURL(blob));
+    }
+    for (const url of old.values()) URL.revokeObjectURL(url);
+  }
+
+  const audio = id => urls.get(id) || '';
+
+  // The download menu may wait, so this one converts if it has to.
+  async function fileURL(id, fmt) {
+    const blob = await getAudio(id);
+    if (!blob) return '';
+    return URL.createObjectURL(await asFormat(blob, (fmt || OUT.format).toLowerCase()));
+  }
+
+  window.MITREDEN_BACKEND = { get, post, audio, fileURL, VOICES,
+                              onProgress: fn => { onProgress = fn; } };
+})();
