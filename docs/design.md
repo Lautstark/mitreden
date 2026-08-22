@@ -98,6 +98,14 @@ in `docs/style.css` for the landing page. bildhaft declares its palette in
 `src/styles/app.css`, twice: a light set and a dark set behind
 `@media (prefers-color-scheme: dark)`.
 
+> The mitreden column below records the state **at the time of the audit**, before
+> this document's own recommendations were applied to it; it is kept as the
+> starting point the rest of the document argues from. The bildhaft column is
+> current, and every value in it has been checked with the method "Check the
+> pairs, do not look at them" now requires at the close of §4.2 — nineteen
+> foreground/background pairs per scheme, hover states included. Its worst pair
+> is `--text-faint` on `--surface-2`, at 4.56:1 light and 4.67:1 dark.
+
 | Role | mitreden (`ui.html`) | bildhaft light | bildhaft dark |
 | --- | --- | --- | --- |
 | page background | `--ink` `#0e1014` | `--bg` `#faf9f7` | `#171614` |
@@ -107,15 +115,17 @@ in `docs/style.css` for the landing page. bildhaft declares its palette in
 | hairline | `--line` `#242833` | `--line` `rgba(28,26,23,.09)` | `rgba(255,255,255,.09)` |
 | text | `--text` `#f2efea` | `--text` `#1c1a17` | `#eeebe6` |
 | muted text | `--muted` `#7c8496` | `--text-dim` `#6c665e` | `#a49d93` |
-| faint text | — | `--text-faint` `#9a938a` | `#7b746a` |
+| faint text | — | `--text-faint` `#726c64` | `#999084` |
 | accent (fill) | `--accent` `#ff8bc7` | `--accent` `#ff6b35` | `#ff6b35` |
 | ink on accent | `--accent-ink` `#14161c` | `--accent-ink` `#2b1206` | `#2b1206` |
 | accent as text | — (hard-coded `#ffa3d2` for hover) | `--accent-strong` `#c2410c` | `#ff8b5e` |
+| accent under pointer | — (hard-coded `#ffa3d2`) | `--accent-hover` `#f2551c` | `#ff8355` |
 | accent wash | — | `--accent-soft` `#fff0e9` | `#2e1c13` |
 | success | `--ok` `#3fb96b` | — | — |
 | warning | `--warn` `#f0a202` | — | — |
 | absent/unknown | `--miss` `#5b6377` | — | — |
 | danger | `--danger` `#e5484d` | `--danger` `#b3261e` | `#f2867a` |
+| ink on danger | — | `--danger-ink` `#ffffff` | `#2a1210` |
 | danger wash | — | `--danger-soft` `#fdeceb` | `#35201d` |
 
 Hard-coded colours in `ui.html` that have no token: `#1e222c` (the universal hover
@@ -123,6 +133,14 @@ fill, used in eleven places), `#ffa3d2` (accent hover), `#4d5464` (placeholder),
 `rgba(0,0,0,.5)` (menu shadow), `rgba(0,0,0,.6)` (dialog backdrop),
 `rgba(229,72,77,.12)` (danger hover — a hand-written `--danger` wash that is exactly
 bildhaft's `--danger-soft` idea without the token).
+
+The same grep run against bildhaft found three literals outside its token blocks.
+Two are scrims — `rgba(0,0,0,.45)` behind the mobile navigation panel and
+`rgba(22,20,17,.38)` behind dialogs — which are meant to be dark under either
+scheme and are correct as literals. The third was `color: #fff` on the filled
+destructive button, which is 6.54:1 on a deep red in light and **2.48:1** on the
+light salmon that `--danger` becomes in dark. That is the origin of `--danger-ink`
+in §4.2.
 
 **Where they already agree.** The token *names* `--accent`, `--accent-ink`,
 `--line`, `--text` and `--danger` mean the same thing in both files, and bildhaft
@@ -223,7 +241,8 @@ For each shared concept: what mitreden does, what bildhaft does, how far apart.
   fill and `--accent-ink`. `.quiet` drops the border and goes `--muted`, brightening
   to `--text` on hover. Danger exists only *inside* the popup menu (`.menu
   button.danger`), never as a standalone button.
-- **bildhaft.** One `.btn` base: inline-flex with a 7px gap for an icon, radius 99px,
+- **bildhaft.** One `.btn` base: inline-flex with a 7px gap for an icon, radius
+  `--radius-pill`,
   padding `8px 14px`, **no border**, `--surface-2` fill. Modifiers `--primary`,
   `--quiet`, `--danger` (text-only, `--danger-soft` on hover), `--danger-solid`
   (filled, white text), `--sm`, `--icon` (round, 7px padding).
@@ -289,6 +308,12 @@ For each shared concept: what mitreden does, what bildhaft does, how far apart.
   weight (.6 opaque versus .38 + blur). The head/body/foot split is bildhaft's and
   is genuinely better once a dialog has more than one action; mitreden's settings
   sheet has one and does not need it yet.
+
+One defect here is worth naming because sighted review cannot see it: bildhaft's
+dialogs carried **two buttons with the same accessible name** — the close ✕ and a
+footer „Schließen" — which is ambiguous to anyone navigating by name. The ✕ is now
+„Dialog schließen". Any dialog with both a corner dismiss and a footer dismiss has
+this.
 
 ### Overflow (`⋯`) menus
 
@@ -395,6 +420,39 @@ set.
   it. mitreden has no attribution obligation in the interface. A footer added to
   mitreden purely for symmetry would be furniture; the one line it might honestly
   carry is the same reassurance bildhaft ends on — that nothing leaves the machine.
+
+---
+
+### Patterns bildhaft has that this audit predates
+
+Four components arrived in bildhaft after §2 was written. None has a mitreden
+counterpart today, so there is nothing to converge yet — they are recorded so the
+audit is not silently out of date, and because two of them encode rules §4.3 now
+states.
+
+- **A mobile top bar and an off-canvas navigation panel.** Below 820px the sidebar
+  is a fixed panel that slides over the content behind a scrim, opened from a
+  sticky opaque header. It replaced a `display: none` sidebar whose only opener was
+  rendered when the sidebar was already open — so on a phone it could not be
+  reached at all. Two lessons generalise: a navigation control must not be
+  conditional on the state it toggles, and a persisted desktop preference should
+  not decide what a phone does on load.
+- **Document-level scrolling on small screens.** bildhaft had a nested full-height
+  scroll container (`html`/`body`/`#root` at 100% → an inner `overflow-y: auto`).
+  Mobile browsers resize the viewport under such a container whenever the URL bar
+  or keyboard appears, which produced blank and black repaints. On mobile the
+  document scrolls, heights use `dvh`, and `backdrop-filter` — a second known cause
+  of black compositing artefacts — is dropped.
+- **A failed-symbol tile.** Every path that could not produce an image URL used to
+  render the same spinner, so a permanent failure was indistinguishable from work
+  in progress. Resolution now reports loading, ready and error separately, with a
+  timeout, and a failed symbol offers a retry. The rule: a loading state must be
+  able to end.
+- **An `alert` banner.** Used for one condition — another tab holding an older
+  IndexedDB version, which blocks an upgrade indefinitely and stalls every read
+  behind it. Worth knowing about for any product that versions a client-side
+  database: without a `blocked` handler this presents as the UI hanging with no
+  explanation.
 
 ---
 
@@ -545,17 +603,17 @@ oversight. So the rule to write down is not "never a save button" but:
 | concept | mitreden today | bildhaft today | recommended | who moves |
 | --- | --- | --- | --- | --- |
 | a stored utterance | Satz | Satz / Zeile | **Satz** | bildhaft |
-| light or dark | dark only | light, dark supported | **both, in both** | mitreden |
+| light or dark | dark only | light-first, dark supported | **both, in both** | mitreden — done |
 | a named grouping of them | Gruppe / `tags` | Sammlung | **Sammlung** / `collections` | mitreden |
 | can it be in several at once | yes | no | **yes** | bildhaft (`collectionId` → list) |
 | making a grouping current | filter chips („Alle") | sidebar selection | **multi-select sidebar** | both |
 | the produced artefact leaving | herunterladen | drucken | **herunterladen** | neither |
-| a subset leaving as data | export (CLI only) | „Sammlung exportieren" | **Sammlung exportieren** | mitreden |
+| a subset leaving as data | export (CLI only) | „Sammlung exportieren" (in the ⋯ menu beside the name) | **Sammlung exportieren** | mitreden |
 | everything leaving as data | — | „Alles exportieren" (called Sicherung in prose) | **Sicherung** | both |
 | the symbol sets bildhaft draws from | — | Symbolsammlung | **Symbolquelle**, to free *Sammlung* | bildhaft |
-| the settings surface | Einstellungen (⚙ beside title) | Einstellungen (sidebar foot) | **Einstellungen, ⚙ beside the mark** | bildhaft |
+| the settings surface | Einstellungen (⚙ beside title) | Einstellungen (sidebar foot; inside the panel on mobile) | **Einstellungen, ⚙ beside the mark** | bildhaft |
 | more actions on a thing | ⋮ | ⋯ | one glyph, pick **⋯** | mitreden (one character) |
-| a destructive confirmation | native confirm, „OK" | dialog, button named for the act | **name the act on the button** | mitreden |
+| a destructive confirmation | native confirm, „OK" | dialog, button named for the act and counting what goes | **name the act on the button** | mitreden |
 | saving | implicit | implicit, stated | **implicit, stated, one exception** | mitreden states it |
 
 ---
