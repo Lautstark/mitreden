@@ -308,17 +308,32 @@ async function post(route, body) {
 
   if (route === '/api/collection') {
     const mode = body.mode || 'create';
-    const name = normTag(body.name || '');
+    // Only `create` turns a name into a key. rename and delete are handed a key
+    // that was minted once already, and minting it again is not safe: normTag
+    // truncates, so a key that ends on the cut comes back one character shorter
+    // and matches nothing. The Sammlung then cannot be deleted or renamed, and
+    // delete used to say it had worked.
+    const name = mode === 'create' ? normTag(body.name || '') : String(body.name || '').trim();
     let declared = await loadCollections();
 
     if (mode === 'create') {
-      const shown = String(body.name || '').trim();
-      if (!name || !shown) return fail('A collection needs a name.', 400);
-      if (!declared.some(c => c.key === name)) {
-        declared.push({ key: name, name: shown });
+      // Asking for one without a name is how the sidebar makes one: it is
+      // created, opened, and renamed in the title — the same gesture bildhaft
+      // uses, and one fewer box to type into before anything exists.
+      let shown = String(body.name || '').trim();
+      let key = name;
+      if (!shown) {
+        const base = defaultName();
+        shown = base;
+        for (let n = 2; declared.some(c => c.name === shown); n++) shown = `${base} (${n})`;
+        key = normTag(shown);
+      }
+      if (!key || !shown) return fail('A collection needs a name.', 400);
+      if (!declared.some(c => c.key === key)) {
+        declared.push({ key, name: shown });
         await saveCollections(declared);
       }
-      return json({ ok: true, key: name, name: shown });
+      return json({ ok: true, key, name: shown });
     }
 
     if (mode === 'rename') {
@@ -335,6 +350,8 @@ async function post(route, body) {
     }
 
     if (mode === 'delete') {
+      if (!declared.some(c => c.key === name))
+        return fail('No collection with that name.', 404);
       // The Sammlung goes, the sentences stay. They are the irreplaceable
       // half, and a container being removed is no reason to lose them.
       const left = declared.filter(c => c.key !== name);
@@ -380,9 +397,11 @@ async function post(route, body) {
     let found;
     try { found = await azureVoices(key, region); }
     catch (e) {
+      // A code, not a sentence: the page is the only thing that knows which
+      // language to say this in, and it was answering a German page in English.
       return fail(e.message === 'key-or-region'
-        ? 'That key and region do not go together.'
-        : `Azure did not answer: ${e.message}`, 400);
+        ? 'azure_bad_pair'
+        : `azure_no_answer:${e.message}`, 400);
     }
     await saveSettings({ ...now, azure: { key, region } });
     return json({ set: true, voices: VOICES.length + found.length });

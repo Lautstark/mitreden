@@ -4,7 +4,7 @@
  * Part of mitreden's interface; ui/main.js wires the views together.
  */
 
-import { $, api, closeMenus, menuOn, post, say, t } from './core.js';
+import { $, post, say, t } from './core.js';
 import { ALL, COLLECTIONS, DECLARED, load, notify } from './state.js';
 
 // The rail. Every declared Sammlung has a row whether or not anything is in
@@ -22,24 +22,16 @@ export function drawRail(){
 
   const row=(name,label,n,on)=>{
     const b=document.createElement('button');
-    b.className='row'+(on?' on':'');
-    b.innerHTML='<span class="row__name"></span><span class="row__n"></span>';
-    b.querySelector('.row__name').textContent=label;
-    b.querySelector('.row__n').textContent=n;
+    b.className='list__item'+(on?' on':'');
+    b.innerHTML='<span class="list__name"></span><span class="list__count"></span>';
+    b.querySelector('.list__name').textContent=label;
+    b.querySelector('.list__count').textContent=n;
     b.onclick=e=>{
       if(name===null){COLLECTIONS.clear()}
       else if(e.metaKey||e.ctrlKey){COLLECTIONS.has(name)?COLLECTIONS.delete(name):COLLECTIONS.add(name)}
       else{COLLECTIONS.clear();COLLECTIONS.add(name)}
       closeRail();notify();
     };
-    if(name!==null){
-      const m=document.createElement('button');
-      m.className='row__more';m.textContent='\u22ef';
-      m.setAttribute('aria-haspopup','true');m.setAttribute('aria-expanded','false');
-      m.title=t('more_actions');
-      m.onclick=e=>{e.stopPropagation();collectionMenu(m,name,label,n)};
-      b.appendChild(m);
-    }
     rows.appendChild(b);
   };
 
@@ -54,14 +46,8 @@ export function drawRail(){
   if(document.activeElement!==$('colname'))$('colname').value=here?here.name:'';
 }
 
-function collectionMenu(btn,key,label,n){
-  menuOn(btn,(m,add)=>{
-    add(t('collection_delete'),true,()=>{closeMenus();deleteCollection(key,label,n)});
-  });
-}
-
 // Renaming happens where the name is, not in a window over it.
-async function deleteCollection(key,label,n){
+export async function deleteCollection(key,label,n){
   if(!confirm(t('ask_collection_delete',{name:label,n})))return;
   const r=await post('/api/collection',{mode:'delete',name:key});
   if(!r)return;
@@ -96,23 +82,18 @@ $('colname').addEventListener('input',scheduleRename);
 $('colname').addEventListener('blur',scheduleRename);
 $('colname').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur()}};
 
-$('newcol').onclick=()=>{
-  const box=$('newcolname');
-  box.hidden=false;box.value='';delete box.dataset.rename;box.focus();
-};
-$('newcolname').onkeydown=async e=>{
-  if(e.key==='Escape'){e.target.hidden=true;return}
-  if(e.key!=='Enter')return;
-  const value=e.target.value.trim();
-  const was=e.target.dataset.rename;
-  if(!value){e.target.hidden=true;return}
-  const r=was
-    ? await post('/api/collection',{mode:'rename',name:was,to:value})
-    : await post('/api/collection',{mode:'create',name:value});
+$('newcol').onclick=async()=>{
+  const r=await post('/api/collection',{mode:'create'});
   if(!r)return;
-  e.target.hidden=true;
-  say(was?t('done_edit',{text:r.name}):t('done_collection_new',{name:r.name}));
-  load();
+  COLLECTIONS.clear();COLLECTIONS.add(r.key);
+  closeRail();
+  say(t('done_collection_new',{name:r.name}));
+  await load();
+  // Straight into the name, selected: typing replaces the date it was given.
+  // Set here rather than left to drawRail, which deliberately leaves the field
+  // alone while it has focus — otherwise making a second one in a row shows
+  // the first one's name over the new one's sentences.
+  const title=$('colname');title.value=r.name;title.focus();title.select();
 };
 
 

@@ -14,7 +14,10 @@ export async function drawSetup(){
     d.innerHTML='<div class="card__head"><h3></h3><span class="badge state"></span></div>'+
       '<p class="sub body"></p><p class="warn"></p>'+
       '<label></label><input type="password" autocomplete="off">'+
-      (c.needs_region?'<label class="region"></label><input class="region" type="text">':'')+
+      (c.needs_region?'<label class="region"></label>'+
+        '<input class="region" type="text" list="azureregions" spellcheck="false">'+
+        '<datalist id="azureregions">'+AZURE_REGIONS.map(r=>`<option value="${r}">`).join('')+
+        '</datalist><p class="hint region"></p>':'')+
       '<div class="row"><button class="primary save"></button>'+
       '<button class="quiet forget"></button></div>';
     d.querySelector('h3').textContent=c.label;
@@ -27,6 +30,7 @@ export async function drawSetup(){
     const key=d.querySelector('input[type=password]');
     const reg=d.querySelector('input.region');
     if(reg){d.querySelector('label.region').textContent=t('region_field');
+            d.querySelector('p.region').textContent=t('region_hint');
             reg.value=c.region||''}
     d.querySelector('.save').textContent=t('key_save');
     const forget=d.querySelector('.forget');
@@ -37,11 +41,25 @@ export async function drawSetup(){
   }
 }
 
-// One row of tabs, one pane visible. The panes are in the markup rather than
-// built here, so a translator can see them.
+// Azure's own region names. Not a closed list — a datalist suggests, it does
+// not restrict — so a region newer than this file still works by typing it.
+const AZURE_REGIONS=['westeurope','northeurope','germanywestcentral','switzerlandnorth',
+  'francecentral','uksouth','swedencentral','norwayeast','eastus','eastus2','westus',
+  'westus2','westus3','centralus','southcentralus','canadacentral','brazilsouth',
+  'australiaeast','southeastasia','eastasia','japaneast','japanwest','koreacentral',
+  'centralindia','southafricanorth','uaenorth'];
+
+// The backend answers with a code, so this is the only place that has to know
+// the reader's language. It was answering a German page in English.
+async function reason(r){
+  const body=(await r.text()).trim();
+  const [code,rest]=body.split(/:(.*)/s);
+  return t(code)!==code?t(code,{error:(rest||'').trim()}):body;
+}
+
 async function saveKey(c,key,region){
   const r=await api.post('/api/setup',{backend:c.id,key,region});
-  if(!r.ok){say(t('key_failed',{error:await r.text()}));return}
+  if(!r.ok){say(t('key_failed',{error:await reason(r)}));return}
   const d=await r.json();
   say(d.set?t('key_saved',{label:c.label,n:d.voices})
            :t('key_removed',{label:c.label}));

@@ -30,7 +30,10 @@ export function slug(text, fallback = 'phrase') {
   return short.join('-').slice(0, SLUG_CHARS).replace(/^-+|-+$/g, '') || fallback;
 }
 
-export const normTag = text => slug(text, '').slice(0, 24);
+// Cutting at 24 characters can land mid-word and leave the separator dangling.
+// Trimming it keeps normTag(normTag(x)) === normTag(x), which every caller
+// that stores a key and later looks it up quietly depends on.
+export const normTag = text => slug(text, '').slice(0, 24).replace(/-+$/, '');
 // Punctuation stays in: "Nochmal!" and "Nochmal." are spoken differently.
 export const normText = text => text.split(/\s+/).filter(Boolean).join(' ').toLowerCase();
 export const findTwin = (items, text) => {

@@ -11,6 +11,7 @@ let SHOW_ALL=false, ALL_TAGS=false, ALL_VOICES=false;
 
 import { $, api, applyLang, closeMenus, loadStrings, menuOn, post, say, t, tn } from './core.js';
 import { ALL, CAP, CHIP_CAP, COLLECTIONS, DECLARED, NOCHNICHT, VOICES, found, load, shown, stateText } from './state.js';
+import { deleteCollection } from './rail.js';
 
 function chip(label,n,collection,set,where){
   const b=document.createElement('button');
@@ -89,7 +90,16 @@ export function draw(){
   $('list').innerHTML='';
   if(!items.length){
     const p=document.createElement('p');p.className='empty';
-    p.textContent=ALL.length?t('empty_no_match'):t('empty_start');
+    // "Nothing matches" is only true when something is narrowing the list. An
+    // empty Sammlung is not a failed search, and saying so made a new one look
+    // broken the moment it was made.
+    if(searching||VOICES.size)p.textContent=t('empty_no_match');
+    else{
+      // bildhaft's line, with the key drawn as a key.
+      const [before,after]=t('empty_start').split('{key}');
+      const kbd=document.createElement('kbd');kbd.textContent='Enter';
+      p.append(before,kbd,after);
+    }
     $('list').appendChild(p);
     return;
   }
@@ -128,9 +138,22 @@ function openMenu(btn,it){
     if(it.state!=='missing'){
       add(t('download_mp3'),false,()=>{closeMenus();grab(it,'mp3')});
       add(t('download_wav'),false,()=>{closeMenus();grab(it,'wav')});
+    }else{
+      // A recording that failed — no voice yet, or the cloud said no — was
+      // otherwise stuck: the only way back was to retype the sentence.
+      add(t('menu_record'),false,()=>{closeMenus();record(it)});
     }
     add(t('menu_delete_one'),true,()=>{closeMenus();del(it)});
   });
+}
+
+async function record(it){
+  say(t('busy_record'));
+  const r=await post('/api/build',{ids:[it.id]});
+  if(!r)return;
+  const bad=r.failed||[];
+  say(bad.length?tn('not_recorded',bad.length,{why:bad[0]}):t('done_edit',{text:it.text}));
+  load();
 }
 addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenus()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
