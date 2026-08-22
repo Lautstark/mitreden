@@ -6,9 +6,11 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": [
         "mitreden.py",
-        "ui"
+        "ui",
+        "--port",
+        "8772"
       ],
-      "port": 8770
+      "port": 8772
     },
     {
       "name": "spike",

@@ -256,6 +256,20 @@ button.quiet:hover{color:var(--text)}
 <script>
 const $=id=>document.getElementById(id);
 
+// --- Woher die Daten kommen -------------------------------------------
+// Everything that leaves this page goes through here. Served by the
+// container, that is the server on the other end. The same page on a static
+// site answers out of the browser itself, with no server anywhere — it sets
+// MITREDEN_BACKEND before this file runs. Both hand back a Response, so
+// nothing below this line has to know which one it is talking to.
+const api = window.MITREDEN_BACKEND || {
+  get:  route => fetch(route),
+  post: (route, body) => fetch(route, {method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(body||{})}),
+  audio: (id, query) => '/audio/' + id + (query || ''),
+};
+
 // --- Sprachen ---------------------------------------------------------
 // The strings come from lang/*.json so that translating means editing a file,
 // not hunting through the program. Keys are English; a key that is missing in
@@ -289,7 +303,7 @@ function applyLang(){
 
 // --- Einstellungen ----------------------------------------------------
 async function drawSetup(){
-  const st=await (await fetch('/api/setup')).json();
+  const st=await (await api.get('/api/setup')).json();
   const box=$('cloud');box.innerHTML='';
   for(const c of st.cloud){
     const d=document.createElement('div');d.className='svc';
@@ -319,9 +333,7 @@ async function drawSetup(){
 }
 
 async function saveKey(c,key,region){
-  const r=await fetch('/api/setup',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({backend:c.id,key,region})});
+  const r=await api.post('/api/setup',{backend:c.id,key,region});
   if(!r.ok){say(t('key_failed',{error:await r.text()}));return}
   const d=await r.json();
   say(d.set?t('key_saved',{label:c.label,n:d.voices})
@@ -333,7 +345,7 @@ $('gear').onclick=()=>{drawSetup();$('setup').showModal()};
 $('setupclose').onclick=()=>$('setup').close();
 
 async function loadStrings(){
-  STR=await (await fetch('/api/strings')).json();
+  STR=await (await api.get('/api/strings')).json();
   const codes=Object.keys(STR);
   // What you picked last, else what the browser asks for, else English.
   // A German browser says de, de-AT or de-CH — the first two letters are
@@ -521,7 +533,7 @@ function draw(){
       // listening here, never the rendered file — and a download of the preview
       // rather than the device files. Both mislead, so both are switched off.
       (it.state==='missing'?'':'<audio controls controlsList="nodownload noplaybackrate" '+
-        'disableRemotePlayback preload="none" src="/audio/'+it.id+'"></audio>')+
+        'disableRemotePlayback preload="none" src="'+api.audio(it.id)+'"></audio>')+
       '<div class="menuwrap"><button class="dots" aria-haspopup="true" '+
       'aria-expanded="false" title="'+t('more_actions')+'" aria-label="'+
       t('more_actions')+'">\u22ee</button></div>';
@@ -572,7 +584,7 @@ function menuOn(btn,build){
 // but they are fine in a list you opened on purpose.
 async function voiceMenu(m,apply){
   m.innerHTML='';
-  for(const v of await (await fetch('/api/voices')).json()){
+  for(const v of await (await api.get('/api/voices')).json()){
     const b=document.createElement('button');
     b.textContent=t('switch_to',{voice:v.label});
     b.onclick=()=>{closeMenus();apply(v.id,v.label)};
@@ -591,8 +603,7 @@ async function switchTo(ids,id,label){
 async function grabMany(ids,fmt){
   if(!ids.length){say(t('nothing_recorded'));return}
   say(t('busy_pack',{n:ids.length}));
-  const r=await fetch('/api/download',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,format:fmt})});
+  const r=await api.post('/api/download',{ids,format:fmt});
   if(!r.ok){say(t('failed',{error:await r.text()}));return}
   const url=URL.createObjectURL(await r.blob());
   const a=document.createElement('a');
@@ -664,7 +675,7 @@ addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenus()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
 
 async function load(){
-  const data=await (await fetch('/api/phrases')).json();
+  const data=await (await api.get('/api/phrases')).json();
   ALL=data.items||[];
   await loadVoices(data.voice);
   const live=new Set();
@@ -675,7 +686,7 @@ async function load(){
   draw();
 }
 async function loadVoices(current){
-  const list=await (await fetch('/api/voices')).json();
+  const list=await (await api.get('/api/voices')).json();
   const sel=$('voice'), keep=sel.value;
   sel.innerHTML='';
   if(!list.length){                      // nothing usable: just show it
@@ -703,7 +714,7 @@ $('voice').onchange=async e=>{
 };
 function grab(it,fmt){
   const a=document.createElement('a');
-  a.href='/audio/'+it.id+'?dl=1&format='+encodeURIComponent(fmt);
+  a.href=api.audio(it.id,'?dl=1&format='+encodeURIComponent(fmt));
   document.body.appendChild(a);a.click();a.remove();
 }
 async function editText(it){
@@ -734,8 +745,7 @@ async function del(it){
   if(r){say(t('done_delete_one',{text:it.text}));load()}
 }
 async function post(url,body){
-  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body||{})});
+  const r=await api.post(url,body);
   if(!r.ok){say(t('failed',{error:await r.text()}));return null}
   return r.json();
 }
