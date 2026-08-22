@@ -106,5 +106,15 @@
   "done_build": "{n} aufgenommen.",
   "nothing_to_record": "Die sind alle schon aufgenommen.",
   "about_link": "Was ist mitreden?",
-  "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin."
+  "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin.",
+  "collection_new": "+ Neue Sammlung",
+  "collection_name_hint": "Name, Enter zum Anlegen",
+  "collection_all": "Alle Sätze",
+  "collections_show": "Sammlungen zeigen",
+  "collections_hide": "Sammlungen ausblenden",
+  "collection_rename": "Umbenennen",
+  "collection_delete": "Sammlung löschen",
+  "ask_collection_delete": "„{name}\" löschen?\n\nDie Sammlung verschwindet, die {n} Sätze darin bleiben.",
+  "done_collection_new": "„{name}\" angelegt.",
+  "done_collection_delete": "„{name}\" gelöscht, die Sätze sind geblieben."
 }

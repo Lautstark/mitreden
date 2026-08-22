@@ -92,7 +92,13 @@
   // sentences on purpose: a Sammlung just created is empty, and one derived
   // from its members could not exist yet. That is the whole difference between
   // a label and a place you work in.
-  const loadCollections = () => idb('meta', 'readonly', s => s.get('collections')).then(v => v || []);
+  // Stored as {key, name}: the key is what a sentence points at and never
+  // moves, the name is what you called it and keeps its capitals and umlauts.
+  // The same split the sentences already use — an id is a file name, a text is
+  // something to read — and for the same reason: renaming must not orphan
+  // anything.
+  const loadCollections = () => idb('meta', 'readonly', s => s.get('collections'))
+    .then(v => (v || []).map(c => typeof c === 'string' ? { key: c, name: c } : c));
   const saveCollections = v => idb('meta', 'readwrite', s => s.put(v, 'collections'));
   const savePhrases = items => idb('meta', 'readwrite', s => s.put(items, 'phrases'));
   const loadSettings = () => idb('meta', 'readonly', s => s.get('settings')).then(v => v || {});
@@ -392,12 +398,14 @@
     // declared — an imported file, say. Neither is dropped.
     const declared = await loadCollections();
     const used = new Set(out.flatMap(i => i.collections || []));
-    const names = declared.concat([...used].filter(n => !declared.includes(n)));
+    const all = declared.concat([...used]
+      .filter(k => !declared.some(c => c.key === k))
+      .map(k => ({ key: k, name: k })));      // arrived on a sentence, never declared
 
     const av = voiceById(active);
     return { items: out, voice: av ? labelOf(av) : active, format: OUT.format,
-             collections: names.map(name => ({
-               name, count: out.filter(i => (i.collections || []).includes(name)).length })) };
+             collections: all.map(c => ({ ...c,
+               count: out.filter(i => (i.collections || []).includes(c.key)).length })) };
   }
 
   async function get(route) {
@@ -432,8 +440,9 @@
       // into a Sammlung lands there without anyone naming it twice.
       if (collections.length) {
         const declared = await loadCollections();
-        const missing = collections.filter(c => !declared.includes(c));
-        if (missing.length) await saveCollections(declared.concat(missing));
+        const missing = collections.filter(k => !declared.some(c => c.key === k));
+        if (missing.length)
+          await saveCollections(declared.concat(missing.map(k => ({ key: k, name: k }))));
       }
       const fresh = [], twins = [];
       for (const line of body.lines || []) {
@@ -594,32 +603,32 @@
       let declared = await loadCollections();
 
       if (mode === 'create') {
-        if (!name) return fail('A collection needs a name.', 400);
-        if (!declared.includes(name)) { declared.push(name); await saveCollections(declared); }
-        return json({ ok: true, name });
+        const shown = String(body.name || '').trim();
+        if (!name || !shown) return fail('A collection needs a name.', 400);
+        if (!declared.some(c => c.key === name)) {
+          declared.push({ key: name, name: shown });
+          await saveCollections(declared);
+        }
+        return json({ ok: true, key: name, name: shown });
       }
 
       if (mode === 'rename') {
-        const to = normTag(body.to || '');
-        if (!name || !to) return fail('A collection needs a name.', 400);
-        await saveCollections(declared.map(n => (n === name ? to : n))
-                                      .filter((n, i, a) => a.indexOf(n) === i));
-        // the sentences follow, or they are left pointing at a name nothing
-        // answers to any more
-        for (const item of items) {
-          const cur = item.collections || [];
-          if (cur.includes(name))
-            item.collections = cur.map(n => (n === name ? to : n))
-                                  .filter((n, i, a) => a.indexOf(n) === i);
-        }
-        await savePhrases(items);
-        return json({ ok: true, name: to });
+        const shown = String(body.to || '').trim();
+        if (!name || !shown) return fail('A collection needs a name.', 400);
+        // Only what you read changes. The key stays, so nothing a sentence
+        // points at has to be rewritten and no import can be orphaned by
+        // somebody fixing a capital letter.
+        const hit = declared.find(c => c.key === name);
+        if (!hit) return fail('No collection with that name.', 404);
+        hit.name = shown;
+        await saveCollections(declared);
+        return json({ ok: true, key: hit.key, name: shown });
       }
 
       if (mode === 'delete') {
         // The Sammlung goes, the sentences stay. They are the irreplaceable
         // half, and a container being removed is no reason to lose them.
-        await saveCollections(declared.filter(n => n !== name));
+        await saveCollections(declared.filter(c => c.key !== name));
         for (const item of items)
           item.collections = (item.collections || []).filter(n => n !== name);
         await savePhrases(items);

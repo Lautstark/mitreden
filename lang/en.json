@@ -106,5 +106,15 @@
   "done_build": "{n} recorded.",
   "nothing_to_record": "Those are all recorded already.",
   "about_link": "What is mitreden?",
-  "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere."
+  "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere.",
+  "collection_new": "+ New collection",
+  "collection_name_hint": "Name, Enter to create",
+  "collection_all": "All sentences",
+  "collections_show": "Show collections",
+  "collections_hide": "Hide collections",
+  "collection_rename": "Rename",
+  "collection_delete": "Delete collection",
+  "ask_collection_delete": "Delete \"{name}\"?\n\nThe collection goes, the {n} sentences in it stay.",
+  "done_collection_new": "\"{name}\" created.",
+  "done_collection_delete": "\"{name}\" deleted, the sentences stayed."
 }

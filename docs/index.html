@@ -42,10 +42,74 @@
   }
 }
 *{box-sizing:border-box}
+/* The shell: a rail beside the work.
+   A Sammlung is a place you work in, so it is somewhere you go rather than a
+   filter you set — the same shape bildhaft uses, for the same reason. Below
+   820px it slides over the work instead of squeezing it. */
+.rail{position:fixed;inset:0 auto 0 0;width:264px;z-index:20;
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:2px;padding:14px 12px}
+.rail__brand{display:flex;align-items:center;gap:8px;padding:2px 6px 12px}
+.rail__brand h1{font-size:23px;margin:0;display:flex;align-items:center;gap:9px;
+  letter-spacing:-.03em}
+.rail__brand .icon{margin-left:auto}
+.rail__part{padding:8px 4px}
+.rail__part h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--text-faint);margin:0 6px 8px;font-weight:600}
+.rail__grow{flex:1;min-height:0;overflow:auto}
+.rail__foot{margin-top:auto;display:flex;gap:6px;align-items:center;
+  padding:10px 4px 2px;border-top:1px solid var(--line)}
+.rail input[type=search]{width:100%}
+
+/* One row per Sammlung: name, count, and the ⋯ once it is the one you are in. */
+.list{display:flex;flex-direction:column;gap:1px}
+.row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  border:1px solid transparent;background:none;color:var(--text);
+  border-radius:9px;padding:7px 9px;font:inherit;cursor:pointer}
+.row:hover{background:var(--surface-2)}
+.row.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.row__name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row__n{font-size:12.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.row.on .row__n{color:var(--accent-strong)}
+.row__more{opacity:0;border:0;background:none;color:inherit;cursor:pointer;
+  padding:0 2px;font-size:16px;line-height:1}
+.row:hover .row__more,.row.on .row__more{opacity:.75}
+.newname{width:100%;margin-top:6px}
+button.small{font-size:13px;padding:6px 9px}
+button.quiet{background:none;border:1px dashed var(--line);color:var(--text-dim)}
+button.quiet:hover{background:var(--surface-2);color:var(--text)}
+.icon{background:none;border:0;color:var(--text-dim);font-size:17px;
+  cursor:pointer;padding:4px 6px;border-radius:8px}
+.icon:hover{background:var(--surface-2);color:var(--text)}
+
+.topbar{display:none;position:sticky;top:0;z-index:15;align-items:center;gap:10px;
+  padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:19px;margin:0;display:flex;align-items:center;gap:8px;
+  letter-spacing:-.03em}
+.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.45)}
+
+@media (max-width:820px){
+  .rail{transform:translateX(-100%);transition:transform .18s ease;
+    box-shadow:var(--shadow);width:min(280px,84vw)}
+  .rail.open{transform:none}
+  .topbar{display:flex}
+  .rail__brand{display:none}
+}
+@media (min-width:821px){
+  /* Nothing to close when the rail is simply part of the page. */
+  .scrim,.topbar,#railclose{display:none}
+}
+
 body{margin:0;background:var(--bg);color:var(--text);
   font:16px/1.55 ui-sans-serif,system-ui,"Segoe UI",sans-serif;
   padding:clamp(20px,5vw,64px);-webkit-font-smoothing:antialiased}
-main{max-width:720px;margin:0 auto}
+/* The work sits to the right of the rail and keeps its comfortable measure. */
+main{max-width:720px;margin:0 auto;padding-left:0}
+@media (min-width:821px){
+  /* The rail's width plus the padding the page would have had anyway, so the
+     work keeps the same breathing room it had before there was a rail. */
+  body{padding-left:calc(264px + clamp(20px,5vw,64px))}
+}
 h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
   display:flex;align-items:center;gap:12px}
 .logo{width:clamp(34px,7vw,52px);height:auto;flex:none}
@@ -239,13 +303,40 @@ button.quiet:hover{color:var(--text)}
   .tools button{flex:1}
 }
 </style>
-<main>
-<div class="top">
-  <h1><img class="logo" src="icon.svg" alt="" width="44" height="44">mitreden</h1>
-  <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
-  <button id="gear" class="gear" data-i18n-title="settings"
-    data-i18n-aria="settings">⚙</button>
+<!-- Narrow screens get a bar instead of a rail: the rail slides over the work
+     rather than squeezing it, and the scrim closes it. mitreden is sold as
+     usable from a phone, so this is not decoration. -->
+<div class="topbar">
+  <button id="railopen" class="icon" data-i18n-aria="collections_show">☰</button>
+  <h1><img class="logo" src="icon.svg" alt="" width="28" height="28">mitreden</h1>
 </div>
+<div id="scrim" class="scrim" hidden></div>
+
+<aside id="rail" class="rail">
+  <div class="rail__brand">
+    <h1><img class="logo" src="icon.svg" alt="" width="34" height="34">mitreden</h1>
+    <button id="railclose" class="icon" data-i18n-aria="collections_hide">✕</button>
+  </div>
+
+  <div class="rail__part">
+    <input id="q" type="search" data-i18n-ph="search_hint" autocomplete="off">
+  </div>
+
+  <div class="rail__part rail__grow">
+    <h2 data-i18n="filter_collections"></h2>
+    <div class="list" id="rows"></div>
+    <button id="newcol" class="quiet small" data-i18n="collection_new"></button>
+    <input id="newcolname" class="newname" type="text" hidden
+      data-i18n-ph="collection_name_hint" autocomplete="off">
+  </div>
+
+  <div class="rail__foot">
+    <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
+    <button id="gear" class="quiet small" data-i18n="settings"></button>
+  </div>
+</aside>
+
+<main>
 
 <dialog id="setup" class="sheet">
   <h2 data-i18n="settings"></h2>
@@ -285,12 +376,7 @@ button.quiet:hover{color:var(--text)}
   <span class="count" id="count">&nbsp;</span>
 </div>
 
-<div class="tools">
-  <input id="q" type="search" data-i18n-ph="search_hint" autocomplete="off">
-</div>
-
 <div class="filters">
-  <div class="frow"><span class="flabel" data-i18n="filter_collections"></span><span class="chips" id="chips"></span></div>
   <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
 </div>
 
@@ -313,7 +399,7 @@ button.quiet:hover{color:var(--text)}
   <span data-i18n="footer_local"></span>
 </footer>
 </main>
-<script>window.MITREDEN_STRINGS = {"de": {"about_link": "Was ist mitreden?", "add_phrase": "Satz hinzufügen", "ask_collections_add": "In welche Sammlungen kommen diese {n} Sätze?\n\nMit Komma getrennt. Vorhandene Sammlungen bleiben.", "ask_collections_one": "Sammlungen für {text}\n\nMit Komma getrennt. Leer nimmt den Satz aus allen heraus.", "ask_collections_remove": "Aus welchen Sammlungen fliegen diese {n} Sätze?\n\nMit Komma getrennt. Andere Sammlungen bleiben.", "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_other": "{n} Sätze löschen?\n\nDie Sätze und ihre Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_this": "{text} wirklich löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_edit_text": "Text für {text}\n\nDer Satz wird sofort neu aufgenommen. Der Dateiname bleibt {id}.", "ask_switch_one": "1 Satz auf {voice} umstellen?\n\nDie bestehende Aufnahme wird ersetzt.", "ask_switch_other": "{n} Sätze auf {voice} umstellen?\n\nDie bestehenden Aufnahmen werden ersetzt.", "backup_export": "Sätze in einer Datei sichern", "backup_hint": "Dieselbe phrases.json wie im Container, die beiden können also tauschen.", "backup_import": "Sätze aus einer Datei laden", "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.", "backup_title": "Deine Sätze", "busy_add": "Wird aufgenommen …", "busy_build": "Nehme {n} auf …", "busy_collection_add": "Wird hinzugefügt …", "busy_collection_remove": "Wird entfernt …", "busy_delete": "Wird gelöscht …", "busy_import": "Lese …", "busy_pack": "{n} wird gepackt …", "busy_record": "Wird neu aufgenommen …", "busy_switch": "Wird auf {voice} umgestellt …", "chip_all": "Alle", "chip_less": "weniger", "chip_more": "+ {n} weitere", "chip_not_recorded": "Nicht aufgenommen", "close": "Schließen", "collection_title": "Nur diese Sammlung zeigen", "collections_hint": "kindergarten, spiel", "collections_label": "Sammlungen (optional, mit Komma getrennt)", "count_all_recorded": ", alle aufgenommen", "count_filtered": "{n} von {all} Sätzen", "count_none": "Noch keine Sätze", "count_one": "1 Satz", "count_open": ", {n} offen", "count_other": "{n} Sätze", "done_add": "{added} hinzugefügt, {rendered} aufgenommen", "done_add_twins": ", {n} gab es schon", "done_build": "{n} aufgenommen.", "done_collection_add": "{n} Sätze liegen jetzt in {collections}.", "done_collection_remove": "{n} Sätze liegen nicht mehr in {collections}.", "done_collections_none": "In keiner Sammlung mehr.", "done_collections_one": "Liegt jetzt in: {collections}", "done_delete": "{n} gelöscht.", "done_delete_one": "Gelöscht: {text}", "done_edit": "Geändert: {text}", "done_import": "{added} hinzugefügt, {merged} gab es schon.", "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.", "done_pack": "{n} als {format} heruntergeladen.", "done_switch": "{n} umgestellt auf {voice}.", "download_mp3": "Als MP3 herunterladen", "download_wav": "Als WAV herunterladen", "empty_no_match": "Kein Satz passt.", "empty_start": "Noch nichts da. Mehrere Zeilen auf einmal gehen auch — jede Zeile wird ein eigener Satz.", "failed": "Fehlgeschlagen: {error}", "filter_collections": "Sammlungen", "filter_voices": "Stimmen", "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin.", "import_empty": "Keine Sätze in dieser Datei.", "import_failed": "Diese Datei ließ sich nicht lesen: {error}", "key_failed": "Hat nicht geklappt: {error}", "key_field": "Schlüssel", "key_forget": "Schlüssel entfernen", "key_hint": "Wird in die .env neben deinen Sätzen geschrieben und nie wieder angezeigt.", "key_removed": "{label} wieder abgeschaltet.", "key_save": "Speichern", "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.", "key_set": "Schlüssel ist gesetzt", "key_unset": "Kein Schlüssel", "menu_add_collection": "Zu Sammlung hinzufügen", "menu_add_to_collection": "Zu einer Sammlung hinzufügen", "menu_change_collections": "Sammlungen ändern", "menu_change_voice": "Stimme ändern", "menu_delete_one": "Satz löschen", "menu_delete_other": "{n} Sätze löschen", "menu_edit_text": "Text ändern", "menu_record": "Jetzt aufnehmen", "menu_remove_collection": "Aus Sammlung entfernen", "more_actions": "Weitere Aktionen", "new_phrases": "Neue Sätze, einer pro Zeile", "new_phrases_hint": "Nochmal!\nIch bin dran.\nLass mich in Ruhe.", "no_collection_named": "Keine Sammlung genannt.", "not_recorded_one": "Aufnehmen ging nicht: {why}", "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}", "nothing_recorded": "Davon ist nichts aufgenommen.", "nothing_to_record": "Die sind alle schon aufgenommen.", "region_field": "Region", "search_hint": "Sätze und Sammlungen durchsuchen…", "select_all": "Alle auswählen", "select_one": "Auswählen", "selected": "{n} ausgewählt", "selected_hidden": "{n} ausgewählt, {hidden} davon ausgeblendet", "settings": "Einstellungen", "settings_intro": "Mit einem Schlüssel kommen die Stimmen eines Dienstes dazu. Ohne Schlüssel bleiben die mitgelieferten — die reichen für den Anfang.", "settings_warning": "Achtung: Diese Oberfläche hat keine Anmeldung. Wer sie erreicht, kann hier einen Schlüssel setzen und auf deine Rechnung Stimmen erzeugen. Nur im eigenen Netz benutzen.", "show_all": "Alle {n} Sätze zeigen", "state_missing": "noch nicht aufgenommen", "state_recorded": "aufgenommen", "state_stale": "geändert seit der Aufnahme", "switch_to": "Auf {voice} umstellen", "tagline": "Ein Satz, eine Stimme, eine Audiodatei.", "type_first": "Erst etwas eintippen.", "voice_label": "Stimme", "voice_now": "Neue Aufnahmen bekommen {voice}.", "voice_title": "Womit aufgenommen wird"}, "en": {"about_link": "What is mitreden?", "add_phrase": "Add sentence", "ask_collections_add": "Which collections should these {n} sentences join?\n\nComma separated. Existing collections stay.", "ask_collections_one": "Collections for {text}\n\nComma separated. Empty takes the sentence out of all of them.", "ask_collections_remove": "Which collections should these {n} sentences leave?\n\nComma separated. Other collections stay.", "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_delete_other": "Delete {n} sentences?\n\nThe sentences and their audio files will be removed. This cannot be undone.", "ask_delete_this": "Really delete {text}?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_edit_text": "Text for {text}\n\nThe sentence is recorded again right away. The file name stays {id}.", "ask_switch_one": "Switch 1 sentence to {voice}?\n\nThe existing recording will be replaced.", "ask_switch_other": "Switch {n} sentences to {voice}?\n\nThe existing recordings will be replaced.", "backup_export": "Save sentences to a file", "backup_hint": "The same phrases.json the container uses, so the two can trade.", "backup_import": "Load sentences from a file", "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.", "backup_title": "Your sentences", "busy_add": "Recording …", "busy_build": "Recording {n} …", "busy_collection_add": "Adding …", "busy_collection_remove": "Removing …", "busy_delete": "Deleting …", "busy_import": "Reading …", "busy_pack": "Packing {n} …", "busy_record": "Recording again …", "busy_switch": "Switching to {voice} …", "chip_all": "All", "chip_less": "fewer", "chip_more": "+ {n} more", "chip_not_recorded": "Not recorded", "close": "Close", "collection_title": "Show only this collection", "collections_hint": "nursery, play", "collections_label": "Collections (optional, comma separated)", "count_all_recorded": ", all recorded", "count_filtered": "{n} of {all} sentences", "count_none": "No sentences yet", "count_one": "1 sentence", "count_open": ", {n} open", "count_other": "{n} sentences", "done_add": "{added} added, {rendered} recorded", "done_add_twins": ", {n} already existed", "done_build": "{n} recorded.", "done_collection_add": "{n} sentences are now in {collections}.", "done_collection_remove": "{n} sentences no longer in {collections}.", "done_collections_none": "In no collection any more.", "done_collections_one": "Now in: {collections}", "done_delete": "{n} deleted.", "done_delete_one": "Deleted: {text}", "done_edit": "Changed: {text}", "done_import": "{added} added, {merged} already there.", "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.", "done_pack": "{n} downloaded as {format}.", "done_switch": "{n} switched to {voice}.", "download_mp3": "Download as MP3", "download_wav": "Download as WAV", "empty_no_match": "No sentence matches.", "empty_start": "Nothing here yet. Several lines at once work too — each line becomes its own sentence.", "failed": "Failed: {error}", "filter_collections": "Collections", "filter_voices": "Voices", "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere.", "import_empty": "No sentences in that file.", "import_failed": "That file could not be read: {error}", "key_failed": "That did not work: {error}", "key_field": "Key", "key_forget": "Remove key", "key_hint": "Written to the .env next to your sentences and never shown again.", "key_removed": "{label} switched off again.", "key_save": "Save", "key_saved": "{label} unlocked — {n} voices to choose from now.", "key_set": "Key is set", "key_unset": "No key", "menu_add_collection": "Add to collection", "menu_add_to_collection": "Add to a collection", "menu_change_collections": "Change collections", "menu_change_voice": "Change voice", "menu_delete_one": "Delete sentence", "menu_delete_other": "Delete {n} sentences", "menu_edit_text": "Change text", "menu_record": "Record now", "menu_remove_collection": "Remove from collection", "more_actions": "More actions", "new_phrases": "New sentences, one per line", "new_phrases_hint": "Again!\nIt's my turn.\nLeave me alone.", "no_collection_named": "No collection named.", "not_recorded_one": "Recording failed: {why}", "not_recorded_other": "{n} could not be recorded: {why}", "nothing_recorded": "None of those are recorded.", "nothing_to_record": "Those are all recorded already.", "region_field": "Region", "search_hint": "Search sentences and collections…", "select_all": "Select all", "select_one": "Select", "selected": "{n} selected", "selected_hidden": "{n} selected, {hidden} of them hidden", "settings": "Settings", "settings_intro": "A key adds the voices of a service. Without one the bundled voices remain — they are enough to start with.", "settings_warning": "Careful: this interface has no login. Whoever reaches it can set a key here and generate voices on your account. Use it on your own network only.", "show_all": "Show all {n} sentences", "state_missing": "not recorded yet", "state_recorded": "recorded", "state_stale": "changed since it was recorded", "switch_to": "Switch to {voice}", "tagline": "One sentence, one voice, one audio file.", "type_first": "Type something first.", "voice_label": "Voice", "voice_now": "New recordings get {voice}.", "voice_title": "What new recordings are made with"}};
+<script>window.MITREDEN_STRINGS = {"de": {"about_link": "Was ist mitreden?", "add_phrase": "Satz hinzufügen", "ask_collection_delete": "„{name}\" löschen?\n\nDie Sammlung verschwindet, die {n} Sätze darin bleiben.", "ask_collections_add": "In welche Sammlungen kommen diese {n} Sätze?\n\nMit Komma getrennt. Vorhandene Sammlungen bleiben.", "ask_collections_one": "Sammlungen für {text}\n\nMit Komma getrennt. Leer nimmt den Satz aus allen heraus.", "ask_collections_remove": "Aus welchen Sammlungen fliegen diese {n} Sätze?\n\nMit Komma getrennt. Andere Sammlungen bleiben.", "ask_delete_one": "1 Satz löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_other": "{n} Sätze löschen?\n\nDie Sätze und ihre Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_delete_this": "{text} wirklich löschen?\n\nDer Satz und seine Audiodateien werden entfernt. Das lässt sich nicht rückgängig machen.", "ask_edit_text": "Text für {text}\n\nDer Satz wird sofort neu aufgenommen. Der Dateiname bleibt {id}.", "ask_switch_one": "1 Satz auf {voice} umstellen?\n\nDie bestehende Aufnahme wird ersetzt.", "ask_switch_other": "{n} Sätze auf {voice} umstellen?\n\nDie bestehenden Aufnahmen werden ersetzt.", "backup_export": "Sätze in einer Datei sichern", "backup_hint": "Dieselbe phrases.json wie im Container, die beiden können also tauschen.", "backup_import": "Sätze aus einer Datei laden", "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.", "backup_title": "Deine Sätze", "busy_add": "Wird aufgenommen …", "busy_build": "Nehme {n} auf …", "busy_collection_add": "Wird hinzugefügt …", "busy_collection_remove": "Wird entfernt …", "busy_delete": "Wird gelöscht …", "busy_import": "Lese …", "busy_pack": "{n} wird gepackt …", "busy_record": "Wird neu aufgenommen …", "busy_switch": "Wird auf {voice} umgestellt …", "chip_all": "Alle", "chip_less": "weniger", "chip_more": "+ {n} weitere", "chip_not_recorded": "Nicht aufgenommen", "close": "Schließen", "collection_all": "Alle Sätze", "collection_delete": "Sammlung löschen", "collection_name_hint": "Name, Enter zum Anlegen", "collection_new": "+ Neue Sammlung", "collection_rename": "Umbenennen", "collection_title": "Nur diese Sammlung zeigen", "collections_hide": "Sammlungen ausblenden", "collections_hint": "kindergarten, spiel", "collections_label": "Sammlungen (optional, mit Komma getrennt)", "collections_show": "Sammlungen zeigen", "count_all_recorded": ", alle aufgenommen", "count_filtered": "{n} von {all} Sätzen", "count_none": "Noch keine Sätze", "count_one": "1 Satz", "count_open": ", {n} offen", "count_other": "{n} Sätze", "done_add": "{added} hinzugefügt, {rendered} aufgenommen", "done_add_twins": ", {n} gab es schon", "done_build": "{n} aufgenommen.", "done_collection_add": "{n} Sätze liegen jetzt in {collections}.", "done_collection_delete": "„{name}\" gelöscht, die Sätze sind geblieben.", "done_collection_new": "„{name}\" angelegt.", "done_collection_remove": "{n} Sätze liegen nicht mehr in {collections}.", "done_collections_none": "In keiner Sammlung mehr.", "done_collections_one": "Liegt jetzt in: {collections}", "done_delete": "{n} gelöscht.", "done_delete_one": "Gelöscht: {text}", "done_edit": "Geändert: {text}", "done_import": "{added} hinzugefügt, {merged} gab es schon.", "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.", "done_pack": "{n} als {format} heruntergeladen.", "done_switch": "{n} umgestellt auf {voice}.", "download_mp3": "Als MP3 herunterladen", "download_wav": "Als WAV herunterladen", "empty_no_match": "Kein Satz passt.", "empty_start": "Noch nichts da. Mehrere Zeilen auf einmal gehen auch — jede Zeile wird ein eigener Satz.", "failed": "Fehlgeschlagen: {error}", "filter_collections": "Sammlungen", "filter_voices": "Stimmen", "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin.", "import_empty": "Keine Sätze in dieser Datei.", "import_failed": "Diese Datei ließ sich nicht lesen: {error}", "key_failed": "Hat nicht geklappt: {error}", "key_field": "Schlüssel", "key_forget": "Schlüssel entfernen", "key_hint": "Wird in die .env neben deinen Sätzen geschrieben und nie wieder angezeigt.", "key_removed": "{label} wieder abgeschaltet.", "key_save": "Speichern", "key_saved": "{label} freigeschaltet — {n} Stimmen stehen jetzt zur Wahl.", "key_set": "Schlüssel ist gesetzt", "key_unset": "Kein Schlüssel", "menu_add_collection": "Zu Sammlung hinzufügen", "menu_add_to_collection": "Zu einer Sammlung hinzufügen", "menu_change_collections": "Sammlungen ändern", "menu_change_voice": "Stimme ändern", "menu_delete_one": "Satz löschen", "menu_delete_other": "{n} Sätze löschen", "menu_edit_text": "Text ändern", "menu_record": "Jetzt aufnehmen", "menu_remove_collection": "Aus Sammlung entfernen", "more_actions": "Weitere Aktionen", "new_phrases": "Neue Sätze, einer pro Zeile", "new_phrases_hint": "Nochmal!\nIch bin dran.\nLass mich in Ruhe.", "no_collection_named": "Keine Sammlung genannt.", "not_recorded_one": "Aufnehmen ging nicht: {why}", "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}", "nothing_recorded": "Davon ist nichts aufgenommen.", "nothing_to_record": "Die sind alle schon aufgenommen.", "region_field": "Region", "search_hint": "Sätze und Sammlungen durchsuchen…", "select_all": "Alle auswählen", "select_one": "Auswählen", "selected": "{n} ausgewählt", "selected_hidden": "{n} ausgewählt, {hidden} davon ausgeblendet", "settings": "Einstellungen", "settings_intro": "Mit einem Schlüssel kommen die Stimmen eines Dienstes dazu. Ohne Schlüssel bleiben die mitgelieferten — die reichen für den Anfang.", "settings_warning": "Achtung: Diese Oberfläche hat keine Anmeldung. Wer sie erreicht, kann hier einen Schlüssel setzen und auf deine Rechnung Stimmen erzeugen. Nur im eigenen Netz benutzen.", "show_all": "Alle {n} Sätze zeigen", "state_missing": "noch nicht aufgenommen", "state_recorded": "aufgenommen", "state_stale": "geändert seit der Aufnahme", "switch_to": "Auf {voice} umstellen", "tagline": "Ein Satz, eine Stimme, eine Audiodatei.", "type_first": "Erst etwas eintippen.", "voice_label": "Stimme", "voice_now": "Neue Aufnahmen bekommen {voice}.", "voice_title": "Womit aufgenommen wird"}, "en": {"about_link": "What is mitreden?", "add_phrase": "Add sentence", "ask_collection_delete": "Delete \"{name}\"?\n\nThe collection goes, the {n} sentences in it stay.", "ask_collections_add": "Which collections should these {n} sentences join?\n\nComma separated. Existing collections stay.", "ask_collections_one": "Collections for {text}\n\nComma separated. Empty takes the sentence out of all of them.", "ask_collections_remove": "Which collections should these {n} sentences leave?\n\nComma separated. Other collections stay.", "ask_delete_one": "Delete 1 sentence?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_delete_other": "Delete {n} sentences?\n\nThe sentences and their audio files will be removed. This cannot be undone.", "ask_delete_this": "Really delete {text}?\n\nThe sentence and its audio files will be removed. This cannot be undone.", "ask_edit_text": "Text for {text}\n\nThe sentence is recorded again right away. The file name stays {id}.", "ask_switch_one": "Switch 1 sentence to {voice}?\n\nThe existing recording will be replaced.", "ask_switch_other": "Switch {n} sentences to {voice}?\n\nThe existing recordings will be replaced.", "backup_export": "Save sentences to a file", "backup_hint": "The same phrases.json the container uses, so the two can trade.", "backup_import": "Load sentences from a file", "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.", "backup_title": "Your sentences", "busy_add": "Recording …", "busy_build": "Recording {n} …", "busy_collection_add": "Adding …", "busy_collection_remove": "Removing …", "busy_delete": "Deleting …", "busy_import": "Reading …", "busy_pack": "Packing {n} …", "busy_record": "Recording again …", "busy_switch": "Switching to {voice} …", "chip_all": "All", "chip_less": "fewer", "chip_more": "+ {n} more", "chip_not_recorded": "Not recorded", "close": "Close", "collection_all": "All sentences", "collection_delete": "Delete collection", "collection_name_hint": "Name, Enter to create", "collection_new": "+ New collection", "collection_rename": "Rename", "collection_title": "Show only this collection", "collections_hide": "Hide collections", "collections_hint": "nursery, play", "collections_label": "Collections (optional, comma separated)", "collections_show": "Show collections", "count_all_recorded": ", all recorded", "count_filtered": "{n} of {all} sentences", "count_none": "No sentences yet", "count_one": "1 sentence", "count_open": ", {n} open", "count_other": "{n} sentences", "done_add": "{added} added, {rendered} recorded", "done_add_twins": ", {n} already existed", "done_build": "{n} recorded.", "done_collection_add": "{n} sentences are now in {collections}.", "done_collection_delete": "\"{name}\" deleted, the sentences stayed.", "done_collection_new": "\"{name}\" created.", "done_collection_remove": "{n} sentences no longer in {collections}.", "done_collections_none": "In no collection any more.", "done_collections_one": "Now in: {collections}", "done_delete": "{n} deleted.", "done_delete_one": "Deleted: {text}", "done_edit": "Changed: {text}", "done_import": "{added} added, {merged} already there.", "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.", "done_pack": "{n} downloaded as {format}.", "done_switch": "{n} switched to {voice}.", "download_mp3": "Download as MP3", "download_wav": "Download as WAV", "empty_no_match": "No sentence matches.", "empty_start": "Nothing here yet. Several lines at once work too — each line becomes its own sentence.", "failed": "Failed: {error}", "filter_collections": "Collections", "filter_voices": "Voices", "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere.", "import_empty": "No sentences in that file.", "import_failed": "That file could not be read: {error}", "key_failed": "That did not work: {error}", "key_field": "Key", "key_forget": "Remove key", "key_hint": "Written to the .env next to your sentences and never shown again.", "key_removed": "{label} switched off again.", "key_save": "Save", "key_saved": "{label} unlocked — {n} voices to choose from now.", "key_set": "Key is set", "key_unset": "No key", "menu_add_collection": "Add to collection", "menu_add_to_collection": "Add to a collection", "menu_change_collections": "Change collections", "menu_change_voice": "Change voice", "menu_delete_one": "Delete sentence", "menu_delete_other": "Delete {n} sentences", "menu_edit_text": "Change text", "menu_record": "Record now", "menu_remove_collection": "Remove from collection", "more_actions": "More actions", "new_phrases": "New sentences, one per line", "new_phrases_hint": "Again!\nIt's my turn.\nLeave me alone.", "no_collection_named": "No collection named.", "not_recorded_one": "Recording failed: {why}", "not_recorded_other": "{n} could not be recorded: {why}", "nothing_recorded": "None of those are recorded.", "nothing_to_record": "Those are all recorded already.", "region_field": "Region", "search_hint": "Search sentences and collections…", "select_all": "Select all", "select_one": "Select", "selected": "{n} selected", "selected_hidden": "{n} selected, {hidden} of them hidden", "settings": "Settings", "settings_intro": "A key adds the voices of a service. Without one the bundled voices remain — they are enough to start with.", "settings_warning": "Careful: this interface has no login. Whoever reaches it can set a key here and generate voices on your account. Use it on your own network only.", "show_all": "Show all {n} sentences", "state_missing": "not recorded yet", "state_recorded": "recorded", "state_stale": "changed since it was recorded", "switch_to": "Switch to {voice}", "tagline": "One sentence, one voice, one audio file.", "type_first": "Type something first.", "voice_label": "Voice", "voice_now": "New recordings get {voice}.", "voice_title": "What new recordings are made with"}};
 window.STIMMQUELLE = {"_": ["Which piper voices may be shipped, and which of them actually speak.", "", "One list, one place. mitreden's Dockerfile and vorlaut's tts.py each carried their", "own copy of the same four voices - same mirror, same paths, same order - and each", "carried its own copy of the rule about model licences. Three copies of that rule", "existed before this file did, all correct, none able to learn anything from the", "other two. That is how a voice under a non-commercial licence ended up in", "mitreden's browser build: it ran perfectly, and running was the only question", "anything asked of it.", "", "So every voice anyone has considered is in here, including the ones that were", "turned down, with the reason. A list that only holds what passed cannot stop a", "voice being reconsidered on the strength of the same evidence that let it in the", "first time.", "", "THREE INDEPENDENT QUESTIONS. A voice must pass all three, and passing one says", "nothing about the others.", "", "  licence   May it be handed on? Read the MODEL_CARD next to the model, never the", "            file name. CC0 and public domain qualify unconditionally. CC-BY", "            qualifies if the attribution is actually rendered. CC BY-NC-SA does", "            not qualify at all - a recording made for somebody else's child", "            cannot carry a non-commercial condition. 'See URL' means the card", "            points at a dataset instead of naming a licence, which is not a yes.", "", "  quality   Only medium and high survive @diffusionstudio/vits-web. Every low and", "            x_low voice dies with 'idx=... must be within the inclusive range", "            [-130,129]', because vits-web phonemizes against one fixed symbol", "            table instead of the phoneme_id_map inside each model's own", "            .onnx.json. This is a browser limit only - the container speaks them", "            all perfectly.", "", "  reach     vits-web can only fetch what is in its hardcoded PATH_MAP. Its", "            voices() call returns the mirror's index instead - 124 entries", "            against 119 in the map - so five voices are advertised by the library", "            and cannot be downloaded by it.", "", "'browser' and 'container' say ok, or which question the voice failed for that", "runtime. 'licence.ship' is separate from both: a voice can run everywhere and", "still not be shippable. Consumers filter on licence.ship AND the runtime they", "are.", "", "'proof' says how the runtime answer was established, because a list that says", "tested and means assumed is worth less than no list:", "", "  spike      run in a browser in mitreden's docs/spike", "  vorlaut    run in a browser from vorlaut's tools/ttscheck.html", "  container  spoken by the piper binary, which is what both images ship", "  rule       medium or high and present in PATH_MAP, but never actually spoken", "", "Every licence and every byte count below was read from the MODEL_CARD and the", "mirror on the date in 'checked', not copied from anywhere. Both mirrors were", "compared and carry identical bytes for every entry.", "", "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it."], "checked": "2026-08-22", "library": {"name": "@diffusionstudio/vits-web", "version": "1.0.3"}, "mirrors": {"browser": "https://huggingface.co/diffusionstudio/piper-voices/resolve/main", "container": "https://huggingface.co/rhasspy/piper-voices/resolve/main"}, "revised": "2026-08-22", "voices": [{"browser": "ok", "bytes": 63201294, "container": "ok", "gender": "male", "id": "de_DE-thorsten-medium", "lang": "de", "licence": {"name": "CC0", "ship": true}, "locale": "de_DE", "name": "Thorsten", "note": "The default in both browser builds, and the only single German voice that speaks in a tab.", "proof": "spike, vorlaut, container", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 113895201, "container": "ok", "gender": "male", "id": "de_DE-thorsten-high", "lang": "de", "licence": {"name": "CC0", "ship": true}, "locale": "de_DE", "name": "Thorsten", "note": "The same person as de_DE-thorsten-medium and nearly twice the download. A picker showing both has to say more than the name.", "proof": "spike", "quality": "high", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 76745905, "container": "ok", "gender": "male", "id": "de_DE-thorsten_emotional-medium", "lang": "de", "licence": {"name": "CC0", "ship": true}, "locale": "de_DE", "name": "Thorsten (emotional)", "note": "Eight speakers, one per emotion, chosen by speaker id. vits-web speaks the first and offers no way to pick another, so in a browser this is one mood and not eight.", "proof": "spike", "quality": "medium", "sampleRate": 22050, "speakers": 8}, {"browser": "ok", "bytes": 76961079, "container": "ok", "gender": "mixed", "id": "de_DE-mls-medium", "lang": "de", "licence": {"attribution": "Stimme: Multilingual LibriSpeech (MLS), CC BY 4.0.", "name": "CC-BY 4.0", "note": "Shippable only where the attribution is actually rendered. Nothing in the family renders one yet, so adding this voice means adding that first.", "ship": true}, "locale": "de_DE", "name": "MLS", "note": "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this. Listened to rather than assumed: a sentence came back roughly four times longer than Thorsten's. The attribution is not the only thing standing between this and a usable second German voice.", "proof": "spike", "quality": "medium", "sampleRate": 22050, "speakers": 236}, {"browser": "ok", "bytes": 63531379, "container": "ok", "gender": "female", "id": "en_US-kristin-medium", "lang": "en", "licence": {"name": "public domain", "ship": true}, "locale": "en_US", "name": "Kristin", "proof": "spike, vorlaut, container", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 63531379, "container": "ok", "gender": "female", "id": "en_US-ljspeech-medium", "lang": "en", "licence": {"name": "public domain", "ship": true}, "locale": "en_US", "name": "LJ Speech", "note": "The name of a dataset, which reads like a mistake in a list of first names. In mitreden's list since hfc_female came out of it, and recorded in the live page before it was added rather than taken on the strength of the tier.", "proof": "rule, mitreden", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "quality", "bytes": 63104526, "container": "ok", "gender": "female", "id": "de_DE-kerstin-low", "lang": "de", "licence": {"name": "CC0", "ship": true}, "locale": "de_DE", "name": "Kerstin", "note": "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all.", "proof": "container", "quality": "low", "sampleRate": 16000, "speakers": 1}, {"browser": "reach", "bytes": 63531379, "container": "ok", "gender": "male", "id": "en_US-john-medium", "lang": "en", "licence": {"name": "public domain", "ship": true}, "locale": "en_US", "name": "John", "note": "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there.", "proof": "container", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "quality", "bytes": 20628813, "container": "ok", "gender": "female", "id": "de_DE-eva_k-x_low", "lang": "de", "licence": {"name": "unclear", "note": "The MODEL_CARD names no licence. It points at the M-AILABS speech dataset, https://www.caito.de/2019/01/03/the-m-ailabs-speech-dataset/, and says 'See URL'. Unclear is not a yes - this is exactly the case mitreden's README warns about.", "ship": false}, "locale": "de_DE", "name": "Eva K", "note": "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name.", "proof": "rule", "quality": "x_low", "sampleRate": 16000, "speakers": 1}, {"browser": "quality", "bytes": 63104526, "container": "ok", "gender": "female", "id": "de_DE-ramona-low", "lang": "de", "licence": {"name": "unclear", "note": "M-AILABS, 'See URL'. Same as Eva K.", "ship": false}, "locale": "de_DE", "name": "Ramona", "note": "The third and last German female voice piper publishes.", "proof": "rule", "quality": "low", "sampleRate": 16000, "speakers": 1}, {"browser": "quality", "bytes": 63104526, "container": "ok", "gender": "male", "id": "de_DE-karlsson-low", "lang": "de", "licence": {"name": "unclear", "note": "M-AILABS, 'See URL'. Same as Eva K.", "ship": false}, "locale": "de_DE", "name": "Karlsson", "proof": "rule", "quality": "low", "sampleRate": 16000, "speakers": 1}, {"browser": "ok", "bytes": 63201294, "container": "ok", "gender": "female", "id": "en_US-hfc_female-medium", "lang": "en", "licence": {"name": "CC BY-NC-SA 4.0", "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry.", "ship": false, "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en"}, "locale": "en_US", "name": "HFC female", "note": "The voice this file exists for. It speaks perfectly, it was in mitreden's browser build on exactly that basis, and it cannot be shipped. Nothing failed when it was wrong; the file simply played.", "proof": "spike", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 63201294, "container": "ok", "gender": "male", "id": "en_US-hfc_male-medium", "lang": "en", "licence": {"name": "CC BY-NC-SA 4.0", "note": "Same dataset, same model card, same answer.", "ship": false, "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en"}, "locale": "en_US", "name": "HFC male", "proof": "rule", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 63201294, "container": "ok", "gender": "male", "id": "en_US-ryan-medium", "lang": "en", "licence": {"name": "CC BY-NC-SA 4.0", "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry.", "ship": false, "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en"}, "locale": "en_US", "name": "Ryan", "note": "Runs, and cannot ship. Listed so that the next person to go looking for an English male voice finds the answer rather than the model card.", "proof": "rule", "quality": "medium", "sampleRate": 22050, "speakers": 1}, {"browser": "ok", "bytes": 120786792, "container": "ok", "gender": "male", "id": "en_US-ryan-high", "lang": "en", "licence": {"name": "CC BY-NC-SA 4.0", "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry.", "ship": false, "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en"}, "locale": "en_US", "name": "Ryan", "note": "Same model card as the medium. Both qualities, one licence.", "proof": "rule", "quality": "high", "sampleRate": 22050, "speakers": 1}]};</script>
 <script src="backend-local.js"></script>
 <script>
@@ -474,6 +560,9 @@ const stateText=it=>it.state==='missing'?t('state_missing')
                   :it.state==='stale'?t('state_stale')
                   :(it.voice||t('state_recorded'));
 let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
+// The Sammlungen that exist, in the order they were made. Not derived from
+// the sentences: an empty one has to survive being empty.
+let DECLARED=[];   // [{key,name,count}] — key is what a sentence points at
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
 const SEL=new Set();
@@ -567,36 +656,102 @@ function drawVoiceChips(hits){
   }
 }
 
-function drawChips(hits){
+// The rail. Every declared Sammlung has a row whether or not anything is in
+// it yet — that is the point of declaring one: you can start a book before you
+// have translated a line of it.
+//
+// A click goes to a Sammlung, the way bildhaft does it, because that is what
+// you do all day. Cmd or Ctrl adds a second one, because here a sentence can
+// genuinely be in two at once and that has to be reachable.
+function drawRail(hits){
   const counts={};
-  for(const i of hits)for(const x of (i.collections||[]))counts[x]=(counts[x]||0)+1;
-  for(const x of COLLECTIONS)if(!(x in counts))counts[x]=0;   // a pick never vanishes
-  // Most used first — those are the everyday ones. Alphabetical within a tie.
-  const names=Object.keys(counts)
-    .sort((a,b)=>counts[b]-counts[a]||a.localeCompare(b,'de'));
-  $('chips').innerHTML='';
-  if(!names.length)return;
-  chip(t('chip_all'),hits.length,null,COLLECTIONS,'chips');
-  let vis=names;
-  if(!ALL_TAGS&&names.length>CHIP_CAP){
-    const top=names.slice(0,CHIP_CAP);
-    vis=top.concat([...COLLECTIONS].filter(x=>!top.includes(x)));
-  }
-  for(const n of vis)chip(n,counts[n],n,COLLECTIONS,'chips');
-  if(names.length>vis.length||ALL_TAGS&&names.length>CHIP_CAP){
+  for(const i of ALL)for(const x of (i.collections||[]))counts[x]=(counts[x]||0)+1;
+  const rows=$('rows');
+  rows.innerHTML='';
+
+  const row=(name,label,n,on)=>{
     const b=document.createElement('button');
-    b.className='chip fold';
-    b.textContent=ALL_TAGS?t('chip_less'):t('chip_more',{n:names.length-vis.length});
-    b.onclick=()=>{ALL_TAGS=!ALL_TAGS;draw()};
-    $('chips').appendChild(b);
+    b.className='row'+(on?' on':'');
+    b.innerHTML='<span class="row__name"></span><span class="row__n"></span>';
+    b.querySelector('.row__name').textContent=label;
+    b.querySelector('.row__n').textContent=n;
+    b.onclick=e=>{
+      if(name===null){COLLECTIONS.clear()}
+      else if(e.metaKey||e.ctrlKey){COLLECTIONS.has(name)?COLLECTIONS.delete(name):COLLECTIONS.add(name)}
+      else{COLLECTIONS.clear();COLLECTIONS.add(name)}
+      closeRail();draw();
+    };
+    if(name!==null){
+      const m=document.createElement('button');
+      m.className='row__more';m.textContent='\u22ef';
+      m.setAttribute('aria-haspopup','true');m.setAttribute('aria-expanded','false');
+      m.title=t('more_actions');
+      m.onclick=e=>{e.stopPropagation();collectionMenu(m,name,label,n)};
+      b.appendChild(m);
+    }
+    rows.appendChild(b);
+  };
+
+  row(null,t('collection_all'),ALL.length,!COLLECTIONS.size);
+  for(const c of DECLARED) row(c.key,c.name,c.count,COLLECTIONS.has(c.key));
+}
+
+function collectionMenu(btn,key,label,n){
+  menuOn(btn,(m,add)=>{
+    add(t('collection_rename'),false,()=>{closeMenus();renameCollection(key,label)});
+    add(t('collection_delete'),true,()=>{closeMenus();deleteCollection(key,label,n)});
+  });
+}
+
+// Renaming happens where the name is, not in a window over it.
+function renameCollection(key,label){
+  const box=$('newcolname');
+  box.hidden=false;box.value=label;box.dataset.rename=key;box.focus();box.select();
+}
+
+async function deleteCollection(key,label,n){
+  if(!confirm(t('ask_collection_delete',{name:label,n})))return;
+  const r=await post('/api/collection',{mode:'delete',name:key});
+  if(!r)return;
+  COLLECTIONS.delete(key);
+  say(t('done_collection_delete',{name:label}));
+  load();
+}
+
+function closeRail(){
+  if(window.matchMedia('(max-width:820px)').matches){
+    $('rail').classList.remove('open');$('scrim').hidden=true;
   }
 }
+$('railopen').onclick=()=>{$('rail').classList.add('open');$('scrim').hidden=false};
+$('railclose').onclick=closeRail;
+$('scrim').onclick=closeRail;
+
+$('newcol').onclick=()=>{
+  const box=$('newcolname');
+  box.hidden=false;box.value='';delete box.dataset.rename;box.focus();
+};
+$('newcolname').onkeydown=async e=>{
+  if(e.key==='Escape'){e.target.hidden=true;return}
+  if(e.key!=='Enter')return;
+  const value=e.target.value.trim();
+  const was=e.target.dataset.rename;
+  if(!value){e.target.hidden=true;return}
+  const r=was
+    ? await post('/api/collection',{mode:'rename',name:was,to:value})
+    : await post('/api/collection',{mode:'create',name:value});
+  if(!r)return;
+  e.target.hidden=true;
+  say(was?t('done_edit',{text:r.name}):t('done_collection_new',{name:r.name}));
+  load();
+};
+
 
 function draw(){
   const hits=found(), items=shown().slice().reverse();  // newest first
 
   // Chips count within the current search, so they stay useful while typing.
-  drawChips(hits);
+  drawRail(hits);
   drawVoiceChips(hits);
 
   const pending=items.filter(i=>i.state!=='ok').length;
@@ -786,10 +941,13 @@ addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus()});
 async function load(){
   const data=await (await api.get('/api/phrases')).json();
   ALL=data.items||[];
+  DECLARED=data.collections||[];
   await loadVoices(data.voice);
-  const live=new Set();
-  for(const i of ALL)for(const x of (i.collections||[]))live.add(x);
-  for(const x of [...COLLECTIONS])if(!live.has(x))COLLECTIONS.delete(x);   // collection gone
+  // A selection survives its Sammlung being emptied — an empty one is still a
+  // place, and dropping you out of it the moment you removed the last sentence
+  // would be the old derived behaviour wearing the new name. It only goes when
+  // the Sammlung itself does.
+  for(const x of [...COLLECTIONS])if(!DECLARED.some(c=>c.key===x))COLLECTIONS.delete(x);
   const alive=new Set(ALL.map(i=>i.id));
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();
