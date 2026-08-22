@@ -38,7 +38,7 @@ var voices_default = {
     "            against 119 in the map - so five voices are advertised by the library",
     "            and cannot be downloaded by it.",
     "",
-    "'browser' and 'container' say ok, or which question the voice failed for that",
+    "'browser' says ok, or which question the voice failed",
     "runtime. 'licence.ship' is separate from both: a voice can run everywhere and",
     "still not be shippable. Consumers filter on licence.ship AND the runtime they",
     "are.",
@@ -48,18 +48,27 @@ var voices_default = {
     "",
     "  spike      run in a browser in mitreden's docs/spike",
     "  vorlaut    run in a browser from vorlaut's tools/ttscheck.html",
-    "  container  spoken by the piper binary, which is what both images ship",
     "  rule       medium or high and present in PATH_MAP, but never actually spoken",
     "",
     "Every licence and every byte count below was read from the MODEL_CARD and the",
     "mirror on the date in 'checked', not copied from anywhere. Both mirrors were",
-    "compared and carry identical bytes for every entry."
+    "compared and carry identical bytes for every entry.",
+    "",
+    "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it.",
+    "",
+    "browser_with_own_ids: what is expected once a consumer drives the inference itself via usePiperRuntime, rather than calling vits-web's predict(). Not a second answer to the same question - it is a different question, because that path takes ids from this model's own table. Nothing here flips to ok on it until it has been heard.",
+    "",
+    "browser_with_own_ids 'ok by measurement' means the ids reaching the model are the model's own and the audio is speech - checked against native piper's own dump. It does not mean anybody has listened. `browser` flips when a person says it sounds right, not when the arithmetic does.",
+    "",
+    'recommended: one voice per language-and-gender slot, so a picker can show four and keep the rest behind "more voices". It is an editorial choice and not a runtime or licence answer - `recommended_why` says why that one, so the next person argues with the reason rather than guessing at it. Two of the four need usePiperRuntime: vits-web cannot speak Kerstin and cannot fetch John.'
   ],
   revised: "2026-08-22",
   checked: "2026-08-22",
-  library: { name: "@diffusionstudio/vits-web", version: "1.0.3" },
+  library: {
+    name: "@diffusionstudio/vits-web",
+    version: "1.0.3"
+  },
   mirrors: {
-    container: "https://huggingface.co/rhasspy/piper-voices/resolve/main",
     browser: "https://huggingface.co/diffusionstudio/piper-voices/resolve/main"
   },
   voices: [
@@ -73,11 +82,15 @@ var voices_default = {
       bytes: 63201294,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
-      container: "ok",
       proof: "spike, vorlaut, container",
-      note: "The default in both browser builds, and the only single German voice that speaks in a tab."
+      note: "The default in both browser builds, and the only single German voice that speaks in a tab.",
+      recommended: true,
+      recommended_why: "German male. Not thorsten-high, which is 114 MB against 63 for a difference a tablet speaker does not carry; not thorsten_emotional, whose moods a picker would have to expose before it made sense."
     },
     {
       id: "de_DE-thorsten-high",
@@ -89,9 +102,11 @@ var voices_default = {
       bytes: 113895201,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "The same person as de_DE-thorsten-medium and nearly twice the download. A picker showing both has to say more than the name."
     },
@@ -105,9 +120,11 @@ var voices_default = {
       bytes: 76745905,
       sampleRate: 22050,
       speakers: 8,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "Eight speakers, one per emotion, chosen by speaker id. vits-web speaks the first and offers no way to pick another, so in a browser this is one mood and not eight."
     },
@@ -128,9 +145,9 @@ var voices_default = {
         note: "Shippable only where the attribution is actually rendered. Nothing in the family renders one yet, so adding this voice means adding that first."
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
-      note: "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this."
+      note: "A corpus, not a person: 236 speakers in one model and no name a picker can show. Listened to rather than assumed. All 236 speakers were rendered saying the same sentence on 2026-08-22, only sid changed, and none of them sounds like German - not a pacing problem and not a pitch problem, they do not sound like the language. Kerstin was rendered through the same harness as a control and came out fine, so the phoneme path was not the fault. That closes this as a route to a German female voice: it is not the closest thing to one, it is not one at all. 82 of the 236 measure in the female pitch band, which is how thin a measure pitch is. Also every speaker is slower than Kerstin - 2.11s at best against her 1.34s, at length_scale 1 for both - because MLS is LibriVox audiobook reading. Kept in the file rather than removed so the next person does not re-derive this from the speaker count.",
+      speakers_auditioned: "236 of 236, 2026-08-22 - none usable for German"
     },
     {
       id: "en_US-kristin-medium",
@@ -142,10 +159,14 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "ok",
-      container: "ok",
-      proof: "spike, vorlaut, container"
+      proof: "spike, vorlaut, container",
+      recommended: true,
+      recommended_why: "English female. LJ Speech is equally free and equally good, but it is an audiobook corpus rather than a person, and a picker showing a name reads better with Kristin."
     },
     {
       id: "en_US-ljspeech-medium",
@@ -157,11 +178,13 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "ok",
-      container: "ok",
-      proof: "rule",
-      note: "The name of a dataset, which reads like a mistake in a list of first names. Here as the free English fallback if Kristin ever goes, not as something to offer."
+      proof: "rule, mitreden",
+      note: "The name of a dataset, which reads like a mistake in a list of first names. In mitreden's list since hfc_female came out of it, and recorded in the live page before it was added rather than taken on the strength of the tier."
     },
     {
       id: "de_DE-kerstin-low",
@@ -173,11 +196,16 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "quality",
-      container: "ok",
       proof: "container",
-      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all."
+      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. The harness has reported: she speaks, 63 ids, nothing dropped, the ich-Laut at 40 where native piper leaves a bare plosive at 16. Native piper drops the combining mark her map lacks, so it says Ik, m\xF6kte, nikt - which means native is not the oracle here and cannot flip this either way. What is left is a human ear. Heard 2026-08-22: the ich-Laut is right and she is intelligible throughout, so the remap does what it claimed. The verdict on the voice itself was okay but not great, which is a judgement about a 2021 low-tier model and not about the fix. `browser` stays `quality` for ever - that column is what vits-web can do, and it still cannot phonemise her.",
+      browser_with_own_ids: "ok, heard 2026-08-22 - intelligible and correct, unremarkable",
+      recommended: true,
+      recommended_why: "German female, and the only licence-clear one piper publishes - Eva K and Ramona both have cards naming no licence. Needs usePiperRuntime, and needs somebody to have heard her. Heard on 2026-08-22 and judged okay but not great: she is the pick because she is the only licence-clear German female voice piper publishes, not because she beat anything. Held the slot against all 236 mls speakers auditioned on 2026-08-22, none of which sounded like German. She is the pick on the evidence now, not for want of looking."
     },
     {
       id: "en_US-john-medium",
@@ -189,11 +217,15 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "reach",
-      container: "ok",
       proof: "container",
-      note: "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there."
+      note: "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there.",
+      recommended: true,
+      recommended_why: "English male, and the only licence-clear one - ryan and hfc_male are both CC BY-NC-SA. Needs usePiperRuntime, which fetches from the mirror rather than vits-web PATH_MAP."
     },
     {
       id: "de_DE-eva_k-x_low",
@@ -211,9 +243,9 @@ var voices_default = {
         note: "The MODEL_CARD names no licence. It points at the M-AILABS speech dataset, https://www.caito.de/2019/01/03/the-m-ailabs-speech-dataset/, and says 'See URL'. Unclear is not a yes - this is exactly the case mitreden's README warns about."
       },
       browser: "quality",
-      container: "ok",
       proof: "rule",
-      note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name."
+      note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
+      browser_with_own_ids: "ok by measurement, not yet by ear"
     },
     {
       id: "de_DE-ramona-low",
@@ -225,11 +257,15 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "unclear", ship: false, note: "M-AILABS, 'See URL'. Same as Eva K." },
+      licence: {
+        name: "unclear",
+        ship: false,
+        note: "M-AILABS, 'See URL'. Same as Eva K."
+      },
       browser: "quality",
-      container: "ok",
       proof: "rule",
-      note: "The third and last German female voice piper publishes."
+      note: "The third and last German female voice piper publishes. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
+      browser_with_own_ids: "ok by measurement, not yet by ear"
     },
     {
       id: "de_DE-karlsson-low",
@@ -241,10 +277,15 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "unclear", ship: false, note: "M-AILABS, 'See URL'. Same as Eva K." },
+      licence: {
+        name: "unclear",
+        ship: false,
+        note: "M-AILABS, 'See URL'. Same as Eva K."
+      },
       browser: "quality",
-      container: "ok",
-      proof: "rule"
+      proof: "rule",
+      browser_with_own_ids: "ok by measurement, not yet by ear",
+      note: " The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports."
     },
     {
       id: "en_US-hfc_female-medium",
@@ -263,7 +304,6 @@ var voices_default = {
         note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "The voice this file exists for. It speaks perfectly, it was in mitreden's browser build on exactly that basis, and it cannot be shipped. Nothing failed when it was wrong; the file simply played."
     },
@@ -284,8 +324,47 @@ var voices_default = {
         note: "Same dataset, same model card, same answer."
       },
       browser: "ok",
-      container: "ok",
       proof: "rule"
+    },
+    {
+      id: "en_US-ryan-medium",
+      name: "Ryan",
+      lang: "en",
+      locale: "en_US",
+      gender: "male",
+      quality: "medium",
+      bytes: 63201294,
+      sampleRate: 22050,
+      speakers: 1,
+      licence: {
+        name: "CC BY-NC-SA 4.0",
+        ship: false,
+        url: "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      browser: "ok",
+      proof: "rule",
+      note: "Runs, and cannot ship. Listed so that the next person to go looking for an English male voice finds the answer rather than the model card."
+    },
+    {
+      id: "en_US-ryan-high",
+      name: "Ryan",
+      lang: "en",
+      locale: "en_US",
+      gender: "male",
+      quality: "high",
+      bytes: 120786792,
+      sampleRate: 22050,
+      speakers: 1,
+      licence: {
+        name: "CC BY-NC-SA 4.0",
+        ship: false,
+        url: "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      browser: "ok",
+      proof: "rule",
+      note: "Same model card as the medium. Both qualities, one licence."
     }
   ]
 };
@@ -298,16 +377,28 @@ var MIRRORS = Object.freeze(voices_default.mirrors);
 var LIBRARY = Object.freeze(voices_default.library);
 var CHECKED = voices_default.checked;
 var QUALITIES = ["x_low", "low", "medium", "high"];
-function shippable(runtime, offering = {}) {
-  return VOICES.filter((v) => v.licence.ship && v[runtime] === "ok" && (offering.rendersAttribution || !v.licence.attribution));
+function shippable(offering = {}) {
+  return VOICES.filter((v) => refuse(v.id, offering) === null);
 }
 function byId(id) {
   const model = parseVoiceId(id)?.model ?? id;
   return VOICES.find((v) => v.id === model);
 }
-function isAllowed(id, runtime, offering = {}) {
-  const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime] === "ok" && (offering.rendersAttribution || !voice.licence.attribution);
+function refuse(id, offering = {}) {
+  const model = parseVoiceId(id)?.model ?? id;
+  const voice = byId(model);
+  if (!voice) return `${model} is not in the catalogue, so it must not be fetched.`;
+  if (!voice.licence.ship) return `${model} may not be shipped: ${voice.licence.name}.`;
+  if (voice.licence.attribution && !offering.rendersAttribution) {
+    return `${model} is ${voice.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`;
+  }
+  if (!offering.ownsInference && voice.browser !== "ok") {
+    return `${model} does not speak through vits-web: ${voice.browser}.`;
+  }
+  return null;
+}
+function isAllowed(id, offering = {}) {
+  return refuse(id, offering) === null;
 }
 function parseVoiceId(id) {
   const at = id.indexOf(":");
@@ -337,10 +428,10 @@ function attributionsFor(ids) {
 function speakerOf(voice) {
   return voice.id.slice(voice.locale.length + 1, voice.id.length - voice.quality.length - 1);
 }
-function modelUrls(id, runtime) {
+function modelUrls(id) {
   const voice = byId(id);
   if (!voice) return null;
-  const base = runtime === "browser" ? MIRRORS.browser : MIRRORS.container;
+  const base = MIRRORS.browser;
   const dir = `${voice.lang}/${voice.locale}/${speakerOf(voice)}/${voice.quality}`;
   return { onnx: `${base}/${dir}/${voice.id}.onnx`, config: `${base}/${dir}/${voice.id}.onnx.json` };
 }
@@ -354,9 +445,17 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
+var VERSION = "2.0.2";
 var PIPELINE_VERSION = 1;
 
 // src/level.ts
+function checkRate(rate, what) {
+  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+    throw new TypeError(
+      `${what} must be a positive finite number, not ${JSON.stringify(rate)}. A rate that arrived as a string needs parsing first.`
+    );
+  }
+}
 var magic = (view, at) => String.fromCharCode(
   view.getUint8(at),
   view.getUint8(at + 1),
@@ -411,6 +510,7 @@ function toPcm16(samples) {
   return pcm;
 }
 function encodeWav(samples, rate) {
+  checkRate(rate, "the sample rate");
   const bytes = new Uint8Array(44 + samples.length * 2);
   const view = new DataView(bytes.buffer);
   const text = (at, s) => {
@@ -473,6 +573,8 @@ function kernels(inRate, outRate) {
   return built;
 }
 function resample(x, inRate, outRate) {
+  checkRate(inRate, "the input rate");
+  checkRate(outRate, "the output rate");
   if (inRate === outRate || x.length === 0) return x;
   const outLen = Math.max(1, Math.round(x.length * outRate / inRate));
   const y = new Float32Array(outLen);
@@ -562,7 +664,7 @@ function integratedLufs(x) {
     0.73248077421585
   );
   k = biquad(k, 1, -2, 1, -1.99004745483398, 0.99007225036621);
-  const block = Math.round(0.4 * 48e3), step = Math.round(0.1 * 48e3);
+  const block = Math.round(0.4 * MEASURE_RATE), step = Math.round(0.1 * MEASURE_RATE);
   const power = [];
   for (let s = 0; s + block <= k.length; s += step) {
     let sum = 0;
@@ -591,12 +693,13 @@ function truePeakDb(x, rate) {
   return 20 * Math.log10(peak || 1e-12);
 }
 function postprocess(wavBytes, o = {}) {
-  const rate = o.rate ?? 44100;
+  const rate = o.rate === void 0 ? 44100 : o.rate;
+  checkRate(rate, "the output rate");
   const { samples, rate: inRate } = decodeWav(wavBytes);
   let shaped = trim(samples, inRate, o);
   if (o.fadeSec) shaped = fadeEnds(shaped, inRate, o.fadeSec);
   if (o.padSec) shaped = pad(shaped, inRate, o.padSec);
-  const lufs = integratedLufs(resample(shaped, inRate, 48e3));
+  const lufs = integratedLufs(resample(shaped, inRate, MEASURE_RATE));
   const out = resample(shaped, inRate, rate);
   let gainDb = TARGET_LUFS - lufs;
   const peakDb = truePeakDb(out, rate);
@@ -618,30 +721,217 @@ function postprocess(wavBytes, o = {}) {
   };
 }
 
-// src/mp3.ts
-var lame = null;
-var load = () => lame ??= import("./lamejs.js");
-var DEFAULT_BITRATE = 192;
-async function encodeMp3(samples, rate, bitrate = DEFAULT_BITRATE) {
-  const { Mp3Encoder } = await load();
-  const encoder = new Mp3Encoder(1, rate, bitrate);
-  const pcm = toPcm16(samples);
-  const parts = [];
-  for (let i = 0; i < pcm.length; i += 1152) {
-    const block = encoder.encodeBuffer(pcm.subarray(i, i + 1152));
-    if (block.length) parts.push(new Uint8Array(block));
+// src/phonemes.ts
+function remapPhonemeIds(phonemes, phonemeIds, map) {
+  const bos = map["^"]?.[0], eos = map["$"]?.[0], pad2 = map["_"]?.[0];
+  if (bos === void 0 || eos === void 0 || pad2 === void 0) {
+    throw new Error("phoneme_id_map is missing '^', '$' or '_'");
   }
-  const rest = encoder.flush();
-  if (rest.length) parts.push(new Uint8Array(rest));
-  let total = 0;
-  for (const p of parts) total += p.length;
-  const out = new Uint8Array(total);
-  let at = 0;
-  for (const p of parts) {
-    out.set(p, at);
-    at += p.length;
+  const structural = /* @__PURE__ */ new Set([bos, eos, pad2]);
+  const out = [];
+  const dropped = [];
+  let k = 0, exact = true, dropPad = false;
+  for (const id of phonemeIds) {
+    if (structural.has(id)) {
+      if (dropPad && id === pad2) {
+        dropPad = false;
+        continue;
+      }
+      out.push(id);
+      continue;
+    }
+    const phoneme = phonemes[k++];
+    if (phoneme === void 0) {
+      out.push(id);
+      continue;
+    }
+    if (map[phoneme]) {
+      out.push(...map[phoneme]);
+      continue;
+    }
+    const previous = phonemes[k - 2];
+    const composed = previous === void 0 ? null : (previous + phoneme).normalize("NFC");
+    if (composed && [...composed].length === 1 && map[composed]) {
+      for (let i = out.length - 1; i >= 0; i--) {
+        if (!structural.has(out[i])) {
+          out.splice(i, 1, ...map[composed]);
+          break;
+        }
+      }
+      exact = false;
+      dropPad = true;
+      continue;
+    }
+    dropped.push(phoneme);
+    exact = false;
+    dropPad = true;
+  }
+  return { ids: out, dropped, exact };
+}
+
+// src/synthesize.ts
+var runtime = null;
+function usePiperRuntime(r) {
+  runtime = r;
+}
+var hasPiperRuntime = () => runtime !== null;
+function need() {
+  if (!runtime) {
+    throw new Error(
+      "No piper runtime. Call usePiperRuntime({ phonemizer, onnx, wasmBase }) with wherever this app serves piper_phonemize and onnxruntime from."
+    );
+  }
+  return runtime;
+}
+async function opfs() {
+  try {
+    const root = await navigator?.storage?.getDirectory?.();
+    return await root?.getDirectoryHandle("stimmquelle-models", { create: true }) ?? null;
+  } catch {
+    return null;
+  }
+}
+async function cached(name, url, o = {}) {
+  const r = need();
+  if (r.fetchModel) return r.fetchModel(url);
+  const dir = await opfs();
+  if (dir) {
+    try {
+      const handle = await dir.getFileHandle(name);
+      const file = await handle.getFile();
+      if (!o.expectBytes || file.size >= o.expectBytes) return await file.arrayBuffer();
+      await dir.removeEntry(name).catch(() => {
+      });
+    } catch {
+    }
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${name}: the mirror said ${response.status}`);
+  const total = Number(response.headers.get("content-length")) || 0;
+  let bytes;
+  if (o.onProgress && total && response.body) {
+    const reader = response.body.getReader();
+    const parts = [];
+    let loaded = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      loaded += value.length;
+      o.onProgress(loaded / total);
+    }
+    bytes = new Uint8Array(loaded);
+    let at = 0;
+    for (const p of parts) {
+      bytes.set(p, at);
+      at += p.length;
+    }
+  } else {
+    bytes = new Uint8Array(await response.arrayBuffer());
+  }
+  if (total && bytes.length !== total) {
+    throw new Error(
+      `${name}: ${bytes.length} bytes arrived of the ${total} the mirror promised. The download stopped early. Nothing has been cached, so trying again is safe.`
+    );
+  }
+  if (dir) {
+    try {
+      const handle = await dir.getFileHandle(name, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+    } catch {
+    }
+  }
+  return bytes.buffer;
+}
+async function downloadedModels() {
+  const dir = await opfs();
+  if (!dir) return [];
+  const out = [];
+  for await (const name of dir.keys()) {
+    if (name.endsWith(".onnx")) out.push(name.slice(0, -".onnx".length));
   }
   return out;
+}
+async function forgetModels() {
+  const dir = await opfs();
+  if (!dir) return;
+  const names = [];
+  for await (const name of dir.keys()) names.push(name);
+  for (const name of names) await dir.removeEntry(name).catch(() => {
+  });
+}
+async function phonemise(text, espeakVoice) {
+  const r = need();
+  const { createPiperPhonemize } = await r.phonemizer();
+  const base = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
+  if (!espeakVoice) {
+    throw new TypeError(
+      "phonemise(text, espeakVoice) wants espeak's language code \u2014 the `espeak.voice` field of a model's .onnx.json, usually 'de' or 'en-us'. A piper voice id is not it."
+    );
+  }
+  const line = await new Promise((resolve, reject) => {
+    createPiperPhonemize({
+      print: resolve,
+      printErr: (message) => reject(new Error(
+        message || "the phonemizer failed and said nothing about why"
+      )),
+      locateFile: (path) => path.endsWith(".wasm") ? `${base}piper_phonemize.wasm` : path.endsWith(".data") ? `${base}piper_phonemize.data` : path
+    }).then((module) => module.callMain([
+      "-l",
+      espeakVoice,
+      "--input",
+      JSON.stringify([{ text: text.trim() }]),
+      "--espeak_data",
+      "/espeak-ng-data"
+    ])).catch(reject);
+  });
+  const parsed = JSON.parse(line);
+  return { phonemes: parsed.phonemes, phonemeIds: parsed.phoneme_ids };
+}
+async function synthesize(text, id, progress) {
+  const options = typeof progress === "function" ? { onProgress: progress } : progress ?? {};
+  const known = ["onProgress", "rendersAttribution"];
+  const keys = typeof progress === "object" && progress !== null ? Object.keys(progress) : [];
+  if (keys.length && !keys.some((k) => known.includes(k))) {
+    throw new TypeError(
+      "synthesize() takes a progress callback, or { onProgress }. It sits next to speak(), which takes a whole options object \u2014 passing speak's options here is the easy mistake and this is it being caught."
+    );
+  }
+  const refusal = refuse(id, { ...options, ownsInference: true });
+  if (refusal) throw new Error(refusal);
+  const r = need();
+  const voice = byId(id);
+  const urls = modelUrls(voice.id);
+  const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
+  const config = JSON.parse(new TextDecoder().decode(configBytes));
+  const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
+  const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
+  const model = await cached(
+    `${voice.id}.onnx`,
+    urls.onnx,
+    { expectBytes: voice.bytes, onProgress: options.onProgress }
+  );
+  const ort = await r.onnx();
+  ort.env.allowLocalModels = false;
+  ort.env.wasm.wasmPaths = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
+  const session = await ort.InferenceSession.create(model);
+  const feeds = {
+    input: new ort.Tensor("int64", BigInt64Array.from(ids, BigInt), [1, ids.length]),
+    input_lengths: new ort.Tensor("int64", BigInt64Array.from([ids.length], BigInt)),
+    scales: new ort.Tensor("float32", Float32Array.from([
+      config.inference.noise_scale,
+      config.inference.length_scale,
+      config.inference.noise_w
+    ]))
+  };
+  if (config.speaker_id_map && Object.keys(config.speaker_id_map).length) {
+    feeds.sid = new ort.Tensor("int64", BigInt64Array.from([0n]));
+  }
+  const output = await session.run(feeds);
+  const audio = (output.output ?? Object.values(output)[0]).data;
+  return { samples: audio, rate: config.audio.sample_rate, exact, dropped };
 }
 
 // src/speak.ts
@@ -711,20 +1001,55 @@ async function azureVoices(o) {
   if (!response.ok) throw new Error(`Azure said ${response.status} to the voice list.`);
   const want = (o.languages ?? ["de-DE", "en-US"]).map((l) => l.toLowerCase());
   const all = await response.json();
-  return all.filter((v) => want.some((w) => (v.Locale ?? "").toLowerCase() === w || (v.Locale ?? "").toLowerCase().startsWith(`${w}-`))).map((v) => v.ShortName).sort();
+  return all.filter((v) => want.some((w) => (v.Locale ?? "").toLowerCase() === w || (v.Locale ?? "").toLowerCase().startsWith(`${w}-`))).map((v) => ({
+    id: `azure:${v.ShortName}`,
+    name: v.LocalName ?? v.DisplayName ?? v.ShortName,
+    lang: (v.Locale ?? "").split("-")[0],
+    locale: v.Locale ?? "",
+    gender: (v.Gender ?? "").toLowerCase(),
+    source: "azure",
+    // Nothing is downloaded and nothing is kept: a cloud voice needs the
+    // network for every sentence instead of once for the model.
+    downloadBytes: 0,
+    needsKey: true,
+    // Azure publishes hundreds and this package has no opinion on which to
+    // put in front of somebody. The catalogue's picks are about the four
+    // voices it can actually vouch for.
+    recommended: false
+  })).sort((a, b) => a.id.localeCompare(b.id));
 }
 async function speak(text, vid, options = {}) {
   if (!text || !text.trim()) throw new Error("Nothing to say.");
   const parsed = parseVoiceId(vid);
   const backend = parsed?.backend ?? "piper";
   const model = parsed?.model ?? vid;
-  if (backend === "piper" && !isAllowed(model, "browser", options)) {
-    const known = byId(model);
-    throw new Error(
-      !known ? `${model} is not in the catalogue, so it must not be fetched.` : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.` : known.browser !== "ok" ? `${model} does not speak in a browser: ${known.browser}.` : `${model} is ${known.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`
-    );
+  if (backend !== "piper" && backend !== "azure") {
+    throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
+  }
+  if (backend === "piper") {
+    const refusal = refuse(model, options);
+    if (refusal) throw new Error(refusal);
   }
   const started = performance.now();
+  if (backend === "piper" && hasPiperRuntime()) {
+    const spoken2 = await synthesize(text, model, {
+      // Carried through rather than defaulted: `synthesize` asks the licence
+      // question again on its own account, and it must get the same answer this
+      // call already got rather than a stricter one.
+      rendersAttribution: options.rendersAttribution,
+      ownsInference: true,
+      onProgress: options.onProgress ? (share) => options.onProgress({ url: model, loaded: share, total: 1, share }) : void 0
+    });
+    const synthesisedAt = performance.now();
+    const result2 = postprocess(encodeWav(spoken2.samples, spoken2.rate), options);
+    return {
+      ...result2,
+      voice: vid,
+      rawBytes: spoken2.samples.length * 2,
+      synthesisMs: Math.round(synthesisedAt - started),
+      levellingMs: Math.round(performance.now() - synthesisedAt)
+    };
+  }
   if (backend === "azure" && !options.azure) {
     throw new Error("An azure: voice needs options.azure with a key and a region.");
   }
@@ -740,6 +1065,59 @@ async function speak(text, vid, options = {}) {
   };
 }
 var asBlob = (wav) => new Blob([wav], { type: "audio/wav" });
+
+// src/list.ts
+var language = (s) => s.toLowerCase().replace(/_/g, "-").split("-")[0];
+function matches(v, o) {
+  if (o.lang && language(v.locale) !== language(o.lang)) return false;
+  if (o.gender && v.gender !== o.gender.toLowerCase()) return false;
+  if (o.recommended && !v.recommended) return false;
+  return true;
+}
+function piperVoices(offering = {}) {
+  return shippable(offering).map((v) => ({
+    id: `piper:${v.id}`,
+    name: v.name,
+    lang: v.lang,
+    locale: v.locale,
+    gender: v.gender,
+    source: "piper",
+    downloadBytes: v.bytes,
+    needsKey: false,
+    recommended: v.recommended === true,
+    ...v.licence.attribution ? { attribution: v.licence.attribution } : {}
+  }));
+}
+async function listVoices(o = {}) {
+  const all = [...piperVoices(o), ...o.azure ? await azureVoices(o.azure) : []];
+  return all.filter((v) => matches(v, o));
+}
+
+// src/mp3.ts
+var lame = null;
+var load = () => lame ??= import("./lamejs.js");
+var DEFAULT_BITRATE = 192;
+async function encodeMp3(samples, rate, bitrate = DEFAULT_BITRATE) {
+  const { Mp3Encoder } = await load();
+  const encoder = new Mp3Encoder(1, rate, bitrate);
+  const pcm = toPcm16(samples);
+  const parts = [];
+  for (let i = 0; i < pcm.length; i += 1152) {
+    const block = encoder.encodeBuffer(pcm.subarray(i, i + 1152));
+    if (block.length) parts.push(new Uint8Array(block));
+  }
+  const rest = encoder.flush();
+  if (rest.length) parts.push(new Uint8Array(rest));
+  let total = 0;
+  for (const p of parts) total += p.length;
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
 export {
   AZURE_FORMAT,
   AZURE_RATE,
@@ -752,6 +1130,7 @@ export {
   TARGET_LUFS,
   TARGET_PEAK_DBTP,
   TRIM,
+  VERSION,
   VOICES,
   asBlob,
   attributionsFor,
@@ -761,23 +1140,33 @@ export {
   decodeWav,
   displayName,
   downloaded,
+  downloadedModels,
   encodeMp3,
   encodeWav,
   fadeEnds,
   forget,
+  forgetModels,
+  hasPiperRuntime,
   integratedLufs,
   isAllowed,
+  listVoices,
   localeOf,
   modelUrls,
   pad,
   parseVoiceId,
+  phonemise,
+  piperVoices,
   postprocess,
   qualityOf,
+  refuse,
+  remapPhonemeIds,
   resample,
   shippable,
   speak,
+  synthesize,
   toPcm16,
   trim,
   truePeakDb,
-  usePiper
+  usePiper,
+  usePiperRuntime
 };

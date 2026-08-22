@@ -19,13 +19,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@lautstark/stimmquelle/browser": [
-        "./node_modules/@lautstark/stimmquelle/dist/src/index.d.ts"
-      ]
-    }
+    "noUncheckedSideEffectImports": true
   },
   "include": [
     "src"
