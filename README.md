@@ -281,7 +281,7 @@ your own hands, and the experience of it travels badly by other routes.
 
 ## Related
 
-[bildhaft](https://github.com/SteffiPeTaffy/bildhaft) is a companion project:
+[bildhaft](https://github.com/Lautstark/bildhaft) is a companion project:
 type a German sentence, get a row of AAC pictograms back, correct them, print
 them. It runs entirely in the browser too. The two are the same sentence seen
 twice — bildhaft gives it symbols, mitreden gives it a voice — and mitreden's

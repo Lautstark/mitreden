@@ -101,7 +101,7 @@ Fehlerberichte und Fragen sind willkommen — gern auf Deutsch.
 
 ## Verwandt
 
-[bildhaft](https://github.com/SteffiPeTaffy/bildhaft) ist ein Schwesterprojekt:
+[bildhaft](https://github.com/Lautstark/bildhaft) ist ein Schwesterprojekt:
 deutschen Satz eintippen, eine Reihe UK-Piktogramme zurückbekommen,
 korrigieren, ausdrucken. Läuft ebenfalls ganz im Browser. Es ist derselbe Satz,
 zweimal gesehen — bildhaft gibt ihm Symbole, mitreden gibt ihm eine Stimme. Was
