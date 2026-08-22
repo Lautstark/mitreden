@@ -131,8 +131,21 @@
   // Changes when the text, the voice or the output format changes — the same
   // three things the container hashes, so "what still has to be recorded"
   // means the same here.
+  // Which engine made a recording, for the same reason mitreden.py carries
+  // PIPER_VERSION: piper is what turns the text into sound, so a build that
+  // changes how a voice speaks must not leave old recordings sitting under
+  // names claiming to match new ones. Here that is the vits-web bundle and
+  // the phonemizer wasm behind it, both pinned in tools/vendor.lock.json —
+  // and kept in step with this constant by `tools/vendor.py --check`.
+  //
+  // The model's name is used, never a URL. Where a voice is fetched from says
+  // nothing about how it sounds, and a fingerprint has to mean the same thing
+  // on every machine.
+  const ENGINE_VERSION = 'vits-web@1.0.3';
+
   async function fingerprint(text, voiceId) {
-    const payload = JSON.stringify([text, 'piper', modelOf(voiceId), OUT]);
+    const payload = JSON.stringify([text, 'piper', modelOf(voiceId),
+                                    ENGINE_VERSION, OUT]);
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
   }

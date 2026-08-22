@@ -32,6 +32,7 @@ under a version that is supposed to be immutable, and the script stops.
 import argparse
 import hashlib
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -138,8 +139,27 @@ def main():
         if bad:
             print("\n".join(f"  {b}" for b in bad), file=sys.stderr)
             raise SystemExit("vendored files do not match tools/vendor.lock.json.")
+        # The browser fingerprint names the engine that made a recording, the
+        # way mitreden.py names the piper that made one. That constant and this
+        # lock file sit in different files and cannot read each other, and drift
+        # is silent both ways: bump the vendored bundle and leave the constant,
+        # and new audio hides under old names; bump the constant alone, and
+        # every phrase is recorded again by the engine that already made it.
+        backend = (ROOT / "docs" / "app" / "backend-local.js").read_text(encoding="utf-8")
+        named = re.search(r"ENGINE_VERSION\s*=\s*'([^']+)'", backend)
+        vits = lock["files"].get("vits-web.js", {}).get("url", "")
+        pinned = re.search(r"vits-web@([0-9][^/]*)/", vits)
+        if not named or not pinned:
+            bad.append("could not find ENGINE_VERSION or the vits-web pin to compare")
+        elif named.group(1) != f"vits-web@{pinned.group(1)}":
+            bad.append(f"ENGINE_VERSION is {named.group(1)}, "
+                       f"but vits-web@{pinned.group(1)} is what is vendored")
+        if bad:
+            print("\n".join(f"  {b}" for b in bad), file=sys.stderr)
+            raise SystemExit("vendored files do not match tools/vendor.lock.json.")
         total = sum(m["bytes"] for m in lock["files"].values())
         print(f"{len(lock['files'])} vendored files, {total / 1048576:.1f} MB, all as pinned.")
+        print(f"engine named in the fingerprint: {named.group(1)}")
         return
 
     files, lock = build(args.with_binaries)
