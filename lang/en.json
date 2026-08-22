@@ -90,5 +90,19 @@
   "key_failed": "That did not work: {error}",
   "close": "Close",
   "not_recorded_one": "Recording failed: {why}",
-  "not_recorded_other": "{n} could not be recorded: {why}"
+  "not_recorded_other": "{n} could not be recorded: {why}",
+  "backup_title": "Your sentences",
+  "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.",
+  "backup_export": "Save sentences to a file",
+  "backup_import": "Load sentences from a file",
+  "backup_hint": "The same phrases.json the container uses, so the two can trade.",
+  "busy_import": "Reading …",
+  "done_import": "{added} added, {merged} already there.",
+  "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.",
+  "import_empty": "No sentences in that file.",
+  "import_failed": "That file could not be read: {error}",
+  "menu_record": "Record now",
+  "busy_build": "Recording {n} …",
+  "done_build": "{n} recorded.",
+  "nothing_to_record": "Those are all recorded already."
 }

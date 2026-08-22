@@ -97,7 +97,9 @@ Fehlerberichte und Fragen sind willkommen — gern auf Deutsch.
 [bildhaft](https://github.com/SteffiPeTaffy/bildhaft) ist ein Schwesterprojekt:
 deutschen Satz eintippen, eine Reihe UK-Piktogramme zurückbekommen,
 korrigieren, ausdrucken. Läuft ebenfalls ganz im Browser. Es ist derselbe Satz,
-zweimal gesehen: bildhaft gibt ihm Symbole, mitreden gibt ihm eine Stimme.
+zweimal gesehen — bildhaft gibt ihm Symbole, mitreden gibt ihm eine Stimme. Was
+du dort exportierst, liest mitreden ein; ein übersetztes Bilderbuch musst du
+nicht zweimal tippen.
 
 Beide tragen dasselbe Zeichen, dieselbe Sprechblase, nur in anderer Farbe. Und
 dasselbe Prinzip: bildhaft speichert Symbol-Verweise statt Bilder, mitreden

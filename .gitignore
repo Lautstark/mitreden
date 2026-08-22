@@ -30,3 +30,6 @@ _to_delete/
 
 # Half-written files from an interrupted save, never worth keeping.
 *.tmp
+
+# Audio the spike drops for offline comparison — reproducible, never committed.
+docs/spike/dump/

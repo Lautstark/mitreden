@@ -1,0 +1,40 @@
+{
+  "binaries": true,
+  "files": {
+    "lamejs.js": {
+      "bytes": 259508,
+      "sha256": "1c5f944911ccf2f6e29ab36c2e568363210ab16f50c0d76077060f40ecf91d28",
+      "url": "https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.js"
+    },
+    "ort-wasm-simd.wasm": {
+      "bytes": 10595041,
+      "sha256": "f533b5f21790563d7556c611c3835ac65848ee326da2689aac54ed7d9cc8c6a4",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/ort-wasm-simd.wasm"
+    },
+    "ort.wasm.min.js": {
+      "bytes": 142864,
+      "sha256": "d02079ae1c4143f3a555a1dff86ba523b92022d8fe519263a34cf88675738753",
+      "url": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/esm/ort.wasm.min.js"
+    },
+    "piper-DeOu3H9E.js": {
+      "bytes": 130569,
+      "sha256": "e2701cb8c73580ab395a67ad036ea1a4a9e50500c33c8b8499d159c3638451f3",
+      "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/piper-DeOu3H9E.js"
+    },
+    "piper_phonemize.data": {
+      "bytes": 18077249,
+      "sha256": "29f1025eb23a5b5c192cd14a6efbce4509402ff265405072ee6f7d1a09b78f8c",
+      "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.data"
+    },
+    "piper_phonemize.wasm": {
+      "bytes": 635212,
+      "sha256": "b777cd107a91d2bcc6a1ea46f2c26a662a7407394fe84589198aeaa83dd7a9d6",
+      "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm"
+    },
+    "vits-web.js": {
+      "bytes": 13885,
+      "sha256": "da2851c370ad6606f627c26db26490ebb0a455612866cd3b9a707778f65273cb",
+      "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/vits-web.js"
+    }
+  }
+}

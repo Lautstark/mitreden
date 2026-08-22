@@ -90,5 +90,19 @@
   "key_failed": "Hat nicht geklappt: {error}",
   "close": "Schließen",
   "not_recorded_one": "Aufnehmen ging nicht: {why}",
-  "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}"
+  "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}",
+  "backup_title": "Deine Sätze",
+  "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.",
+  "backup_export": "Sätze in einer Datei sichern",
+  "backup_import": "Sätze aus einer Datei laden",
+  "backup_hint": "Dieselbe phrases.json wie im Container, die beiden können also tauschen.",
+  "busy_import": "Lese …",
+  "done_import": "{added} hinzugefügt, {merged} gab es schon.",
+  "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.",
+  "import_empty": "Keine Sätze in dieser Datei.",
+  "import_failed": "Diese Datei ließ sich nicht lesen: {error}",
+  "menu_record": "Jetzt aufnehmen",
+  "busy_build": "Nehme {n} auf …",
+  "done_build": "{n} aufgenommen.",
+  "nothing_to_record": "Die sind alle schon aufgenommen."
 }

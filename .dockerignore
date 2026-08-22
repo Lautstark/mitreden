@@ -21,3 +21,9 @@ __pycache__/
 
 # The tests are not part of the image.
 tests/
+
+# Nor is the website. docs/ is the landing page and the browser-only build of
+# mitreden, including 28 MB of vendored wasm that the container has no use for
+# — it speaks with the piper it installed itself. tools/ builds that site.
+docs/
+tools/

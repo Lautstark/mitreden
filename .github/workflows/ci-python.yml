@@ -12,6 +12,8 @@ on:
       - icon.svg
       - lang/**
       - tests/**
+      - tools/**
+      - docs/app/**
       - .github/workflows/ci-python.yml
   pull_request:
     paths:
@@ -20,6 +22,8 @@ on:
       - icon.svg
       - lang/**
       - tests/**
+      - tools/**
+      - docs/app/**
       - .github/workflows/ci-python.yml
 
 jobs:
@@ -55,6 +59,20 @@ jobs:
           assert page.rstrip().endswith('</html>'), page[-40:]
           assert '</script>' in page, 'the page has lost its script'
           print(f'{len(page)} characters')"
+
+      - name: The vendored code is what it says it is
+        # docs/app/vendor/ is third-party code committed into this repository
+        # and served to every visitor. The lock file holds the hash of what was
+        # fetched; this catches an edit, an accident, or anything that arrived
+        # by a route other than tools/vendor.py.
+        run: python tools/vendor.py --check
+
+      - name: The published page is not a version behind
+        # docs/app/index.html is built from ui.html by tools/build-site.py.
+        # Editing the interface and forgetting to rebuild would leave the
+        # static site quietly older than the container — same page, different
+        # behaviour, and nothing to see until it matters.
+        run: python tools/build-site.py --check
 
       - name: Tests
         # Every tests/test_*.py, and the folder is the list. What each one is

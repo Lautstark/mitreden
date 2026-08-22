@@ -4,8 +4,22 @@
     {
       "name": "mitreden",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["mitreden.py", "ui"],
-      "port": 8770
+      "runtimeArgs": [
+        "mitreden.py",
+        "ui",
+        "--port",
+        "8772"
+      ],
+      "port": 8772
+    },
+    {
+      "name": "spike",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "docs/spike/serve.py",
+        "8771"
+      ],
+      "port": 8771
     }
   ]
 }
