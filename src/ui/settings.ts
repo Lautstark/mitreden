@@ -75,6 +75,10 @@ export async function drawSetup(): Promise<void> {
   card.querySelector<HTMLElement>('p.region')!.textContent = t('region_hint');
 
   const key = card.querySelector<HTMLInputElement>('#azurekey')!;
+  // The held key sits in the placeholder, never in the value: a value can be
+  // revealed or resubmitted, a placeholder cannot. It is also what makes the
+  // save rule visible — this field left untouched keeps the key it shows.
+  key.placeholder = azure ? `••••${azure.key.slice(-4)}` : '';
   const region = card.querySelector<HTMLInputElement>('#azureregion')!;
   region.value = saved.azure?.region ?? 'westeurope';
 

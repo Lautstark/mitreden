@@ -88,6 +88,10 @@ test('opening the settings answers whether Azure does, and asks it only once', a
   // Azure answers it with a count.
   await expect(page.locator('#setup')).toHaveJSProperty('open', true);
   await expect(page.locator('#cloud .state')).toContainText('Nk7q');
+  // The field shows the held key as a placeholder, not a value: nothing to
+  // reveal, nothing to resubmit, and an untouched field visibly keeps it.
+  await expect(page.locator('#azurekey')).toHaveAttribute('placeholder', /Nk7q/);
+  await expect(page.locator('#azurekey')).toHaveValue('');
   await expect(page.locator('#cloud .probe')).toHaveText('2 Stimmen verfügbar');
   expect(asks).toBe(1);
   // A fresh visit probes on open — and still asks once, although the voice
