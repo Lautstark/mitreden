@@ -38,12 +38,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Docker tags have to be lowercase, GitHub usernames do not — so convert
-      # it here.
-      - name: Lowercase the image name
+      # Written out rather than worked out from ${{ github.repository }},
+      # which is where it used to come from. The repository is moving to
+      # another owner, and the image name would have followed it on its own:
+      # the workflow would have begun publishing under a new path while both
+      # READMEs, docker-compose.yml and the three launchers in docs/ went on
+      # naming the old one. Nothing would have reported it — whoever already
+      # runs this would simply have kept pulling a tag that had stopped
+      # moving.
+      #
+      # Lowercase throughout because Docker tags have to be and usernames do
+      # not.
+      - name: Name the image
         run: |
-          echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' \
-            | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "IMAGE=ghcr.io/steffipetaffy/mitreden" >> "$GITHUB_ENV"
 
       # Built for this runner only and loaded into its Docker, so that it can
       # actually be started. The multi-arch build below reuses these layers,
