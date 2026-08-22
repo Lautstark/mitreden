@@ -458,6 +458,21 @@ If you are building something similar and could use advice, open an issue.
 There is little tooling for augmentative communication that you can hold in
 your own hands, and the experience of it travels badly by other routes.
 
+## Related
+
+[bildhaft](https://github.com/SteffiPeTaffy/bildhaft) is a companion project:
+type a German sentence, get a row of AAC pictograms back, correct them, print
+them. It runs entirely in the browser too. The two are the same sentence seen
+twice — bildhaft gives it symbols, mitreden gives it a voice — and mitreden's
+importer reads bildhaft's collection files, so a picture book translated over
+there does not have to be typed again over here.
+
+They share a mark: the same speech bubble, drawn from the same path, in a
+different colour. And a principle. bildhaft stores symbol references rather
+than pictures; mitreden stores sentences rather than audio. Either way the
+exported file still works for the person who receives it, whichever symbols or
+voices they happen to have.
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE). Do what you like with it.
