@@ -40,8 +40,8 @@
 .list__item.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
 .list__name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;font-size:14px}
-.list__count{font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums}
-.list__item.on .list__count{color:var(--accent-strong)}
+/* No colour on the count: bildhaft leaves it to inherit, for contrast. */
+.list__count{font-size:12px;font-variant-numeric:tabular-nums}
 /* The sentence is the control: click it and type. Same idea as the Sammlung's
    title, so there is one way to change a name in this program, not two. */
 .item .line{cursor:text;border-radius:var(--radius-sm);padding:1px 5px;margin:-1px -5px;
@@ -63,8 +63,8 @@
 .tab:hover{color:var(--text)}
 .tab.on{background:var(--surface);color:var(--text);font-weight:600;
   box-shadow:var(--shadow-sm,0 1px 2px rgba(0,0,0,.12))}
-.card{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
-  padding:14px 16px;margin-bottom:12px}
+.card{background:var(--surface);outline:1px solid var(--line);border:0;
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
 .hint{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-faint)}
 .card__head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -114,8 +114,8 @@
 .chint{display:flex;gap:12px;flex-wrap:wrap;margin:7px 2px 0;
   font-size:12.5px;color:var(--text-faint)}
 .chint .right{margin-left:auto}
-kbd{font:inherit;font-size:11.5px;background:var(--surface-2);
-  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
+  color:var(--text-dim);border-radius:4px;padding:1px 5px}
 .into--none{color:var(--text-faint)}
 button.small{font-size:13px;padding:6px 9px}
 button.quiet{background:none;border:1px dashed var(--line);color:var(--text-dim)}
@@ -191,9 +191,9 @@ button.quiet:hover{color:var(--text)}
 .gear:hover{color:var(--text)}
 /* A sheet, not a wizard: a fresh install already speaks, so this is somewhere
    you go when you want more — never something standing in the way. */
-.sheet{background:var(--surface);color:var(--text);border:1px solid var(--line);
-  border-radius:16px;padding:24px;max-width:520px;width:calc(100% - 40px)}
-.sheet::backdrop{background:rgba(0,0,0,.6)}
+.sheet{background:var(--bg);color:var(--text);border:0;
+  border-radius:18px;padding:24px;max-width:600px;width:calc(100% - 40px)}
+.sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
 .sheet h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
 .sheet .sub{margin:0 0 14px}
 .sheet .warn{color:var(--warn);font-size:13px;line-height:1.5;margin:0 0 18px}
@@ -222,10 +222,10 @@ button.quiet:hover{color:var(--text)}
 /* The box belongs to the phrase, so it sits with the phrase — not in the
    middle of a row that a second line of collections can make twice as tall, where
    it ends up next to the small print instead. */
-.item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
-  border-bottom:1px solid var(--line)}
-.item input[type=checkbox],.selall input[type=checkbox]{
-  width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
+/* Each sentence is a card, as bildhaft's rows are — not a divided list. */
+#list{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;gap:14px;align-items:flex-start;padding:12px 16px;
+  border-radius:var(--radius);background:var(--surface);outline:1px solid var(--line)}
 /* After the shared rule above, not before it — that one resets the margin. */
 .item input[type=checkbox]{margin-top:6px}
 /* margin-bottom comes from the label rule for the form above; here it would
@@ -300,13 +300,14 @@ button.quiet:hover{color:var(--text)}
 .linklike{padding:0;border:0;background:none;font:inherit;color:var(--text-dim);
   text-decoration:underline;cursor:pointer;border-radius:0}
 .linklike:hover{background:none;color:var(--text)}
-.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:200px;
-  display:flex;flex-direction:column;padding:6px;background:var(--surface);
-  border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
-.menu button{font:inherit;font-size:14px;font-weight:500;text-align:left;
-  white-space:nowrap;background:transparent;border:0;border-radius:7px;
-  padding:9px 11px;color:var(--text);cursor:pointer}
-.menu button:hover:not(:disabled){background:var(--surface-3)}
+.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;
+  background:var(--surface);outline:1px solid var(--line);border:0;
+  border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:4px;min-width:190px;
+  display:flex;flex-direction:column}
+.menu button{background:none;border:0;font:inherit;font-size:14px;
+  color:var(--text);text-align:left;padding:8px 11px;border-radius:var(--radius-item);
+  cursor:pointer;white-space:nowrap}
+.menu button:hover:not(:disabled){background:var(--surface-2)}
 .menu button.danger{color:var(--danger)}
 .menu button.danger:hover{background:var(--danger-soft)}
 .empty{color:var(--text-faint);padding:40px 20px;font-size:15px;text-align:center}
