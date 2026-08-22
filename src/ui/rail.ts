@@ -1,0 +1,121 @@
+/**
+ * The sidebar: which Sammlungen exist, which one you are in, and making one.
+ *
+ * A Sammlung is a place you work in, not a label a sentence happens to carry.
+ * Clicking one opens it; Cmd or Ctrl adds a second, because a sentence can
+ * genuinely be in two at once and that has to be reachable.
+ */
+
+import { createCollection, deleteCollection as removeCollection, renameCollection } from '../db/repo.ts';
+import { lang, t } from '../i18n/index.ts';
+import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
+import { el, say } from './dom.ts';
+
+const counts = (): Map<string, number> => {
+  const out = new Map<string, number>();
+  for (const item of ALL())
+    for (const key of item.collections) out.set(key, (out.get(key) ?? 0) + 1);
+  return out;
+};
+
+export function drawRail(): void {
+  const rows = el('rows');
+  rows.innerHTML = '';
+  const count = counts();
+
+  for (const collection of DECLARED()) {
+    const row = document.createElement('button');
+    row.className = `list__item${OPEN.has(collection.key) ? ' on' : ''}`;
+    const name = document.createElement('span');
+    name.className = 'list__name';
+    name.textContent = collection.name;
+    const n = document.createElement('span');
+    n.className = 'list__count';
+    n.textContent = String(count.get(collection.key) ?? 0);
+    row.append(name, n);
+    row.onclick = (event) => {
+      if (event.metaKey || event.ctrlKey) {
+        if (OPEN.has(collection.key)) OPEN.delete(collection.key);
+        else OPEN.add(collection.key);
+      } else {
+        OPEN.clear();
+        OPEN.add(collection.key);
+      }
+      closeRail();
+      notify();
+    };
+    rows.appendChild(row);
+  }
+
+  // The header names where you are. There is always somewhere to be.
+  const here = DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
+  const title = el<HTMLInputElement>('colname');
+  // Not while it is being typed in, or the caret jumps to the end mid-word.
+  if (document.activeElement !== title) title.value = here?.name ?? '';
+}
+
+export const here = () => DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
+
+function closeRail(): void {
+  if (matchMedia('(max-width:820px)').matches) {
+    el('rail').classList.remove('open');
+    el('scrim').hidden = true;
+  }
+}
+
+/** Renaming is typing in the title: saved a beat after you stop, and on exit. */
+let renameTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleRename(): void {
+  const current = here();
+  if (!current) return;
+  clearTimeout(renameTimer);
+  const to = el<HTMLInputElement>('colname').value;
+  renameTimer = setTimeout(async () => {
+    if (!to.trim() || to === current.name) return;
+    await renameCollection(current.key, to);
+    await load();
+  }, 400);
+}
+
+export async function deleteCollection(key: string, name: string, n: number): Promise<void> {
+  if (!confirm(t('ask_collection_delete', { name, n }))) return;
+  if (!(await removeCollection(key))) return;
+  OPEN.delete(key);
+  say(t('done_collection_delete', { name }));
+  await load();
+}
+
+export function wireRail(): void {
+  el('colname').addEventListener('input', scheduleRename);
+  el('colname').addEventListener('blur', scheduleRename);
+  el('colname').addEventListener('keydown', (event) => {
+    if ((event as KeyboardEvent).key === 'Enter') {
+      event.preventDefault();
+      (event.target as HTMLElement).blur();
+    }
+  });
+
+  el('newcol').onclick = async () => {
+    const made = await createCollection(null, lang() === 'de');
+    OPEN.clear();
+    OPEN.add(made.key);
+    closeRail();
+    say(t('done_collection_new', { name: made.name }));
+    await load();
+    // Straight into the name, selected: typing replaces the date it was given.
+    // Set here rather than left to drawRail, which leaves the field alone while
+    // it has focus — otherwise a second new Sammlung shows the first one's name.
+    const title = el<HTMLInputElement>('colname');
+    title.value = made.name;
+    title.focus();
+    title.select();
+  };
+
+  el('railopen').onclick = () => {
+    el('rail').classList.add('open');
+    el('scrim').hidden = false;
+  };
+  el('railclose').onclick = closeRail;
+  el('scrim').onclick = closeRail;
+}

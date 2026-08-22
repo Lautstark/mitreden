@@ -1,0 +1,350 @@
+/* mitreden's own styling. The design tokens are not here: they come from
+   @lautstark/design, imported ahead of this file in main.ts, and are generated
+   from one declaration shared with bildhaft and vorlaut.
+
+   --sidebar-w is the exception, because it is this page's layout rather than a
+   value any other product shares. */
+:root{ --sidebar-w:268px; }
+
+*{box-sizing:border-box}
+/* The shell: a rail beside the work.
+   A Sammlung is a place you work in, so it is somewhere you go rather than a
+   filter you set — the same shape bildhaft uses, for the same reason. Below
+   820px it slides over the work instead of squeezing it. */
+.rail{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:20;
+  background:var(--surface);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:20px;padding:16px 14px;
+  overflow:hidden auto}
+.rail__brand{display:flex;align-items:center;gap:9px;padding:2px 4px}
+.rail__brand h1{flex:1;font-size:18px;font-weight:650;margin:0;display:flex;
+  align-items:center;gap:9px;letter-spacing:-.02em}
+.rail__brand .logo{width:26px;height:26px}
+.rail__brand .icon{margin-left:auto}
+.rail__part{padding:0 4px}
+.rail__part h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--text-faint);margin:0 6px 8px;font-weight:600}
+.rail__grow{flex:1;min-height:0;overflow:auto}
+.rail__foot{margin-top:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  padding:0 4px}
+.rail input[type=search]{width:100%}
+
+/* One row per Sammlung: name, count, and the ⋯ once it is the one you are in. */
+.list{display:flex;flex-direction:column;gap:1px}
+/* A Sammlung in the sidebar. These carry bildhaft's names because `.row` also
+   meant "a line of buttons in a dialog", and that rule sits further down the
+   sheet: every Sammlung was being pushed apart by a margin meant for buttons. */
+.list__item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  border:0;background:none;color:var(--text-dim);font:inherit;cursor:pointer;
+  border-radius:var(--radius-sm);padding:8px 10px;transition:background .13s,color .13s}
+.list__item:hover{background:var(--surface-2);color:var(--text)}
+.list__item.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.list__name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-size:14px}
+.list__count{font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.list__item.on .list__count{color:var(--accent-strong)}
+/* The sentence is the control: click it and type. Same idea as the Sammlung's
+   title, so there is one way to change a name in this program, not two. */
+.item .line{cursor:text;border-radius:var(--radius-sm);padding:1px 5px;margin:-1px -5px;
+  border:1px solid transparent}
+/* bildhaft's affordance is a ground, not a hairline. */
+.item .line:hover{background:var(--surface-2)}
+/* :focus, not [contenteditable] — the attribute survives contentEditable being
+   set back to 'false', so every line ever edited kept an accent border. */
+.item .line:focus{border-color:transparent;background:var(--surface);
+  box-shadow:0 0 0 2px var(--accent);outline:none;cursor:text}
+.sheet__head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sheet__head h2{margin:0;flex:1}
+/* One row of tabs, the shape bildhaft uses: a track with the live one lifted
+   out of it rather than underlined. */
+.tabs{display:flex;gap:2px;background:var(--surface-2);border-radius:var(--radius-pill);
+  padding:3px;margin-bottom:16px}
+.tab{flex:1;border:0;background:none;color:var(--text-dim);font:inherit;
+  font-size:14px;padding:7px 10px;border-radius:var(--radius-pill);cursor:pointer}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--surface);color:var(--text);font-weight:600;
+  box-shadow:var(--shadow-sm,0 1px 2px rgba(0,0,0,.12))}
+.card{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin-bottom:12px}
+/* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
+.hint{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-faint)}
+.card__head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.card__head h3{margin:0;font-size:15px}
+.badge{margin-left:auto;font-size:12px;font-weight:600;padding:3px 9px;
+  border-radius:999px;background:var(--accent-soft);color:var(--accent-strong)}
+.warn{background:var(--danger-soft);color:var(--danger);border-radius:9px;
+  padding:9px 11px;font-size:13.5px;margin:8px 0}
+.flat{background:transparent;border:0;color:var(--text-dim);font:inherit;
+  font-size:13.5px;padding:5px 11px;border-radius:var(--radius-pill);cursor:pointer}
+.flat:hover{background:var(--surface-2);color:var(--text)}
+/* Reduced motion: bildhaft carries this and the rail animates its transform. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  .rail{transition:none}
+}
+.workhead{display:flex;align-items:center;gap:14px;margin:26px 0 10px}
+/* The name is the control. Renaming a Sammlung is typing in its title, which
+   is what bildhaft does — no menu entry, no dialog, no second place to look. */
+.title-input{flex:1;min-width:0;margin:0;padding:2px 6px;border:1px solid transparent;
+  border-radius:var(--radius-sm);background:none;color:var(--text);font:inherit;
+  font-size:19px;font-weight:650;letter-spacing:-.02em}
+.title-input:hover{border-color:var(--line)}
+.title-input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.workhead .count{margin-left:auto;font-size:13.5px;color:var(--text-faint)}
+.danger__title{margin:22px 0 4px;font-size:15px}
+/* bildhaft's danger button: a pill that is transparent until you reach for it,
+   then a soft red ground. Not an underlined line of text — that read as a
+   broken link, and the shared button hover was drawing a grey box behind it. */
+.linkdanger{background:transparent;border:0;color:var(--danger);font:inherit;
+  font-weight:600;font-size:13.5px;padding:5px 11px;cursor:pointer;
+  border-radius:var(--radius-pill);text-decoration:none}
+.linkdanger:hover{background:var(--danger-soft);color:var(--danger);
+  text-decoration:none}
+
+/* The composer: one field you type into, and an arrow. bildhaft's shape, and
+   right for the same reason — there is only ever one thing to do here. */
+.compose{display:flex;align-items:flex-end;gap:12px;padding:16px 16px 16px 20px;
+  border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-sm);
+  outline:1px solid var(--line)}
+.compose textarea{flex:1;min-height:34px;max-height:190px;padding:0;border:0;
+  background:transparent;outline:none;resize:none;font-size:22px;line-height:1.4}
+.send{flex:none;width:44px;height:44px;border-radius:var(--radius-pill);
+  border:0;background:var(--accent);color:var(--accent-ink);font-size:19px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center}
+.send:hover{background:var(--accent-hover)}
+.chint{display:flex;gap:12px;flex-wrap:wrap;margin:7px 2px 0;
+  font-size:12.5px;color:var(--text-faint)}
+.chint .right{margin-left:auto}
+kbd{font:inherit;font-size:11.5px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.into--none{color:var(--text-faint)}
+button.small{font-size:13px;padding:6px 9px}
+button.quiet{background:none;border:1px dashed var(--line);color:var(--text-dim)}
+button.quiet:hover{background:var(--surface-2);color:var(--text)}
+.icon{background:none;border:0;color:var(--text-dim);font-size:17px;
+  cursor:pointer;padding:4px 6px;border-radius:8px}
+.icon:hover{background:var(--surface-2);color:var(--text)}
+
+.topbar{display:none;position:sticky;top:0;z-index:15;align-items:center;gap:10px;
+  padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:19px;margin:0;display:flex;align-items:center;gap:8px;
+  letter-spacing:-.03em}
+.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.45)}
+
+@media (max-width:820px){
+  .rail{transform:translateX(-100%);transition:transform .18s ease;
+    box-shadow:var(--shadow);width:min(280px,84vw)}
+  .rail.open{transform:none}
+  .topbar{display:flex}
+  .rail__brand{display:none}
+}
+@media (min-width:821px){
+  /* Nothing to close when the rail is simply part of the page. */
+  .scrim,.topbar,#railclose{display:none}
+}
+
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--font);font-size:15px;line-height:1.55;
+  padding:clamp(20px,5vw,64px);padding-bottom:0;-webkit-font-smoothing:antialiased}
+/* The work sits to the right of the rail and keeps its comfortable measure. */
+body{min-height:100vh;display:flex;flex-direction:column}
+main{max-width:720px;margin:0 auto;padding-left:0;width:100%;
+  flex:1;display:flex;flex-direction:column}
+@media (min-width:821px){
+  /* The rail's width plus the padding the page would have had anyway, so the
+     work keeps the same breathing room it had before there was a rail. */
+  body{padding-left:calc(var(--sidebar-w) + clamp(20px,5vw,64px))}
+}
+h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
+  display:flex;align-items:center;gap:12px}
+.logo{width:clamp(34px,7vw,52px);height:auto;flex:none}
+.sub{color:var(--text-dim);margin:6px 0 36px;font-size:15px}
+label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:10px}
+textarea{width:100%;min-height:132px;resize:vertical;background:var(--bg);
+  color:var(--text);border:1px solid var(--line);border-radius:11px;padding:14px;
+  font:inherit;font-size:19px}
+textarea::placeholder,input::placeholder{color:var(--text-faint)}
+textarea:focus,input:focus,button:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=search],input[type=password]{width:100%;background:var(--bg);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:15px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+button{font:inherit;border-radius:var(--radius-pill);padding:8px 14px;
+  border:0;background:var(--surface-2);color:var(--text);cursor:pointer;
+  white-space:nowrap;transition:background .13s ease,color .13s ease}
+button:hover:not(:disabled){background:var(--surface-3)}
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{background:transparent}
+button.primary{background:var(--accent);color:var(--accent-ink);font-weight:600}
+button.primary:hover{background:var(--accent-hover)}
+button.quiet{border-color:transparent;color:var(--text-dim);padding:11px 12px}
+button.quiet:hover{color:var(--text)}
+/* No placeholder line: an empty status reserves a gap for nothing. */
+.status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
+.status[hidden]{display:none}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.bar .count{font-weight:650;font-size:15px}
+/* Beside the title, where a page-wide setting belongs — not down at the list,
+   which would suggest it changes something about the list. */
+.gear{font-size:17px;line-height:1;padding:7px 11px;border-radius:999px;
+  color:var(--text-dim);border-color:var(--line)}
+.gear:hover{color:var(--text)}
+/* A sheet, not a wizard: a fresh install already speaks, so this is somewhere
+   you go when you want more — never something standing in the way. */
+.sheet{background:var(--surface);color:var(--text);border:1px solid var(--line);
+  border-radius:16px;padding:24px;max-width:520px;width:calc(100% - 40px)}
+.sheet::backdrop{background:rgba(0,0,0,.6)}
+.sheet h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
+.sheet .sub{margin:0 0 14px}
+.sheet .warn{color:var(--warn);font-size:13px;line-height:1.5;margin:0 0 18px}
+.pane .langpick{width:100%;max-width:none;margin-top:4px}
+.langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
+  color:var(--text-dim);background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center}
+.langpick:hover{color:var(--text);background-color:var(--surface-3)}
+.langpick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Shaped like the collection chips, so the header reads as one row of controls
+   instead of one control and one browser default. */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:16px 2px 0}
+.chip{font:inherit;font-size:13px;font-weight:500;padding:6px 13px;border-radius:999px;
+  border:1px solid var(--line);background:transparent;color:var(--text-dim);cursor:pointer}
+.chip:hover{background:var(--surface-3);color:var(--text)}
+/* A filled accent is reserved for the one submit action, as in bildhaft. */
+.chip.on{background:var(--accent-soft);border-color:transparent;
+  color:var(--accent-strong);font-weight:600}
+.chip.on:hover{background:var(--accent-soft)}
+/* No opacity on the count: bildhaft took exactly this out, because at .7 over
+   --accent-soft it fell to 2.91:1. */
+.chip .n{margin-left:6px;font-variant-numeric:tabular-nums}
+/* The box belongs to the phrase, so it sits with the phrase — not in the
+   middle of a row that a second line of collections can make twice as tall, where
+   it ends up next to the small print instead. */
+.item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
+  border-bottom:1px solid var(--line)}
+.item input[type=checkbox],.selall input[type=checkbox]{
+  width:17px;height:17px;flex:none;accent-color:var(--accent);cursor:pointer;margin:0}
+/* After the shared rule above, not before it — that one resets the margin. */
+.item input[type=checkbox]{margin-top:6px}
+/* margin-bottom comes from the label rule for the form above; here it would
+   push the box 5px off centre against the button beside it. */
+/* Both bulk actions live here, next to the selection they act on. Each sits
+   against its own knob: the format belongs to the download, the voice to the
+   recording. */
+/* Only visible when something really is missing — a recording that failed,
+   or a format that changed under the existing files. Each phrase keeps its
+   own voice here; this repairs, it does not repaint. */
+/* Filters are pills, actions are boxes — the two zones must never be mistaken
+   for each other. The labels say which axis a row narrows. */
+.filters{margin:14px 2px 0}
+.frow{display:flex;align-items:baseline;gap:10px;margin-top:10px}
+/* display:flex beats the browser's own rule for [hidden], so both of these
+   would stay on screen while claiming to be hidden. */
+.frow[hidden],.split[hidden]{display:none}
+.flabel{color:var(--text-dim);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+  flex:none;width:64px;padding-top:6px}
+.frow .chips{margin:0}
+
+/* The same drawn chevron as the selects use. The character U+2304 sits on the
+   baseline and reads as a typo next to the text. */
+/* The everyday action is a button you press, not an entry you go looking for.
+   Everything rarer sits behind the chevron next to it. */
+/* Download is a select, so it has the voice picker's shape and the browser
+   draws the open list. Nothing left here to get wrong per theme. */
+#dlall{border-radius:var(--radius-pill);padding-top:8px;padding-bottom:8px;
+  font-size:13.5px;font-weight:600}
+/* The two pairs travel together: wrapping them apart would put a lone voice
+   picker under the selection and read as if it belonged to it. */
+/* Same box as the button beside it: same font, same vertical padding, so the
+   two do not sit at different heights. */
+.asbutton{padding:11px 34px 11px 16px !important;font-size:16px !important}
+.asbutton,.acts select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 30px 11px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;max-width:min(340px,100%)}
+.asbutton:hover,.acts select:hover{background-color:var(--surface-3)}
+.asbutton:focus-visible,.acts select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* The lamp sits with the words it belongs to instead of starting the row —
+   one marker at the left edge (the checkbox) is enough. */
+.item .st{display:inline-flex;align-items:center;gap:6px}
+.item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
+.item.ok .dot{background:var(--ok)}
+.item.stale .dot{background:var(--warn)}
+.item .txt{flex:1;min-width:0}
+.item .line{font-size:18px;letter-spacing:-.01em}
+.item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.item .state{font-size:12px;color:var(--text-dim)}
+.item.stale .state{color:var(--warn)}
+.item .collection{font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
+  padding:2px 10px;cursor:pointer}
+.item .collection:hover{background:var(--surface-3);color:var(--text)}
+.item audio{height:32px;flex:0 1 auto;width:clamp(170px,30%,280px);min-width:0;
+  opacity:.85}
+@media (prefers-color-scheme:dark){
+  /* Chrome draws its player light. On a dark row that is a slab of white, so
+     it gets turned over — but only here: in light it is already right. */
+  .item audio{filter:invert(.92) hue-rotate(180deg)}
+}
+.menuwrap{position:relative;flex:none}
+.dots{background:transparent;border:1px solid transparent;border-radius:9px;
+  padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
+.dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}
+.foot{margin:38px 0 0;margin-top:auto;padding:14px 0 20px;
+  display:flex;gap:4px 14px;flex-wrap:wrap;font-size:11.5px;line-height:1.5;
+  color:var(--text-faint)}
+/* bildhaft's linklike: footer entries that open dialogs look like links. */
+.linklike{padding:0;border:0;background:none;font:inherit;color:var(--text-dim);
+  text-decoration:underline;cursor:pointer;border-radius:0}
+.linklike:hover{background:none;color:var(--text)}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:200px;
+  display:flex;flex-direction:column;padding:6px;background:var(--surface);
+  border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
+.menu button{font:inherit;font-size:14px;font-weight:500;text-align:left;
+  white-space:nowrap;background:transparent;border:0;border-radius:7px;
+  padding:9px 11px;color:var(--text);cursor:pointer}
+.menu button:hover:not(:disabled){background:var(--surface-3)}
+.menu button.danger{color:var(--danger)}
+.menu button.danger:hover{background:var(--danger-soft)}
+.empty{color:var(--text-faint);padding:40px 20px;font-size:15px;text-align:center}
+.more{width:100%;margin-top:18px;color:var(--text-dim);font-size:14px}
+/* On a phone the player is wider than the room left over, and it used to push
+   the delete button off the screen. Give it a line of its own instead. */
+/* Below this the player and the text fight over the same room, long before
+   the layout actually breaks — so the player moves to its own line early. */
+@media (max-width:820px){
+  /* The Sammlung's name gets the width it needs; what you can do with it goes
+     underneath, rather than three controls fighting over one line. */
+  .workhead{flex-wrap:wrap;gap:8px 10px;margin:20px 0 10px}
+  .title-input{flex:1 0 100%;font-size:22px}
+  /* The count reads as a sentence, so it gets its own line; the two controls
+     stay side by side underneath rather than one of them wrapping alone. */
+  .workhead .count{margin-left:0;order:3;flex:1 0 100%}
+  .workhead .split{order:4}
+  .workhead .menuwrap{order:5;margin-left:0}
+  /* The picker was pinned right and cut its own label off. */
+  .chint .right{margin-left:0;flex:1 0 100%}
+  .asbutton{width:100%;max-width:none}
+  .compose{padding:14px 14px 14px 16px}
+  .compose textarea{font-size:19px}
+}
+@media (max-width:720px){
+  .item{flex-wrap:wrap;gap:10px}
+  .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
+  .menuwrap{order:3}
+  .item audio{order:4;flex:1 1 100%;width:100%}
+}
+@media (max-width:560px){
+  .hero{padding:16px 16px 12px}
+  textarea{font-size:17px;min-height:112px}
+  .item .line{font-size:17px}
+  .bar{gap:8px}
+  .tools{gap:8px}
+  /* Three controls in one row leaves the search box a stub — it gets its own
+     line, the format and the button share the next one. */
+  .tools input[type=search]{flex:1 1 100%;min-width:0}
+  .tools button{flex:1}
+}
