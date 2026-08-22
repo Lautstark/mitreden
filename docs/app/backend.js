@@ -133,29 +133,34 @@ async function post(route, body) {
       const item = { id: freeId(items, text), text, collections: [...collections] };
       items.push(item); fresh.push(item);
     }
-    // A sentence that cannot be recorded is still a sentence: it is in the
-    // list and asks to be recorded again. One failure does not lose the rest.
-    let rendered = 0; const failed = [];
-    for (const item of fresh) {
-      try { rendered += await render(item) ? 1 : 0; }
-      catch (e) { failed.push(`${item.id}: ${e.message || e}`); }
-    }
+    // Adding is not recording. The sentence is saved and handed back now, so
+    // the list can show it while the voice is still being made — on a first
+    // run that is a 60 MB model download, and a list that stays empty for a
+    // minute looks like the typing was thrown away. Recording is /api/build,
+    // which the caller makes as a second request.
     await savePhrases(items);
-    return json({ added: fresh.length, rendered, merged: twins.length, failed });
+    return json({
+      added: fresh.length,
+      merged: twins.length,
+      ids: fresh.map(i => i.id),
+    });
   }
 
   if (route === '/api/build') {
     const only = new Set(body.ids || []);
     const vid = (body.voice || '').trim() || null;
     if (vid && !await anyVoice(vid)) return fail('That voice is not available here.', 404);
-    let rendered = 0;
+    // A sentence that cannot be recorded is still a sentence: it is in the
+    // list and asks to be recorded again. One failure does not lose the rest,
+    // so the batch finishes and reports what fell over.
+    let rendered = 0; const failed = [];
     for (const item of items) {
       if (only.size && !only.has(item.id)) continue;
       try { rendered += await render(item, !!body.force, vid) ? 1 : 0; }
-      catch (e) { await savePhrases(items); return fail(String(e.message || e), 500); }
+      catch (e) { failed.push(`${item.id}: ${e.message || e}`); }
     }
     await savePhrases(items);
-    return json({ rendered });
+    return json({ rendered, failed });
   }
 
   if (route === '/api/edit') {

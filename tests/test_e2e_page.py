@@ -175,14 +175,22 @@ def browser_checks(play, base: str, report: Report) -> None:
     report.check(set(baked) >= {"de", "en"}, "both languages are in the page",
                  f"found {sorted(baked)}")
     if baked.get("en"):
+        # The send button is a round arrow, so its string lives in the label a
+        # screen reader reads rather than in the text on screen. That is where
+        # to check it: the visible glyph is the same in every language and
+        # would go on passing after the wiring broke.
+        label = page.get_attribute("#add", "aria-label")
         report.check(
-            page.inner_text("#add").strip() == baked["en"]["add_phrase"],
+            label == baked["en"]["add_phrase"],
             "the chosen language is the one on screen",
-            f"button says {page.inner_text('#add')!r}")
+            f"button is labelled {label!r}")
     report.check(page.get_attribute("html", "lang") == "en",
                  "the document says which language it is in")
 
-    voices = page.evaluate("() => window.MITREDEN_BACKEND.VOICES.length")
+    # Read the list from the module that owns it. It used to hang off a global
+    # the page no longer sets, and the split would not have been caught here.
+    voices = page.evaluate(
+        "async () => (await import('./app/voices.js')).VOICES.length")
     options = page.eval_on_selector_all("#voice option", "els => els.length")
     report.check(voices > 0 and options == voices,
                  "every voice the backend has is offered",
@@ -193,7 +201,7 @@ def browser_checks(play, base: str, report: Report) -> None:
     # had been truncated, renamed, or served as the wrong type.
     loaded = page.evaluate("""async () => {
       const out = {};
-      for (const path of ['./audio.js', './vendor/lamejs.js', './vendor/vits-web.js']) {
+      for (const path of ['./app/media.js', './app/speak.js', './vendor/lamejs.js', './vendor/vits-web.js']) {
         try { out[path] = Object.keys(await import(path)).length > 0; }
         catch (e) { out[path] = String(e); }
       }
@@ -276,6 +284,9 @@ def browser_checks(play, base: str, report: Report) -> None:
     browser.close()
 
 
+SKIPPED = 77                       # tests/run.py reports this apart from a pass
+
+
 def missing(what: str) -> int:
     """Says what is not installed, and whether that is allowed to be fine."""
     if CI:
@@ -284,8 +295,10 @@ def missing(what: str) -> int:
         return 1
     print(f"  skipped: {what}, so the page cannot be opened")
     print("           pip install playwright && playwright install chromium")
-    print("\n  All good.")
-    return 0
+    # Not "All good.": nothing was checked. The runner reads this code and says
+    # so in the summary, because a run that skipped the only test that opens
+    # the page should not look the same as a run that passed it.
+    return SKIPPED
 
 
 def main() -> int:

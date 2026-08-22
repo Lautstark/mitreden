@@ -27,8 +27,6 @@ export async function loadVoices(current){
 }
 // Picking a voice records nothing. It is the voice the next recording gets —
 // existing phrases keep theirs until you record them again.
-// Picking a voice records nothing. It is the voice the next recording gets —
-// existing phrases keep theirs until you record them again.
 $('voice').onchange=async e=>{
   const sel=e.target, id=sel.value, was=sel.dataset.was;
   const r=await post('/api/voice',{id});
@@ -53,15 +51,20 @@ $('add').onclick=async()=>{
   const collections=COLLECTIONS.size===1?[...COLLECTIONS]:[];
   say(t('busy_add'));
   const res=await post('/api/phrases',{lines,collections});
-  if(res){
-    $('t').value='';
-    // A phrase that could not be recorded was still added, so the list has to
-    // be reloaded either way — and the reason has to be said out loud, or the
-    // row just sits there as "not recorded" with nothing explaining why.
-    const bad=res.failed||[];
-    say(t('done_add',{added:res.added,rendered:res.rendered})+
-        (res.merged?t('done_add_twins',{n:res.merged}):'')+'.'+
-        (bad.length?' '+tn('not_recorded',bad.length,{why:bad[0]}):''));
-    load();
-  }
+  if(!res)return;
+  $('t').value='';
+  // Show the sentences before recording them. They are saved either way, and
+  // waiting for the voice to exist before drawing the row is how the list
+  // stays empty through a first-run model download.
+  await load();
+  const built=res.ids.length?await post('/api/build',{ids:res.ids}):{rendered:0};
+  if(!built)return;
+  // A phrase that could not be recorded was still added, so the list has to
+  // be reloaded either way — and the reason has to be said out loud, or the
+  // row just sits there as "not recorded" with nothing explaining why.
+  const bad=built.failed||[];
+  say(t('done_add',{added:res.added,rendered:built.rendered})+
+      (res.merged?t('done_add_twins',{n:res.merged}):'')+'.'+
+      (bad.length?' '+tn('not_recorded',bad.length,{why:bad[0]}):''));
+  load();
 };

@@ -41,7 +41,26 @@ def modules() -> dict[pathlib.Path, str]:
     return out
 
 
-DECL = re.compile(r"^export (?:async )?(?:function|const|let|var)\s+([\w$]+)", re.M)
+DECL = re.compile(r"^export (?:async )?(?:function|const|let|var)\s+(.+)$", re.M)
+
+# `export const A = 1, B = 2` declares both. Reading only the first name is how
+# a real export gets reported as missing, which sends the reader to fix the
+# import that was right all along.
+def declared(line: str) -> list[str]:
+    m = re.match(r"([\w$]+)", line.strip())
+    if not m:
+        return []
+    names, depth = [m.group(1)], 0
+    for i, ch in enumerate(line):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            more = re.match(r"\s*([\w$]+)", line[i + 1:])
+            if more:
+                names.append(more.group(1))
+    return names
 ANY_DECL = re.compile(r"^(?:export )?(?:async )?(?:function|const|let|var)\s+([\w$]+)", re.M)
 IMPORT = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'([^']+)'", re.M)
 
@@ -51,7 +70,8 @@ def main() -> int:
     if not mods:
         check("there are modules to check", False)
         return 1
-    exports = {p: set(DECL.findall(s)) for p, s in mods.items()}
+    exports = {p: {n for line in DECL.findall(s) for n in declared(line)}
+               for p, s in mods.items()}
 
     # 1. every import names something the target actually exports
     bad = []

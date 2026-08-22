@@ -26,6 +26,8 @@ from __future__ import annotations
 import subprocess
 import sys
 import time
+
+SKIPPED = 77                       # a test that could not run, not one that passed
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -50,6 +52,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     failed: list[str] = []
+    skipped: list[str] = []
     started = time.time()
     for test in tests:
         print(f"\n=== {test.name} " + "=" * max(0, 60 - len(test.name)), flush=True)
@@ -57,11 +60,20 @@ def main(argv: list[str]) -> int:
         # tests print is meant to be read, and holding it back until the end
         # would turn a run that hangs into a run that says nothing.
         result = subprocess.run([sys.executable, str(test)], cwd=HERE.parent)
-        if result.returncode != 0:
+        # 77 means the test could not run at all — a missing browser, not a
+        # verdict. Counting it as a pass is how a suite goes green while the
+        # thing it was written to check never happened.
+        if result.returncode == SKIPPED:
+            skipped.append(test.name)
+        elif result.returncode != 0:
             failed.append(test.name)
 
     print("\n" + "=" * 68)
-    print(f"{len(tests)} test file(s) in {time.time() - started:.0f}s")
+    ran = len(tests) - len(skipped)
+    line = f"{ran} test file(s) in {time.time() - started:.0f}s"
+    if skipped:
+        line += f", {len(skipped)} skipped: " + ", ".join(skipped)
+    print(line)
     if failed:
         print(f"{len(failed)} failed:")
         for name in failed:
