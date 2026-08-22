@@ -88,6 +88,12 @@
   }
 
   const loadPhrases = () => idb('meta', 'readonly', s => s.get('phrases')).then(v => v || []);
+  // The declared Sammlungen, in the order they were made. Kept apart from the
+  // sentences on purpose: a Sammlung just created is empty, and one derived
+  // from its members could not exist yet. That is the whole difference between
+  // a label and a place you work in.
+  const loadCollections = () => idb('meta', 'readonly', s => s.get('collections')).then(v => v || []);
+  const saveCollections = v => idb('meta', 'readwrite', s => s.put(v, 'collections'));
   const savePhrases = items => idb('meta', 'readwrite', s => s.put(items, 'phrases'));
   const loadSettings = () => idb('meta', 'readonly', s => s.get('settings')).then(v => v || {});
   const saveSettings = v => idb('meta', 'readwrite', s => s.put(v, 'settings'));
@@ -382,8 +388,16 @@
                  voice: v ? labelOf(v) : (i.voice_id || '') });
     }
     await refreshUrls(out);        // the player asks for these while drawing
+    // Declared order first, then anything a sentence carries that was never
+    // declared — an imported file, say. Neither is dropped.
+    const declared = await loadCollections();
+    const used = new Set(out.flatMap(i => i.collections || []));
+    const names = declared.concat([...used].filter(n => !declared.includes(n)));
+
     const av = voiceById(active);
-    return { items: out, voice: av ? labelOf(av) : active, format: OUT.format };
+    return { items: out, voice: av ? labelOf(av) : active, format: OUT.format,
+             collections: names.map(name => ({
+               name, count: out.filter(i => (i.collections || []).includes(name)).length })) };
   }
 
   async function get(route) {
@@ -414,6 +428,13 @@
 
     if (route === '/api/phrases') {
       const collections = (body.collections || []).map(normTag).filter(Boolean);
+      // Whatever is open in the sidebar is declared too, so a sentence typed
+      // into a Sammlung lands there without anyone naming it twice.
+      if (collections.length) {
+        const declared = await loadCollections();
+        const missing = collections.filter(c => !declared.includes(c));
+        if (missing.length) await saveCollections(declared.concat(missing));
+      }
       const fresh = [], twins = [];
       for (const line of body.lines || []) {
         const text = line.trim();
@@ -563,6 +584,48 @@
       }
       await savePhrases(items);
       return json({ ok: true, added, merged, revoiced });
+    }
+
+    // /api/collections changes which Sammlungen a sentence is in.
+    // /api/collection changes the Sammlungen themselves.
+    if (route === '/api/collection') {
+      const mode = body.mode || 'create';
+      const name = normTag(body.name || '');
+      let declared = await loadCollections();
+
+      if (mode === 'create') {
+        if (!name) return fail('A collection needs a name.', 400);
+        if (!declared.includes(name)) { declared.push(name); await saveCollections(declared); }
+        return json({ ok: true, name });
+      }
+
+      if (mode === 'rename') {
+        const to = normTag(body.to || '');
+        if (!name || !to) return fail('A collection needs a name.', 400);
+        await saveCollections(declared.map(n => (n === name ? to : n))
+                                      .filter((n, i, a) => a.indexOf(n) === i));
+        // the sentences follow, or they are left pointing at a name nothing
+        // answers to any more
+        for (const item of items) {
+          const cur = item.collections || [];
+          if (cur.includes(name))
+            item.collections = cur.map(n => (n === name ? to : n))
+                                  .filter((n, i, a) => a.indexOf(n) === i);
+        }
+        await savePhrases(items);
+        return json({ ok: true, name: to });
+      }
+
+      if (mode === 'delete') {
+        // The Sammlung goes, the sentences stay. They are the irreplaceable
+        // half, and a container being removed is no reason to lose them.
+        await saveCollections(declared.filter(n => n !== name));
+        for (const item of items)
+          item.collections = (item.collections || []).filter(n => n !== name);
+        await savePhrases(items);
+        return json({ ok: true, name });
+      }
+      return fail('Unknown mode.', 400);
     }
 
     if (route === '/api/setup')
