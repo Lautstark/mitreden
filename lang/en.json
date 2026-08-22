@@ -136,5 +136,7 @@
   "compose_hint": "Enter records · Shift + Enter new line",
   "compose_voice": "Voice: {voice}",
   "sentences_n": "{n} sentences",
-  "browser_only": "Runs entirely in your browser."
+  "browser_only": "Runs entirely in your browser.",
+  "download_all": "Download",
+  "collection_export": "Export collection"
 }

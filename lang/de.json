@@ -136,5 +136,7 @@
   "compose_hint": "Enter nimmt auf · Shift + Enter neue Zeile",
   "compose_voice": "Stimme: {voice}",
   "sentences_n": "{n} Sätze",
-  "browser_only": "Läuft vollständig im Browser."
+  "browser_only": "Läuft vollständig im Browser.",
+  "download_all": "Herunterladen",
+  "collection_export": "Sammlung exportieren"
 }

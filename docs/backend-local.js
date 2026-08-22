@@ -116,6 +116,26 @@
   // anything.
   const loadCollections = () => idb('meta', 'readonly', s => s.get('collections'))
     .then(v => (v || []).map(c => typeof c === 'string' ? { key: c, name: c } : c));
+
+  // A sentence always belongs to a Sammlung, which means there always has to
+  // be one — bildhaft's rule, and it removes a whole class of question the
+  // page would otherwise have to ask. On an empty database one is made, named
+  // after the day, the same way a new notebook gets a date on the cover.
+  const defaultName = () => {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${LANG_DE ? 'Sammlung vom' : 'Collection of'} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+  };
+  let LANG_DE = true;                   // set from the page, only affects the name
+
+  async function ensureCollection() {
+    const declared = await loadCollections();
+    if (declared.length) return declared;
+    const name = defaultName();
+    const made = [{ key: normTag(name) || 'sammlung', name }];
+    await saveCollections(made);
+    return made;
+  }
   const saveCollections = v => idb('meta', 'readwrite', s => s.put(v, 'collections'));
   const savePhrases = items => idb('meta', 'readwrite', s => s.put(items, 'phrases'));
   const loadSettings = () => idb('meta', 'readonly', s => s.get('settings')).then(v => v || {});
@@ -484,7 +504,7 @@
     await refreshUrls(out);        // the player asks for these while drawing
     // Declared order first, then anything a sentence carries that was never
     // declared — an imported file, say. Neither is dropped.
-    const declared = await loadCollections();
+    const declared = await ensureCollection();
     const used = new Set(out.flatMap(i => i.collections || []));
     const all = declared.concat([...used]
       .filter(k => !declared.some(c => c.key === k))
@@ -498,6 +518,7 @@
 
   async function get(route) {
     if (route === '/api/strings') return json(window.MITREDEN_STRINGS || {});
+    if (route.startsWith('/api/lang/')) { LANG_DE = route.endsWith('/de'); return json({ ok: true }); }
     // No cloud services here. A key typed into a public page would be a
     // different promise than the one the container makes, so the panel stays
     // empty rather than half-true.
@@ -513,11 +534,6 @@
     // can be dropped next to mitreden.py and the other way round. Only the
     // sentences — the audio can always be made again, and would turn a
     // backup you can read into a download you cannot.
-    if (route === '/api/export') {
-      const items = await loadPhrases();
-      const text = JSON.stringify(items, null, 2) + '\n';
-      return new Response(new Blob([text], { type: 'application/json' }), { status: 200 });
-    }
     if (route === '/api/voices') return json(await listVoices());
     if (route === '/api/phrases') return json(await phrasesWithState());
     return fail('Unknown route.', 404);
@@ -652,6 +668,20 @@
                      : null);
       if (!incoming) return fail('That is neither a list of sentences nor a bildhaft export.', 400);
 
+      // The file lands in a Sammlung of its own. bildhaft's rule, and for the
+      // same reason: importing must never be able to destroy work already
+      // here. Sentences still merge by text, because one text is one audio
+      // file — but the Sammlung is always new.
+      const label = String(body.name || '').trim() || defaultName();
+      let into = normTag(label) || 'import';
+      {
+        const declared = await loadCollections();
+        let key = into, n = 2;
+        while (declared.some(c => c.key === key)) key = `${into}-${n++}`;
+        into = key;
+        declared.push({ key, name: label });
+        await saveCollections(declared);
+      }
       let added = 0, merged = 0, revoiced = 0;
       for (const raw of incoming) {
         const text = typeof raw === 'string' ? raw.trim()
@@ -661,7 +691,8 @@
 
         const twin = findTwin(items, text);
         if (twin) {
-          for (const t of collections) if (!(twin.collections || []).includes(t)) (twin.collections ||= []).push(t);
+          for (const t of collections.concat(into))
+            if (!(twin.collections || []).includes(t)) (twin.collections ||= []).push(t);
           merged++;
           continue;
         }
@@ -670,7 +701,7 @@
         // the whole reason for carrying sentences between the two.
         const wanted = typeof (raw && raw.id) === 'string' ? raw.id.trim() : '';
         const id = wanted && !items.some(i => i.id === wanted) ? wanted : freeId(items, text);
-        const item = { id, text, collections };
+        const item = { id, text, collections: collections.includes(into) ? collections : collections.concat(into) };
 
         // A voice this page cannot speak with would fail at the first
         // recording. The container has voices we do not — Kerstin, Azure —
@@ -690,6 +721,19 @@
 
     // /api/collections changes which Sammlungen a sentence is in.
     // /api/collection changes the Sammlungen themselves.
+    // Everything, or one Sammlung. The file is the same shape either way — the
+    // plain list phrases.json always was — so a copy of one book and a copy of
+    // the lot are read by the same importer.
+    if (route === '/api/export') {
+      const key = normTag(body.collection || '');
+      const declared = await loadCollections();
+      const out = key ? items.filter(i => (i.collections || []).includes(key)) : items;
+      const name = key ? ((declared.find(c => c.key === key) || {}).name || key) : '';
+      const text = JSON.stringify(out, null, 2) + '\n';
+      return new Response(new Blob([text], { type: 'application/json' }),
+        { status: 200, headers: { 'X-Collection-Name': encodeURIComponent(name) } });
+    }
+
     if (route === '/api/collection') {
       const mode = body.mode || 'create';
       const name = normTag(body.name || '');
@@ -721,11 +765,14 @@
       if (mode === 'delete') {
         // The Sammlung goes, the sentences stay. They are the irreplaceable
         // half, and a container being removed is no reason to lose them.
-        await saveCollections(declared.filter(c => c.key !== name));
+        const left = declared.filter(c => c.key !== name);
+        await saveCollections(left);
         for (const item of items)
           item.collections = (item.collections || []).filter(n => n !== name);
         await savePhrases(items);
-        return json({ ok: true, name });
+        // Never leave the page with nowhere to be.
+        const now = await ensureCollection();
+        return json({ ok: true, name, next: (left[0] || now[0]).key });
       }
       return fail('Unknown mode.', 400);
     }
