@@ -12,12 +12,27 @@
  *     node tests/browser/audio.test.mjs
  *
  * Run by tests/test_browser_audio.py, so `python3 tests/run.py` includes them.
+ *
+ * The chain moved to Lautstark/stimmquelle, which vorlaut runs too, and it has
+ * checks of its own. These stayed, pointed at the vendored copy: a package's
+ * tests say it was right when it was published, and these say the file in
+ * docs/vendor/ is right now, at the commit tools/vendor.lock.json pins. A bad
+ * pin, a bad refresh, or a bundle that was never rebuilt passes the first and
+ * fails the second.
  */
 
 import {
-  MEASURE_RATE, TARGET_LUFS, TARGET_PEAK_DB,
-  trim, integratedLufs, level, toPcm16, encodeWav,
-} from '../../docs/audio.js';
+  MEASURE_RATE, TARGET_LUFS, TARGET_PEAK_DBTP as TARGET_PEAK_DB,
+  trim, integratedLufs, postprocess, toPcm16, encodeWav,
+} from '../../docs/vendor/stimmquelle.js';
+
+/* The package takes a WAV and gives one back; audio.js took samples and gave
+ * samples. Everything below was written against the second shape and none of it
+ * is worth rewriting, so the difference is one wrapper — which also means these
+ * checks now cover the decoder and the resampler, because the round trip goes
+ * through both. audio.js could not be checked that far: it left those two
+ * behind an AudioContext. */
+const level = (x, rate = MEASURE_RATE) => postprocess(encodeWav(x, rate), { rate });
 
 const failures = [];
 const check = (name, ok, detail = '') => {
@@ -148,9 +163,11 @@ function degenerateInputDoesNotThrow() {
 }
 
 function wavIsAWav() {
+  // Bytes rather than a Blob: the package has no browser in it, which is the
+  // property that lets this file run under node at all.
   const { samples } = level(utterance({ amp: 0.05 }));
-  const blob = encodeWav(samples, 44100);
-  return blob.arrayBuffer().then(buf => {
+  const bytes = encodeWav(samples, 44100);
+  return Promise.resolve(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)).then(buf => {
     const dv = new DataView(buf), txt = o => String.fromCharCode(
       dv.getUint8(o), dv.getUint8(o + 1), dv.getUint8(o + 2), dv.getUint8(o + 3));
     check('the wav says RIFF/WAVE', txt(0) === 'RIFF' && txt(8) === 'WAVE');

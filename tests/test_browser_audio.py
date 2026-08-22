@@ -2,7 +2,7 @@
 """Runs the browser build's audio tests, which are JavaScript.
 
 The recording chain exists twice: once in mitreden.py with ffmpeg, once in
-docs/audio.js for the browser. The Python half is covered by the tests
+JavaScript for the browser. The Python half is covered by the tests
 around it; the JavaScript half had nothing at all, and it is the half that
 ships to a static site with no server between a bad commit and the visitor.
 

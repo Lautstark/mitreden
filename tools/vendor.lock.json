@@ -2,9 +2,9 @@
   "binaries": true,
   "files": {
     "lamejs.js": {
-      "bytes": 259508,
-      "sha256": "1c5f944911ccf2f6e29ab36c2e568363210ab16f50c0d76077060f40ecf91d28",
-      "url": "https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.js"
+      "bytes": 260267,
+      "sha256": "6b5a8f60a70c191118b2b83de0574a306de389ab47418a561bd20aee09840563",
+      "url": "https://raw.githubusercontent.com/Lautstark/stimmquelle/0ff9af2152c30525b347f497f65a3f0c4f06c184/dist/browser/lamejs.js"
     },
     "ort-wasm-simd.wasm": {
       "bytes": 10595041,
@@ -31,10 +31,20 @@
       "sha256": "b777cd107a91d2bcc6a1ea46f2c26a662a7407394fe84589198aeaa83dd7a9d6",
       "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm"
     },
+    "stimmquelle.js": {
+      "bytes": 28600,
+      "sha256": "47e20974756624caaee752c5e059974ba0220a2f1e434d62346a6cfca434a265",
+      "url": "https://raw.githubusercontent.com/Lautstark/stimmquelle/0ff9af2152c30525b347f497f65a3f0c4f06c184/dist/browser/index.js"
+    },
     "vits-web.js": {
       "bytes": 13885,
       "sha256": "da2851c370ad6606f627c26db26490ebb0a455612866cd3b9a707778f65273cb",
       "url": "https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/vits-web.js"
+    },
+    "voices.json": {
+      "bytes": 13936,
+      "sha256": "c6f6afdb99d09c3397301cb63fbf2e476bd5229a97bf59aea22a67fc998dc996",
+      "url": "https://raw.githubusercontent.com/Lautstark/stimmquelle/0ff9af2152c30525b347f497f65a3f0c4f06c184/voices.json"
     }
   }
 }

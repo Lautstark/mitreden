@@ -1,3 +1,4 @@
+// node_modules/@breezystack/lamejs/dist/lamejs.js
 var fa = {};
 function Xa(w) {
   return new Int8Array(w);
@@ -98,7 +99,8 @@ u1.vbr_abr = new u1(3);
 u1.vbr_mtrh = new u1(4);
 u1.vbr_default = u1.vbr_mtrh;
 var qa = function(w) {
-}, Q0 = {
+};
+var Q0 = {
   System: W1,
   VbrMode: u1,
   Float: Ma,
@@ -115,7 +117,9 @@ var qa = function(w) {
   new_short: ma,
   new_short_n: Aa,
   assert: qa
-}, ce, De;
+};
+var ce;
+var De;
 function Da() {
   if (De)
     return ce;
@@ -699,7 +703,8 @@ function Da() {
   }
   return ce = Q, ce;
 }
-var Se, Ge;
+var Se;
+var Ge;
 function Ea() {
   if (Ge)
     return Se;
@@ -717,7 +722,8 @@ function Ea() {
   }
   return Se = W, Se;
 }
-var de, $e;
+var de;
+var $e;
 function Ga() {
   if ($e)
     return de;
@@ -739,7 +745,9 @@ R1.JOINT_STEREO = new R1(1);
 R1.DUAL_CHANNEL = new R1(2);
 R1.MONO = new R1(3);
 R1.NOT_SET = new R1(4);
-var j1 = R1, Ae, Pe;
+var j1 = R1;
+var Ae;
+var Pe;
 function t1() {
   if (Pe)
     return Ae;
@@ -897,7 +905,10 @@ function t1() {
   }
   return Ae = g, Ae;
 }
-var Ba = Q0, Ze = Ba.Util, Ke = Ba.new_float, J0 = t1();
+var Ba = Q0;
+var Ze = Ba.Util;
+var Ke = Ba.new_float;
+var J0 = t1();
 function $a() {
   var w = Ke(J0.BLKSIZE), Z = Ke(J0.BLKSIZE_s / 2), X = [
     0.9238795325112867,
@@ -1086,7 +1097,19 @@ function $a() {
       Z[Q] = 0.5 * (1 - Math.cos(2 * Math.PI * (Q + 0.5) / J0.BLKSIZE_s));
   };
 }
-var Pa = $a, T1 = Q0, C1 = T1.VbrMode, Ue = T1.Float, F1 = T1.ShortBlock, n1 = T1.Util, Za = T1.Arrays, g0 = T1.new_float, m1 = T1.new_float_n, L1 = T1.new_int, C0 = T1.assert, Ka = Pa, r0 = t1();
+var Pa = $a;
+var T1 = Q0;
+var C1 = T1.VbrMode;
+var Ue = T1.Float;
+var F1 = T1.ShortBlock;
+var n1 = T1.Util;
+var Za = T1.Arrays;
+var g0 = T1.new_float;
+var m1 = T1.new_float_n;
+var L1 = T1.new_int;
+var C0 = T1.assert;
+var Ka = Pa;
+var r0 = t1();
 function Ua() {
   var w = j1, Z = new Ka(), X = 2.302585092994046, z = 2, u0 = 16, W = 2, Q = 16, D = 0.34, g = 1 / (14752 * 14752) / (r0.BLKSIZE / 2), f0 = 0.01, A = 0.8, m = 0.6, O = 0.3, s0 = 3.5, K = 21, t0 = 0.2302585093;
   function U(v) {
@@ -2082,17 +2105,17 @@ function Ua() {
     );
   }
   this.psymodel_init = function(v) {
-    var h = v.internal_flags, x, y = !0, k = 13, c = 24, C = 0, G = 0, F = -8.25, e0 = -4.5, $ = g0(r0.CBANDS), a0 = g0(r0.CBANDS), m0 = g0(r0.CBANDS), N0 = v.out_samplerate;
+    var h = v.internal_flags, x, y = true, k = 13, c = 24, C = 0, G = 0, F = -8.25, e0 = -4.5, $ = g0(r0.CBANDS), a0 = g0(r0.CBANDS), m0 = g0(r0.CBANDS), N0 = v.out_samplerate;
     switch (v.experimentalZ) {
       default:
       case 0:
-        y = !0;
+        y = true;
         break;
       case 1:
         y = !(v.VBR == C1.vbr_mtrh || v.VBR == C1.vbr_mt);
         break;
       case 2:
-        y = !1;
+        y = false;
         break;
       case 3:
         k = 8, C = -1.75, G = -0.0125, F = -8.25, e0 = -2.25;
@@ -2242,13 +2265,20 @@ function Ua() {
     return x;
   };
 }
-var Qa = Ua, Wa = j1;
+var Qa = Ua;
+var Wa = j1;
 function ja() {
-  this.class_id = 0, this.num_samples = 0, this.num_channels = 0, this.in_samplerate = 0, this.out_samplerate = 0, this.scale = 0, this.scale_left = 0, this.scale_right = 0, this.analysis = !1, this.bWriteVbrTag = !1, this.decode_only = !1, this.quality = 0, this.mode = Wa.STEREO, this.force_ms = !1, this.free_format = !1, this.findReplayGain = !1, this.decode_on_the_fly = !1, this.write_id3tag_automatic = !1, this.brate = 0, this.compression_ratio = 0, this.copyright = 0, this.original = 0, this.extension = 0, this.emphasis = 0, this.error_protection = 0, this.strict_ISO = !1, this.disable_reservoir = !1, this.quant_comp = 0, this.quant_comp_short = 0, this.experimentalY = !1, this.experimentalZ = 0, this.exp_nspsytune = 0, this.preset = 0, this.VBR = null, this.VBR_q_frac = 0, this.VBR_q = 0, this.VBR_mean_bitrate_kbps = 0, this.VBR_min_bitrate_kbps = 0, this.VBR_max_bitrate_kbps = 0, this.VBR_hard_min = 0, this.lowpassfreq = 0, this.highpassfreq = 0, this.lowpasswidth = 0, this.highpasswidth = 0, this.maskingadjust = 0, this.maskingadjust_short = 0, this.ATHonly = !1, this.ATHshort = !1, this.noATH = !1, this.ATHtype = 0, this.ATHcurve = 0, this.ATHlower = 0, this.athaa_type = 0, this.athaa_loudapprox = 0, this.athaa_sensitivity = 0, this.short_blocks = null, this.useTemporal = !1, this.interChRatio = 0, this.msfix = 0, this.tune = !1, this.tune_value_a = 0, this.version = 0, this.encoder_delay = 0, this.encoder_padding = 0, this.framesize = 0, this.frameNum = 0, this.lame_allocated_gfp = 0, this.internal_flags = null;
+  this.class_id = 0, this.num_samples = 0, this.num_channels = 0, this.in_samplerate = 0, this.out_samplerate = 0, this.scale = 0, this.scale_left = 0, this.scale_right = 0, this.analysis = false, this.bWriteVbrTag = false, this.decode_only = false, this.quality = 0, this.mode = Wa.STEREO, this.force_ms = false, this.free_format = false, this.findReplayGain = false, this.decode_on_the_fly = false, this.write_id3tag_automatic = false, this.brate = 0, this.compression_ratio = 0, this.copyright = 0, this.original = 0, this.extension = 0, this.emphasis = 0, this.error_protection = 0, this.strict_ISO = false, this.disable_reservoir = false, this.quant_comp = 0, this.quant_comp_short = 0, this.experimentalY = false, this.experimentalZ = 0, this.exp_nspsytune = 0, this.preset = 0, this.VBR = null, this.VBR_q_frac = 0, this.VBR_q = 0, this.VBR_mean_bitrate_kbps = 0, this.VBR_min_bitrate_kbps = 0, this.VBR_max_bitrate_kbps = 0, this.VBR_hard_min = 0, this.lowpassfreq = 0, this.highpassfreq = 0, this.lowpasswidth = 0, this.highpasswidth = 0, this.maskingadjust = 0, this.maskingadjust_short = 0, this.ATHonly = false, this.ATHshort = false, this.noATH = false, this.ATHtype = 0, this.ATHcurve = 0, this.ATHlower = 0, this.athaa_type = 0, this.athaa_loudapprox = 0, this.athaa_sensitivity = 0, this.short_blocks = null, this.useTemporal = false, this.interChRatio = 0, this.msfix = 0, this.tune = false, this.tune_value_a = 0, this.version = 0, this.encoder_delay = 0, this.encoder_padding = 0, this.framesize = 0, this.frameNum = 0, this.lame_allocated_gfp = 0, this.internal_flags = null;
 }
-var za = ja, Ja = t1(), Ta = {};
+var za = ja;
+var Ja = t1();
+var Ta = {};
 Ta.SFBMAX = Ja.SBMAX_s * 3;
-var ie = Ta, ya = Q0, ga = ya.new_float, N1 = ya.new_int, Re = ie;
+var ie = Ta;
+var ya = Q0;
+var ga = ya.new_float;
+var N1 = ya.new_int;
+var Re = ie;
 function e2() {
   this.xr = ga(576), this.l3_enc = N1(576), this.scalefac = N1(Re.SFBMAX), this.xrpow_max = 0, this.part2_3_length = 0, this.big_values = 0, this.count1 = 0, this.global_gain = 0, this.scalefac_compress = 0, this.block_type = 0, this.mixed_block_flag = 0, this.table_select = N1(3), this.subblock_gain = N1(3 + 1), this.region0_count = 0, this.region1_count = 0, this.preflag = 0, this.scalefac_scale = 0, this.count1table_select = 0, this.part2_length = 0, this.sfb_lmax = 0, this.sfb_smin = 0, this.psy_lmax = 0, this.sfbmax = 0, this.psymax = 0, this.sfbdivide = 0, this.width = N1(Re.SFBMAX), this.window = N1(Re.SFBMAX), this.count1bits = 0, this.sfb_partition_table = null, this.slen = N1(4), this.max_nonzero_coeff = 0;
   var w = this;
@@ -2262,20 +2292,32 @@ function e2() {
     w.xr = X(z.xr), w.l3_enc = Z(z.l3_enc), w.scalefac = Z(z.scalefac), w.xrpow_max = z.xrpow_max, w.part2_3_length = z.part2_3_length, w.big_values = z.big_values, w.count1 = z.count1, w.global_gain = z.global_gain, w.scalefac_compress = z.scalefac_compress, w.block_type = z.block_type, w.mixed_block_flag = z.mixed_block_flag, w.table_select = Z(z.table_select), w.subblock_gain = Z(z.subblock_gain), w.region0_count = z.region0_count, w.region1_count = z.region1_count, w.preflag = z.preflag, w.scalefac_scale = z.scalefac_scale, w.count1table_select = z.count1table_select, w.part2_length = z.part2_length, w.sfb_lmax = z.sfb_lmax, w.sfb_smin = z.sfb_smin, w.psy_lmax = z.psy_lmax, w.sfbmax = z.sfbmax, w.psymax = z.psymax, w.sfbdivide = z.sfbdivide, w.width = Z(z.width), w.window = Z(z.window), w.count1bits = z.count1bits, w.sfb_partition_table = z.sfb_partition_table.slice(0), w.slen = Z(z.slen), w.max_nonzero_coeff = z.max_nonzero_coeff;
   };
 }
-var Le = e2, a2 = Q0, Qe = a2.new_int, r2 = Le;
+var Le = e2;
+var a2 = Q0;
+var Qe = a2.new_int;
+var r2 = Le;
 function t2() {
   this.tt = [[null, null], [null, null]], this.main_data_begin = 0, this.private_bits = 0, this.resvDrain_pre = 0, this.resvDrain_post = 0, this.scfsi = [Qe(4), Qe(4)];
   for (var w = 0; w < 2; w++)
     for (var Z = 0; Z < 2; Z++)
       this.tt[w][Z] = new r2();
 }
-var s2 = t2, wa = Q0, g1 = wa.System, ee = wa.new_int, ae = t1();
+var s2 = t2;
+var wa = Q0;
+var g1 = wa.System;
+var ee = wa.new_int;
+var ae = t1();
 function i2(w, Z, X, z) {
   this.l = ee(1 + ae.SBMAX_l), this.s = ee(1 + ae.SBMAX_s), this.psfb21 = ee(1 + ae.PSFB21), this.psfb12 = ee(1 + ae.PSFB12);
   var u0 = this.l, W = this.s;
   arguments.length == 4 && (this.arrL = arguments[0], this.arrS = arguments[1], this.arr21 = arguments[2], this.arr12 = arguments[3], g1.arraycopy(this.arrL, 0, u0, 0, Math.min(this.arrL.length, this.l.length)), g1.arraycopy(this.arrS, 0, W, 0, Math.min(this.arrS.length, this.s.length)), g1.arraycopy(this.arr21, 0, this.psfb21, 0, Math.min(this.arr21.length, this.psfb21.length)), g1.arraycopy(this.arr12, 0, this.psfb12, 0, Math.min(this.arr12.length, this.psfb12.length)));
 }
-var Ia = i2, Ne = Q0, xe = Ne.new_float, n2 = Ne.new_float_n, _2 = Ne.new_int, We = t1();
+var Ia = i2;
+var Ne = Q0;
+var xe = Ne.new_float;
+var n2 = Ne.new_float_n;
+var _2 = Ne.new_int;
+var We = t1();
 function l2() {
   this.last_en_subshort = n2([4, 9]), this.lastAttacks = _2(4), this.pefirbuf = xe(19), this.longfact = xe(We.SBMAX_l), this.shortfact = xe(We.SBMAX_s), this.attackthre = 0, this.attackthre_s = 0;
 }
@@ -2283,7 +2325,21 @@ var v2 = l2;
 function o2() {
   this.sum = 0, this.seen = 0, this.want = 0, this.pos = 0, this.size = 0, this.bag = null, this.nVbrNumFrames = 0, this.nBytesWritten = 0, this.TotalFrameSize = 0;
 }
-var h2 = o2, Y1 = Q0, u2 = Y1.new_byte, f2 = Y1.new_double, b1 = Y1.new_float, p1 = Y1.new_float_n, d1 = Y1.new_int, re = Y1.new_int_n, m2 = s2, b2 = Ia, c2 = v2, S2 = h2, je = Ea(), W0 = t1(), d2 = ie;
+var h2 = o2;
+var Y1 = Q0;
+var u2 = Y1.new_byte;
+var f2 = Y1.new_double;
+var b1 = Y1.new_float;
+var p1 = Y1.new_float_n;
+var d1 = Y1.new_int;
+var re = Y1.new_int_n;
+var m2 = s2;
+var b2 = Ia;
+var c2 = v2;
+var S2 = h2;
+var je = Ea();
+var W0 = t1();
+var d2 = ie;
 E1.MFSIZE = 3 * 1152 + W0.ENCDELAY - W0.MDCTDELAY;
 E1.MAX_HEADER_BUF = 256;
 E1.MAX_BITS_PER_CHANNEL = 4095;
@@ -2291,11 +2347,11 @@ E1.MAX_BITS_PER_GRANULE = 7680;
 E1.BPC = 320;
 function E1() {
   var w = 40;
-  this.Class_ID = 0, this.lame_encode_frame_init = 0, this.iteration_init_init = 0, this.fill_buffer_resample_init = 0, this.mfbuf = p1([2, E1.MFSIZE]), this.mode_gr = 0, this.channels_in = 0, this.channels_out = 0, this.resample_ratio = 0, this.mf_samples_to_encode = 0, this.mf_size = 0, this.VBR_min_bitrate = 0, this.VBR_max_bitrate = 0, this.bitrate_index = 0, this.samplerate_index = 0, this.mode_ext = 0, this.lowpass1 = 0, this.lowpass2 = 0, this.highpass1 = 0, this.highpass2 = 0, this.noise_shaping = 0, this.noise_shaping_amp = 0, this.substep_shaping = 0, this.psymodel = 0, this.noise_shaping_stop = 0, this.subblock_gain = 0, this.use_best_huffman = 0, this.full_outer_loop = 0, this.l3_side = new m2(), this.ms_ratio = b1(2), this.padding = 0, this.frac_SpF = 0, this.slot_lag = 0, this.tag_spec = null, this.nMusicCRC = 0, this.OldValue = d1(2), this.CurrentStep = d1(2), this.masking_lower = 0, this.bv_scf = d1(576), this.pseudohalf = d1(d2.SFBMAX), this.sfb21_extra = !1, this.inbuf_old = new Array(2), this.blackfilt = new Array(2 * E1.BPC + 1), this.itime = f2(2), this.sideinfo_len = 0, this.sb_sample = p1([2, 2, 18, W0.SBLIMIT]), this.amp_filter = b1(32);
+  this.Class_ID = 0, this.lame_encode_frame_init = 0, this.iteration_init_init = 0, this.fill_buffer_resample_init = 0, this.mfbuf = p1([2, E1.MFSIZE]), this.mode_gr = 0, this.channels_in = 0, this.channels_out = 0, this.resample_ratio = 0, this.mf_samples_to_encode = 0, this.mf_size = 0, this.VBR_min_bitrate = 0, this.VBR_max_bitrate = 0, this.bitrate_index = 0, this.samplerate_index = 0, this.mode_ext = 0, this.lowpass1 = 0, this.lowpass2 = 0, this.highpass1 = 0, this.highpass2 = 0, this.noise_shaping = 0, this.noise_shaping_amp = 0, this.substep_shaping = 0, this.psymodel = 0, this.noise_shaping_stop = 0, this.subblock_gain = 0, this.use_best_huffman = 0, this.full_outer_loop = 0, this.l3_side = new m2(), this.ms_ratio = b1(2), this.padding = 0, this.frac_SpF = 0, this.slot_lag = 0, this.tag_spec = null, this.nMusicCRC = 0, this.OldValue = d1(2), this.CurrentStep = d1(2), this.masking_lower = 0, this.bv_scf = d1(576), this.pseudohalf = d1(d2.SFBMAX), this.sfb21_extra = false, this.inbuf_old = new Array(2), this.blackfilt = new Array(2 * E1.BPC + 1), this.itime = f2(2), this.sideinfo_len = 0, this.sb_sample = p1([2, 2, 18, W0.SBLIMIT]), this.amp_filter = b1(32);
   function Z() {
     this.write_timing = 0, this.ptr = 0, this.buf = u2(w);
   }
-  this.header = new Array(E1.MAX_HEADER_BUF), this.h_ptr = 0, this.w_ptr = 0, this.ancillary_flag = 0, this.ResvSize = 0, this.ResvMax = 0, this.scalefac_band = new b2(), this.minval_l = b1(W0.CBANDS), this.minval_s = b1(W0.CBANDS), this.nb_1 = p1([4, W0.CBANDS]), this.nb_2 = p1([4, W0.CBANDS]), this.nb_s1 = p1([4, W0.CBANDS]), this.nb_s2 = p1([4, W0.CBANDS]), this.s3_ss = null, this.s3_ll = null, this.decay = 0, this.thm = new Array(4), this.en = new Array(4), this.tot_ener = b1(4), this.loudness_sq = p1([2, 2]), this.loudness_sq_save = b1(2), this.mld_l = b1(W0.SBMAX_l), this.mld_s = b1(W0.SBMAX_s), this.bm_l = d1(W0.SBMAX_l), this.bo_l = d1(W0.SBMAX_l), this.bm_s = d1(W0.SBMAX_s), this.bo_s = d1(W0.SBMAX_s), this.npart_l = 0, this.npart_s = 0, this.s3ind = re([W0.CBANDS, 2]), this.s3ind_s = re([W0.CBANDS, 2]), this.numlines_s = d1(W0.CBANDS), this.numlines_l = d1(W0.CBANDS), this.rnumlines_l = b1(W0.CBANDS), this.mld_cb_l = b1(W0.CBANDS), this.mld_cb_s = b1(W0.CBANDS), this.numlines_s_num1 = 0, this.numlines_l_num1 = 0, this.pe = b1(4), this.ms_ratio_s_old = 0, this.ms_ratio_l_old = 0, this.ms_ener_ratio_old = 0, this.blocktype_old = d1(2), this.nsPsy = new c2(), this.VBR_seek_table = new S2(), this.ATH = null, this.PSY = null, this.nogap_total = 0, this.nogap_current = 0, this.decode_on_the_fly = !0, this.findReplayGain = !0, this.findPeakSample = !0, this.PeakSample = 0, this.RadioGain = 0, this.AudiophileGain = 0, this.rgdata = null, this.noclipGainChange = 0, this.noclipScale = 0, this.bitrate_stereoMode_Hist = re([16, 4 + 1]), this.bitrate_blockType_Hist = re([16, 4 + 1 + 1]), this.pinfo = null, this.hip = null, this.in_buffer_nsamples = 0, this.in_buffer_0 = null, this.in_buffer_1 = null, this.iteration_loop = null;
+  this.header = new Array(E1.MAX_HEADER_BUF), this.h_ptr = 0, this.w_ptr = 0, this.ancillary_flag = 0, this.ResvSize = 0, this.ResvMax = 0, this.scalefac_band = new b2(), this.minval_l = b1(W0.CBANDS), this.minval_s = b1(W0.CBANDS), this.nb_1 = p1([4, W0.CBANDS]), this.nb_2 = p1([4, W0.CBANDS]), this.nb_s1 = p1([4, W0.CBANDS]), this.nb_s2 = p1([4, W0.CBANDS]), this.s3_ss = null, this.s3_ll = null, this.decay = 0, this.thm = new Array(4), this.en = new Array(4), this.tot_ener = b1(4), this.loudness_sq = p1([2, 2]), this.loudness_sq_save = b1(2), this.mld_l = b1(W0.SBMAX_l), this.mld_s = b1(W0.SBMAX_s), this.bm_l = d1(W0.SBMAX_l), this.bo_l = d1(W0.SBMAX_l), this.bm_s = d1(W0.SBMAX_s), this.bo_s = d1(W0.SBMAX_s), this.npart_l = 0, this.npart_s = 0, this.s3ind = re([W0.CBANDS, 2]), this.s3ind_s = re([W0.CBANDS, 2]), this.numlines_s = d1(W0.CBANDS), this.numlines_l = d1(W0.CBANDS), this.rnumlines_l = b1(W0.CBANDS), this.mld_cb_l = b1(W0.CBANDS), this.mld_cb_s = b1(W0.CBANDS), this.numlines_s_num1 = 0, this.numlines_l_num1 = 0, this.pe = b1(4), this.ms_ratio_s_old = 0, this.ms_ratio_l_old = 0, this.ms_ener_ratio_old = 0, this.blocktype_old = d1(2), this.nsPsy = new c2(), this.VBR_seek_table = new S2(), this.ATH = null, this.PSY = null, this.nogap_total = 0, this.nogap_current = 0, this.decode_on_the_fly = true, this.findReplayGain = true, this.findPeakSample = true, this.PeakSample = 0, this.RadioGain = 0, this.AudiophileGain = 0, this.rgdata = null, this.noclipGainChange = 0, this.noclipScale = 0, this.bitrate_stereoMode_Hist = re([16, 4 + 1]), this.bitrate_blockType_Hist = re([16, 4 + 1 + 1]), this.pinfo = null, this.hip = null, this.in_buffer_nsamples = 0, this.in_buffer_0 = null, this.in_buffer_1 = null, this.iteration_loop = null;
   for (var X = 0; X < this.en.length; X++)
     this.en[X] = new je();
   for (var X = 0; X < this.thm.length; X++)
@@ -2303,11 +2359,17 @@ function E1() {
   for (var X = 0; X < this.header.length; X++)
     this.header[X] = new Z();
 }
-var ne = E1, A2 = Q0, H1 = A2.new_float, V1 = t1();
+var ne = E1;
+var A2 = Q0;
+var H1 = A2.new_float;
+var V1 = t1();
 function R2() {
   this.useAdjust = 0, this.aaSensitivityP = 0, this.adjust = 0, this.adjustLimit = 0, this.decay = 0, this.floor = 0, this.l = H1(V1.SBMAX_l), this.s = H1(V1.SBMAX_s), this.psfb21 = H1(V1.PSFB21), this.psfb12 = H1(V1.PSFB12), this.cb_l = H1(V1.CBANDS), this.cb_s = H1(V1.CBANDS), this.eql_w = H1(V1.BLKSIZE / 2);
 }
-var x2 = R2, La = Q0, _1 = La.System, ze = La.Arrays;
+var x2 = R2;
+var La = Q0;
+var _1 = La.System;
+var ze = La.Arrays;
 j0.STEPS_per_dB = 100;
 j0.MAX_dB = 120;
 j0.GAIN_NOT_ENOUGH_SAMPLES = -24601;
@@ -2778,7 +2840,11 @@ function j0() {
     return m.totsamp = 0, m.lsum = m.rsum = 0, O;
   };
 }
-var Na = j0, pa = Q0, k1 = pa.new_float, Je = pa.new_int, l1 = Na;
+var Na = j0;
+var pa = Q0;
+var k1 = pa.new_float;
+var Je = pa.new_int;
+var l1 = Na;
 function M2() {
   this.linprebuf = k1(l1.MAX_ORDER * 2), this.linpre = 0, this.lstepbuf = k1(l1.MAX_SAMPLES_PER_WINDOW + l1.MAX_ORDER), this.lstep = 0, this.loutbuf = k1(l1.MAX_SAMPLES_PER_WINDOW + l1.MAX_ORDER), this.lout = 0, this.rinprebuf = k1(l1.MAX_ORDER * 2), this.rinpre = 0, this.rstepbuf = k1(l1.MAX_SAMPLES_PER_WINDOW + l1.MAX_ORDER), this.rstep = 0, this.routbuf = k1(l1.MAX_SAMPLES_PER_WINDOW + l1.MAX_ORDER), this.rout = 0, this.sampleWindow = 0, this.totsamp = 0, this.lsum = 0, this.rsum = 0, this.freqindex = 0, this.first = 0, this.A = Je(0 | l1.STEPS_per_dB * l1.MAX_dB), this.B = Je(0 | l1.STEPS_per_dB * l1.MAX_dB);
 }
@@ -2786,7 +2852,15 @@ var E2 = M2;
 function B2(w) {
   this.bits = w;
 }
-var Ha = B2, pe = Q0, ge = pe.new_float, T2 = pe.new_int, ea = pe.assert, y2 = Ha, aa = t1(), w2 = ie, I2 = ne;
+var Ha = B2;
+var pe = Q0;
+var ge = pe.new_float;
+var T2 = pe.new_int;
+var ea = pe.assert;
+var y2 = Ha;
+var aa = t1();
+var w2 = ie;
+var I2 = ne;
 function L2(w) {
   var Z = w;
   this.quantize = Z, this.iteration_loop = function(X, z, u0, W) {
@@ -6320,7 +6394,9 @@ o0.samplerate_table = [
   [11025, 12e3, 8e3, -1]
 ];
 o0.scfsi_band = [0, 6, 11, 16, 21];
-var He = o0, Me, ra;
+var He = o0;
+var Me;
+var ra;
 function Va() {
   if (ra)
     return Me;
@@ -6945,7 +7021,8 @@ function Va() {
   }
   return Me = m, Me;
 }
-var Ee, ta;
+var Ee;
+var ta;
 function Oa() {
   if (ta)
     return Ee;
@@ -7398,8 +7475,8 @@ function Oa() {
     function a(E, i) {
       for (var s = 0; s < i; ++s)
         if (E[s] < 0)
-          return !1;
-      return !0;
+          return false;
+      return true;
     }
     var S = [
       0,
@@ -7498,8 +7575,8 @@ function Oa() {
           for (f = d0[n], T = 0; T < f; T++, q++)
             h0[q] > i0[n] && (i0[n] = h0[q]);
       }
-      for (J = !1, n = 0; n < 4; n++)
-        i0[n] > N[s][n] && (J = !0);
+      for (J = false, n = 0; n < 4; n++)
+        i0[n] > N[s][n] && (J = true);
       if (!J) {
         var M0, R0, A0, w0;
         for (i.sfb_partition_table = A.nr_of_sfb_block[s][r], n = 0; n < 4; n++)
@@ -7557,7 +7634,8 @@ function Oa() {
   }
   return Ee = f0, Ee;
 }
-var Be, sa;
+var Be;
+var sa;
 function Ve() {
   if (sa)
     return Be;
@@ -7855,7 +7933,8 @@ bitsperframe:             %d
   }
   return Be = m, Be;
 }
-var Te, ia;
+var Te;
+var ia;
 function Oe() {
   if (ia)
     return Te;
@@ -7882,7 +7961,7 @@ function Oe() {
     var N = 4294479419;
     function P(t) {
       var _;
-      return t.class_id = N, _ = t.internal_flags = new A(), t.mode = o.NOT_SET, t.original = 1, t.in_samplerate = 44100, t.num_channels = 2, t.num_samples = -1, t.bWriteVbrTag = !0, t.quality = -1, t.short_blocks = null, _.subblock_gain = -1, t.lowpassfreq = 0, t.highpassfreq = 0, t.lowpasswidth = -1, t.highpasswidth = -1, t.VBR = X.vbr_off, t.VBR_q = 4, t.ATHcurve = -1, t.VBR_mean_bitrate_kbps = 128, t.VBR_min_bitrate_kbps = 0, t.VBR_max_bitrate_kbps = 0, t.VBR_hard_min = 0, _.VBR_min_bitrate = 1, _.VBR_max_bitrate = 13, t.quant_comp = -1, t.quant_comp_short = -1, t.msfix = -1, _.resample_ratio = 1, _.OldValue[0] = 180, _.OldValue[1] = 180, _.CurrentStep[0] = 4, _.CurrentStep[1] = 4, _.masking_lower = 1, _.nsPsy.attackthre = -1, _.nsPsy.attackthre_s = -1, t.scale = -1, t.athaa_type = -1, t.ATHtype = -1, t.athaa_loudapprox = -1, t.athaa_sensitivity = 0, t.useTemporal = null, t.interChRatio = -1, _.mf_samples_to_encode = U.ENCDELAY + U.POSTDELAY, t.encoder_padding = 0, _.mf_size = U.ENCDELAY - U.MDCTDELAY, t.findReplayGain = !1, t.decode_on_the_fly = !1, _.decode_on_the_fly = !1, _.findReplayGain = !1, _.findPeakSample = !1, _.RadioGain = 0, _.AudiophileGain = 0, _.noclipGainChange = 0, _.noclipScale = -1, t.preset = 0, t.write_id3tag_automatic = !0, 0;
+      return t.class_id = N, _ = t.internal_flags = new A(), t.mode = o.NOT_SET, t.original = 1, t.in_samplerate = 44100, t.num_channels = 2, t.num_samples = -1, t.bWriteVbrTag = true, t.quality = -1, t.short_blocks = null, _.subblock_gain = -1, t.lowpassfreq = 0, t.highpassfreq = 0, t.lowpasswidth = -1, t.highpasswidth = -1, t.VBR = X.vbr_off, t.VBR_q = 4, t.ATHcurve = -1, t.VBR_mean_bitrate_kbps = 128, t.VBR_min_bitrate_kbps = 0, t.VBR_max_bitrate_kbps = 0, t.VBR_hard_min = 0, _.VBR_min_bitrate = 1, _.VBR_max_bitrate = 13, t.quant_comp = -1, t.quant_comp_short = -1, t.msfix = -1, _.resample_ratio = 1, _.OldValue[0] = 180, _.OldValue[1] = 180, _.CurrentStep[0] = 4, _.CurrentStep[1] = 4, _.masking_lower = 1, _.nsPsy.attackthre = -1, _.nsPsy.attackthre_s = -1, t.scale = -1, t.athaa_type = -1, t.ATHtype = -1, t.athaa_loudapprox = -1, t.athaa_sensitivity = 0, t.useTemporal = null, t.interChRatio = -1, _.mf_samples_to_encode = U.ENCDELAY + U.POSTDELAY, t.encoder_padding = 0, _.mf_size = U.ENCDELAY - U.MDCTDELAY, t.findReplayGain = false, t.decode_on_the_fly = false, _.decode_on_the_fly = false, _.findReplayGain = false, _.findPeakSample = false, _.RadioGain = 0, _.AudiophileGain = 0, _.noclipGainChange = 0, _.noclipScale = -1, t.preset = 0, t.write_id3tag_automatic = true, 0;
     }
     this.lame_init = function() {
       var t = new f0();
@@ -8045,7 +8124,7 @@ function Oe() {
     }
     this.lame_init_params = function(t) {
       var _ = t.internal_flags;
-      if (_.Class_ID = 0, _.ATH == null && (_.ATH = new m()), _.PSY == null && (_.PSY = new S()), _.rgdata == null && (_.rgdata = new O()), _.channels_in = t.num_channels, _.channels_in == 1 && (t.mode = o.MONO), _.channels_out = t.mode == o.MONO ? 1 : 2, _.mode_ext = U.MPG_MD_MS_LR, t.mode == o.MONO && (t.force_ms = !1), t.VBR == X.vbr_off && t.VBR_mean_bitrate_kbps != 128 && t.brate == 0 && (t.brate = t.VBR_mean_bitrate_kbps), t.VBR == X.vbr_off || t.VBR == X.vbr_mtrh || t.VBR == X.vbr_mt || (t.free_format = !1), t.VBR == X.vbr_off && t.brate == 0 && K.EQ(t.compression_ratio, 0) && (t.compression_ratio = 11.025), t.VBR == X.vbr_off && t.compression_ratio > 0 && (t.out_samplerate == 0 && (t.out_samplerate = map2MP3Frequency(int(0.97 * t.in_samplerate))), t.brate = 0 | t.out_samplerate * 16 * _.channels_out / (1e3 * t.compression_ratio), _.samplerate_index = s(t.out_samplerate, t), t.free_format || (t.brate = r(
+      if (_.Class_ID = 0, _.ATH == null && (_.ATH = new m()), _.PSY == null && (_.PSY = new S()), _.rgdata == null && (_.rgdata = new O()), _.channels_in = t.num_channels, _.channels_in == 1 && (t.mode = o.MONO), _.channels_out = t.mode == o.MONO ? 1 : 2, _.mode_ext = U.MPG_MD_MS_LR, t.mode == o.MONO && (t.force_ms = false), t.VBR == X.vbr_off && t.VBR_mean_bitrate_kbps != 128 && t.brate == 0 && (t.brate = t.VBR_mean_bitrate_kbps), t.VBR == X.vbr_off || t.VBR == X.vbr_mtrh || t.VBR == X.vbr_mt || (t.free_format = false), t.VBR == X.vbr_off && t.brate == 0 && K.EQ(t.compression_ratio, 0) && (t.compression_ratio = 11.025), t.VBR == X.vbr_off && t.compression_ratio > 0 && (t.out_samplerate == 0 && (t.out_samplerate = map2MP3Frequency(int(0.97 * t.in_samplerate))), t.brate = 0 | t.out_samplerate * 16 * _.channels_out / (1e3 * t.compression_ratio), _.samplerate_index = s(t.out_samplerate, t), t.free_format || (t.brate = r(
         t.brate,
         t.version,
         t.out_samplerate
@@ -8127,7 +8206,7 @@ function Oe() {
       if (t.out_samplerate == 0 && (2 * t.lowpassfreq > t.in_samplerate && (t.lowpassfreq = t.in_samplerate / 2), t.out_samplerate = i(
         t.lowpassfreq | 0,
         t.in_samplerate
-      )), t.lowpassfreq = Math.min(20500, t.lowpassfreq), t.lowpassfreq = Math.min(t.out_samplerate / 2, t.lowpassfreq), t.VBR == X.vbr_off && (t.compression_ratio = t.out_samplerate * 16 * _.channels_out / (1e3 * t.brate)), t.VBR == X.vbr_abr && (t.compression_ratio = t.out_samplerate * 16 * _.channels_out / (1e3 * t.VBR_mean_bitrate_kbps)), t.bWriteVbrTag || (t.findReplayGain = !1, t.decode_on_the_fly = !1, _.findPeakSample = !1), _.findReplayGain = t.findReplayGain, _.decode_on_the_fly = t.decode_on_the_fly, _.decode_on_the_fly && (_.findPeakSample = !0), _.findReplayGain && l.InitGainAnalysis(_.rgdata, t.out_samplerate) == GainAnalysis.INIT_GAIN_ANALYSIS_ERROR)
+      )), t.lowpassfreq = Math.min(20500, t.lowpassfreq), t.lowpassfreq = Math.min(t.out_samplerate / 2, t.lowpassfreq), t.VBR == X.vbr_off && (t.compression_ratio = t.out_samplerate * 16 * _.channels_out / (1e3 * t.brate)), t.VBR == X.vbr_abr && (t.compression_ratio = t.out_samplerate * 16 * _.channels_out / (1e3 * t.VBR_mean_bitrate_kbps)), t.bWriteVbrTag || (t.findReplayGain = false, t.decode_on_the_fly = false, _.findPeakSample = false), _.findReplayGain = t.findReplayGain, _.decode_on_the_fly = t.decode_on_the_fly, _.decode_on_the_fly && (_.findPeakSample = true), _.findReplayGain && l.InitGainAnalysis(_.rgdata, t.out_samplerate) == GainAnalysis.INIT_GAIN_ANALYSIS_ERROR)
         return t.internal_flags = null, -6;
       switch (_.decode_on_the_fly && !t.decode_only && (_.hip != null && a.hip_decode_exit(_.hip), _.hip = a.hip_decode_init()), _.mode_gr = t.out_samplerate <= 24e3 ? 1 : 2, t.framesize = 576 * _.mode_gr, t.encoder_delay = U.ENCDELAY, _.resample_ratio = t.in_samplerate / t.out_samplerate, t.VBR) {
         case X.vbr_mt:
@@ -8173,7 +8252,7 @@ function Oe() {
           return t.internal_flags = null, -1;
       } else
         _.bitrate_index = 1;
-      t.analysis && (t.bWriteVbrTag = !1), _.pinfo != null && (t.bWriteVbrTag = !1), M.init_bit_stream_w(_);
+      t.analysis && (t.bWriteVbrTag = false), _.pinfo != null && (t.bWriteVbrTag = false), M.init_bit_stream_w(_);
       for (var I0 = _.samplerate_index + 3 * t.version + 6 * (t.out_samplerate < 16e3 ? 1 : 0), b0 = 0; b0 < U.SBMAX_l + 1; b0++)
         _.scalefac_band.l[b0] = H.sfBandIndex[I0].l[b0];
       for (var b0 = 0; b0 < U.PSFB21 + 1; b0++) {
@@ -8198,16 +8277,16 @@ function Oe() {
         case X.vbr_mt:
           t.VBR = X.vbr_mtrh;
         case X.vbr_mtrh: {
-          t.useTemporal == null && (t.useTemporal = !1), p.apply_preset(t, 500 - t.VBR_q * 10, 0), t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), t.quality < 5 && (t.quality = 0), t.quality > 5 && (t.quality = 5), _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, t.experimentalY ? _.sfb21_extra = !1 : _.sfb21_extra = t.out_samplerate > 44e3, _.iteration_loop = new VBRNewIterationLoop(B);
+          t.useTemporal == null && (t.useTemporal = false), p.apply_preset(t, 500 - t.VBR_q * 10, 0), t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), t.quality < 5 && (t.quality = 0), t.quality > 5 && (t.quality = 5), _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, t.experimentalY ? _.sfb21_extra = false : _.sfb21_extra = t.out_samplerate > 44e3, _.iteration_loop = new VBRNewIterationLoop(B);
           break;
         }
         case X.vbr_rh: {
-          p.apply_preset(t, 500 - t.VBR_q * 10, 0), _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, t.experimentalY ? _.sfb21_extra = !1 : _.sfb21_extra = t.out_samplerate > 44e3, t.quality > 6 && (t.quality = 6), t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), _.iteration_loop = new VBROldIterationLoop(B);
+          p.apply_preset(t, 500 - t.VBR_q * 10, 0), _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, t.experimentalY ? _.sfb21_extra = false : _.sfb21_extra = t.out_samplerate > 44e3, t.quality > 6 && (t.quality = 6), t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), _.iteration_loop = new VBROldIterationLoop(B);
           break;
         }
         default: {
           var v;
-          _.sfb21_extra = !1, t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), v = t.VBR, v == X.vbr_off && (t.VBR_mean_bitrate_kbps = t.brate), p.apply_preset(t, t.VBR_mean_bitrate_kbps, 0), t.VBR = v, _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, v == X.vbr_off ? _.iteration_loop = new s0(B) : _.iteration_loop = new ABRIterationLoop(B);
+          _.sfb21_extra = false, t.quality < 0 && (t.quality = LAME_DEFAULT_QUALITY), v = t.VBR, v == X.vbr_off && (t.VBR_mean_bitrate_kbps = t.brate), p.apply_preset(t, t.VBR_mean_bitrate_kbps, 0), t.VBR = v, _.PSY.mask_adjust = t.maskingadjust, _.PSY.mask_adjust_short = t.maskingadjust_short, v == X.vbr_off ? _.iteration_loop = new s0(B) : _.iteration_loop = new ABRIterationLoop(B);
           break;
         }
       }
@@ -8238,7 +8317,7 @@ function Oe() {
           t.VBR_mean_bitrate_kbps
         );
       }
-      return t.tune && (_.PSY.mask_adjust += t.tune_value_a, _.PSY.mask_adjust_short += t.tune_value_a), J(t), D(t.scale >= 0), t.athaa_type < 0 ? _.ATH.useAdjust = 3 : _.ATH.useAdjust = t.athaa_type, _.ATH.aaSensitivityP = Math.pow(10, t.athaa_sensitivity / -10), t.short_blocks == null && (t.short_blocks = z.short_block_allowed), t.short_blocks == z.short_block_allowed && (t.mode == o.JOINT_STEREO || t.mode == o.STEREO) && (t.short_blocks = z.short_block_coupled), t.quant_comp < 0 && (t.quant_comp = 1), t.quant_comp_short < 0 && (t.quant_comp_short = 0), t.msfix < 0 && (t.msfix = 0), t.exp_nspsytune = t.exp_nspsytune | 1, t.internal_flags.nsPsy.attackthre < 0 && (t.internal_flags.nsPsy.attackthre = g.NSATTACKTHRE), t.internal_flags.nsPsy.attackthre_s < 0 && (t.internal_flags.nsPsy.attackthre_s = g.NSATTACKTHRE_S), D(t.scale >= 0), t.scale < 0 && (t.scale = 1), t.ATHtype < 0 && (t.ATHtype = 4), t.ATHcurve < 0 && (t.ATHcurve = 4), t.athaa_loudapprox < 0 && (t.athaa_loudapprox = 2), t.interChRatio < 0 && (t.interChRatio = 0), t.useTemporal == null && (t.useTemporal = !0), _.slot_lag = _.frac_SpF = 0, t.VBR == X.vbr_off && (_.slot_lag = _.frac_SpF = (t.version + 1) * 72e3 * t.brate % t.out_samplerate | 0), H.iteration_init(t), I.psymodel_init(t), D(t.scale >= 0), 0;
+      return t.tune && (_.PSY.mask_adjust += t.tune_value_a, _.PSY.mask_adjust_short += t.tune_value_a), J(t), D(t.scale >= 0), t.athaa_type < 0 ? _.ATH.useAdjust = 3 : _.ATH.useAdjust = t.athaa_type, _.ATH.aaSensitivityP = Math.pow(10, t.athaa_sensitivity / -10), t.short_blocks == null && (t.short_blocks = z.short_block_allowed), t.short_blocks == z.short_block_allowed && (t.mode == o.JOINT_STEREO || t.mode == o.STEREO) && (t.short_blocks = z.short_block_coupled), t.quant_comp < 0 && (t.quant_comp = 1), t.quant_comp_short < 0 && (t.quant_comp_short = 0), t.msfix < 0 && (t.msfix = 0), t.exp_nspsytune = t.exp_nspsytune | 1, t.internal_flags.nsPsy.attackthre < 0 && (t.internal_flags.nsPsy.attackthre = g.NSATTACKTHRE), t.internal_flags.nsPsy.attackthre_s < 0 && (t.internal_flags.nsPsy.attackthre_s = g.NSATTACKTHRE_S), D(t.scale >= 0), t.scale < 0 && (t.scale = 1), t.ATHtype < 0 && (t.ATHtype = 4), t.ATHcurve < 0 && (t.ATHcurve = 4), t.athaa_loudapprox < 0 && (t.athaa_loudapprox = 2), t.interChRatio < 0 && (t.interChRatio = 0), t.useTemporal == null && (t.useTemporal = true), _.slot_lag = _.frac_SpF = 0, t.VBR == X.vbr_off && (_.slot_lag = _.frac_SpF = (t.version + 1) * 72e3 * t.brate % t.out_samplerate | 0), H.iteration_init(t), I.psymodel_init(t), D(t.scale >= 0), 0;
     };
     function q(t, _) {
       (t.in_buffer_0 == null || t.in_buffer_nsamples < _) && (t.in_buffer_0 = u0(_), t.in_buffer_1 = u0(_), t.in_buffer_nsamples = _);
@@ -8465,7 +8544,8 @@ function Oe() {
   }
   return Te = R, Te;
 }
-var p2 = Q0, M1 = p2.VbrMode;
+var p2 = Q0;
+var M1 = p2.VbrMode;
 function H2() {
   var w = Oe();
   function Z(A, m, O, s0, K, t0, U, R, o, u, d, e, l, M, p) {
@@ -8545,7 +8625,7 @@ function H2() {
   ];
   function g(A, m, O) {
     var s0 = m, K = z.nearestBitrateFullIndex(m);
-    if (A.VBR = M1.vbr_abr, A.VBR_mean_bitrate_kbps = s0, A.VBR_mean_bitrate_kbps = Math.min(A.VBR_mean_bitrate_kbps, 320), A.VBR_mean_bitrate_kbps = Math.max(A.VBR_mean_bitrate_kbps, 8), A.brate = A.VBR_mean_bitrate_kbps, A.VBR_mean_bitrate_kbps > 320 && (A.disable_reservoir = !0), D[K].safejoint > 0 && (A.exp_nspsytune = A.exp_nspsytune | 2), D[K].sfscale > 0 && (A.internal_flags.noise_shaping = 2), Math.abs(D[K].nsbass) > 0) {
+    if (A.VBR = M1.vbr_abr, A.VBR_mean_bitrate_kbps = s0, A.VBR_mean_bitrate_kbps = Math.min(A.VBR_mean_bitrate_kbps, 320), A.VBR_mean_bitrate_kbps = Math.max(A.VBR_mean_bitrate_kbps, 8), A.brate = A.VBR_mean_bitrate_kbps, A.VBR_mean_bitrate_kbps > 320 && (A.disable_reservoir = true), D[K].safejoint > 0 && (A.exp_nspsytune = A.exp_nspsytune | 2), D[K].sfscale > 0 && (A.internal_flags.noise_shaping = 2), Math.abs(D[K].nsbass) > 0) {
       var t0 = int(D[K].nsbass * 4);
       t0 < 0 && (t0 += 64), A.exp_nspsytune = A.exp_nspsytune | t0 << 2;
     }
@@ -8622,11 +8702,27 @@ var C2 = O2;
 function F2() {
   this.over_noise = 0, this.tot_noise = 0, this.max_noise = 0, this.over_count = 0, this.over_SSD = 0, this.bits = 0;
 }
-var k2 = F2, Ca = Q0, na = Ca.new_float, X2 = Ca.new_int;
+var k2 = F2;
+var Ca = Q0;
+var na = Ca.new_float;
+var X2 = Ca.new_int;
 function Y2() {
   this.global_gain = 0, this.sfb_count1 = 0, this.step = X2(39), this.noise = na(39), this.noise_log = na(39);
 }
-var q2 = Y2, q1 = Q0, y1 = q1.System, _a = q1.VbrMode, ye = q1.Util, X1 = q1.Arrays, K1 = q1.new_float, U1 = q1.assert, D2 = C2, we = k2, G2 = q2, D0 = t1(), la = Le, va = ie;
+var q2 = Y2;
+var q1 = Q0;
+var y1 = q1.System;
+var _a = q1.VbrMode;
+var ye = q1.Util;
+var X1 = q1.Arrays;
+var K1 = q1.new_float;
+var U1 = q1.assert;
+var D2 = C2;
+var we = k2;
+var G2 = q2;
+var D0 = t1();
+var la = Le;
+var va = ie;
 function $2() {
   var w;
   this.rv = null;
@@ -8656,14 +8752,14 @@ function $2() {
       R.substep_shaping & 2 && (l = 1);
       for (var M = 0; M < o.psymax; M++)
         R.pseudohalf[M] = l;
-      return !0;
+      return true;
     }
-    return X1.fill(o.l3_enc, 0, 576, 0), !1;
+    return X1.fill(o.l3_enc, 0, 576, 0), false;
   };
   function Q(R, o) {
     var u = R.ATH, d = o.xr;
     if (o.block_type != D0.SHORT_TYPE)
-      for (var e = !1, l = D0.PSFB21 - 1; l >= 0 && !e; l--) {
+      for (var e = false, l = D0.PSFB21 - 1; l >= 0 && !e; l--) {
         var M = R.scalefac_band.psfb21[l], p = R.scalefac_band.psfb21[l + 1], H = X.athAdjust(
           u.adjust,
           u.psfb21[l],
@@ -8674,13 +8770,13 @@ function $2() {
           if (Math.abs(d[B]) < H)
             d[B] = 0;
           else {
-            e = !0;
+            e = true;
             break;
           }
       }
     else
       for (var I = 0; I < 3; I++)
-        for (var e = !1, l = D0.PSFB12 - 1; l >= 0 && !e; l--) {
+        for (var e = false, l = D0.PSFB12 - 1; l >= 0 && !e; l--) {
           var M = R.scalefac_band.s[12] * 3 + (R.scalefac_band.s[13] - R.scalefac_band.s[12]) * I + (R.scalefac_band.psfb12[l] - R.scalefac_band.psfb12[0]), p = M + (R.scalefac_band.psfb12[l + 1] - R.scalefac_band.psfb12[l]), v0 = X.athAdjust(
             u.adjust,
             u.psfb12[l],
@@ -8691,7 +8787,7 @@ function $2() {
             if (Math.abs(d[B]) < v0)
               d[B] = 0;
             else {
-              e = !0;
+              e = true;
               break;
             }
         }
@@ -8719,12 +8815,12 @@ function $2() {
   }
   D.BINSEARCH_NONE = new D(0), D.BINSEARCH_UP = new D(1), D.BINSEARCH_DOWN = new D(2);
   function g(R, o, u, d, e) {
-    var l, M = R.CurrentStep[d], p = !1, H = R.OldValue[d], B = D.BINSEARCH_NONE;
+    var l, M = R.CurrentStep[d], p = false, H = R.OldValue[d], B = D.BINSEARCH_NONE;
     for (o.global_gain = H, u -= o.part2_length; ; ) {
       var I;
       if (l = u0.count_bits(R, e, o, null), M == 1 || l == u)
         break;
-      l > u ? (B == D.BINSEARCH_DOWN && (p = !0), p && (M /= 2), B = D.BINSEARCH_UP, I = M) : (B == D.BINSEARCH_UP && (p = !0), p && (M /= 2), B = D.BINSEARCH_DOWN, I = -M), o.global_gain += I, o.global_gain < 0 && (o.global_gain = 0, p = !0), o.global_gain > 255 && (o.global_gain = 255, p = !0);
+      l > u ? (B == D.BINSEARCH_DOWN && (p = true), p && (M /= 2), B = D.BINSEARCH_UP, I = M) : (B == D.BINSEARCH_UP && (p = true), p && (M /= 2), B = D.BINSEARCH_DOWN, I = -M), o.global_gain += I, o.global_gain < 0 && (o.global_gain = 0, p = true), o.global_gain > 255 && (o.global_gain = 255, p = true);
     }
     for (U1(o.global_gain >= 0), U1(o.global_gain < 256); l > u && o.global_gain < 255; )
       o.global_gain++, l = u0.count_bits(R, e, o, null);
@@ -8766,8 +8862,8 @@ function $2() {
   function f0(R) {
     for (var o = 0; o < R.sfbmax; o++)
       if (R.scalefac[o] + R.subblock_gain[R.window[o]] == 0)
-        return !1;
-    return !0;
+        return false;
+    return true;
   }
   function A(R) {
     return ye.FAST_LOG10(0.368 + 0.632 * R * R * R);
@@ -8859,7 +8955,7 @@ function $2() {
     var d, e = o.scalefac;
     for (d = 0; d < o.sfb_lmax; d++)
       if (e[d] >= 16)
-        return !0;
+        return true;
     for (var l = 0; l < 3; l++) {
       var M = 0, p = 0;
       for (d = o.sfb_lmax + l; d < o.sfbdivide; d += 3)
@@ -8868,7 +8964,7 @@ function $2() {
         p < e[d] && (p = e[d]);
       if (!(M < 16 && p < 8)) {
         if (o.subblock_gain[l] >= 7)
-          return !0;
+          return true;
         o.subblock_gain[l]++;
         var H = R.scalefac_band.l[o.sfb_lmax];
         for (d = o.sfb_lmax + l; d < o.sfbmax; d += 3) {
@@ -8895,16 +8991,16 @@ function $2() {
         }
       }
     }
-    return !1;
+    return false;
   }
   function U(R, o, u, d, e) {
     var l = R.internal_flags;
     s0(R, o, u, d, e);
     var M = f0(o);
-    return M ? !1 : (l.mode_gr == 2 ? M = u0.scale_bitcount(o) : M = u0.scale_bitcount_lsf(l, o), M ? (l.noise_shaping > 1 && (X1.fill(l.pseudohalf, 0), o.scalefac_scale == 0 ? (K(o, d), M = !1) : o.block_type == D0.SHORT_TYPE && l.subblock_gain > 0 && (M = t0(l, o, d) || f0(o))), M || (l.mode_gr == 2 ? M = u0.scale_bitcount(o) : M = u0.scale_bitcount_lsf(l, o)), !M) : !0);
+    return M ? false : (l.mode_gr == 2 ? M = u0.scale_bitcount(o) : M = u0.scale_bitcount_lsf(l, o), M ? (l.noise_shaping > 1 && (X1.fill(l.pseudohalf, 0), o.scalefac_scale == 0 ? (K(o, d), M = false) : o.block_type == D0.SHORT_TYPE && l.subblock_gain > 0 && (M = t0(l, o, d) || f0(o))), M || (l.mode_gr == 2 ? M = u0.scale_bitcount(o) : M = u0.scale_bitcount_lsf(l, o)), !M) : true);
   }
   this.outer_loop = function(R, o, u, d, e, l) {
-    var M = R.internal_flags, p = new la(), H = K1(576), B = K1(va.SFBMAX), I = new we(), v0, b = new G2(), a = 9999999, S = !1, L = !1, V = 0;
+    var M = R.internal_flags, p = new la(), H = K1(576), B = K1(va.SFBMAX), I = new we(), v0, b = new G2(), a = 9999999, S = false, L = false, V = 0;
     if (g(M, o, l, e, d), M.noise_shaping == 0)
       return 100;
     X.calc_noise(
@@ -8961,7 +9057,7 @@ function $2() {
         else if (M.full_outer_loop == 0 && (++N > E && I.over_count == 0 || M.noise_shaping_amp == 3 && L && N > 30 || M.noise_shaping_amp == 3 && L && p.global_gain - V > 15))
           break;
       } while (p.global_gain + p.scalefac_scale < 255);
-      M.noise_shaping_amp == 3 ? L ? S = !0 : (p.assign(o), y1.arraycopy(H, 0, d, 0, 576), N = 0, V = p.global_gain, L = !0) : S = !0;
+      M.noise_shaping_amp == 3 ? L ? S = true : (p.assign(o), y1.arraycopy(H, 0, d, 0, 576), N = 0, V = p.global_gain, L = true) : S = true;
     }
     return U1(o.global_gain + o.scalefac_scale <= 255), R.VBR == _a.vbr_rh || R.VBR == _a.vbr_mtrh ? y1.arraycopy(H, 0, d, 0, 576) : M.substep_shaping & 1 && trancate_smallspectrums(M, o, u, d), I.over_count;
   }, this.iteration_finish_one = function(R, o, u) {
@@ -8971,7 +9067,7 @@ function $2() {
     var p = R.internal_flags, H = new la(), B = K1(576), I = M, v0 = M + 1, b = (M + l) / 2, a, S, L = 0, V = p.sfb21_extra;
     U1(I <= LameInternalFlags.MAX_BITS_PER_CHANNEL), X1.fill(H.l3_enc, 0);
     do
-      b > I - 42 ? p.sfb21_extra = !1 : p.sfb21_extra = V, S = outer_loop(R, o, u, d, e, b), S <= 0 ? (L = 1, v0 = o.part2_3_length, H.assign(o), y1.arraycopy(d, 0, B, 0, 576), M = v0 - 32, a = M - l, b = (M + l) / 2) : (l = b + 32, a = M - l, b = (M + l) / 2, L != 0 && (L = 2, o.assign(H), y1.arraycopy(B, 0, d, 0, 576)));
+      b > I - 42 ? p.sfb21_extra = false : p.sfb21_extra = V, S = outer_loop(R, o, u, d, e, b), S <= 0 ? (L = 1, v0 = o.part2_3_length, H.assign(o), y1.arraycopy(d, 0, B, 0, 576), M = v0 - 32, a = M - l, b = (M + l) / 2) : (l = b + 32, a = M - l, b = (M + l) / 2, L != 0 && (L = 2, o.assign(H), y1.arraycopy(B, 0, d, 0, 576)));
     while (a > 12);
     p.sfb21_extra = V, L == 2 && y1.arraycopy(H.l3_enc, 0, o.l3_enc, 0, 576), U1(o.part2_3_length <= I);
   }, this.get_framebits = function(R, o) {
@@ -9086,7 +9182,9 @@ function $2() {
           d[B][I] *= l[0], d[B][I] /= v0;
   };
 }
-var P2 = $2, Z2 = Q0, oa = Z2.assert;
+var P2 = $2;
+var Z2 = Q0;
+var oa = Z2.assert;
 function K2() {
   var w;
   this.setModules = function(Z) {
@@ -9134,7 +9232,14 @@ function Q2() {
     return "32bits";
   };
 }
-var W2 = Q2, D1 = Q0, j2 = D1.System, Ie = D1.VbrMode, ha = D1.ShortBlock, z2 = D1.Arrays, te = D1.new_byte, J2 = D1.assert;
+var W2 = Q2;
+var D1 = Q0;
+var j2 = D1.System;
+var Ie = D1.VbrMode;
+var ha = D1.ShortBlock;
+var z2 = D1.Arrays;
+var te = D1.new_byte;
+var J2 = D1.assert;
 Q1.NUMTOCENTRIES = 100;
 Q1.MAXFRAMESIZE = 2880;
 function Q1() {
@@ -9476,7 +9581,7 @@ function Q1() {
     b.version == 1 ? S = m : b.out_samplerate < 16e3 ? S = s0 : S = O, b.VBR == Ie.vbr_off && (S = b.brate);
     var L = (b.version + 1) * 72e3 * S / b.out_samplerate, V = a.sideinfo_len + A;
     if (a.VBR_seek_table.TotalFrameSize = L, L < V || L > g) {
-      b.bWriteVbrTag = !1;
+      b.bWriteVbrTag = false;
       return;
     }
     a.VBR_seek_table.nVbrNumFrames = 0, a.VBR_seek_table.nBytesWritten = 0, a.VBR_seek_table.sum = 0, a.VBR_seek_table.seen = 0, a.VBR_seek_table.want = 1, a.VBR_seek_table.pos = 0, a.VBR_seek_table.bag == null && (a.VBR_seek_table.bag = new int[400](), a.VBR_seek_table.size = 400);
@@ -9494,7 +9599,7 @@ function Q1() {
       b[0] = B(a[S + V], b[0]);
   };
   function I(b, a, S, L, V) {
-    var N = b.internal_flags, P = 0, E = b.encoder_delay, i = b.encoder_padding, s = 100 - 10 * b.VBR_q - b.quality, r = X.getLameVeryShortVersion(), n, f = 0, Y, J = [1, 5, 3, 2, 4, 0, 3], T = 0 | (b.lowpassfreq / 100 + 0.5 > 255 ? 255 : b.lowpassfreq / 100 + 0.5), q = 0, i0 = 0, h0 = 0, d0 = b.internal_flags.noise_shaping, M0 = 0, R0 = 0, A0 = 0, w0 = 0, $0 = 0, f1 = (b.exp_nspsytune & 1) != 0, t = (b.exp_nspsytune & 2) != 0, _ = !1, S0 = !1, E0 = b.internal_flags.nogap_total, V0 = b.internal_flags.nogap_current, H0 = b.ATHtype, y0 = 0, T0;
+    var N = b.internal_flags, P = 0, E = b.encoder_delay, i = b.encoder_padding, s = 100 - 10 * b.VBR_q - b.quality, r = X.getLameVeryShortVersion(), n, f = 0, Y, J = [1, 5, 3, 2, 4, 0, 3], T = 0 | (b.lowpassfreq / 100 + 0.5 > 255 ? 255 : b.lowpassfreq / 100 + 0.5), q = 0, i0 = 0, h0 = 0, d0 = b.internal_flags.noise_shaping, M0 = 0, R0 = 0, A0 = 0, w0 = 0, $0 = 0, f1 = (b.exp_nspsytune & 1) != 0, t = (b.exp_nspsytune & 2) != 0, _ = false, S0 = false, E0 = b.internal_flags.nogap_total, V0 = b.internal_flags.nogap_current, H0 = b.ATHtype, y0 = 0, T0;
     switch (b.VBR) {
       case vbr_abr:
         T0 = b.VBR_mean_bitrate_kbps;
@@ -9505,7 +9610,7 @@ function Q1() {
       default:
         T0 = b.VBR_min_bitrate_kbps;
     }
-    switch (b.VBR.ordinal() < J.length ? n = J[b.VBR.ordinal()] : n = 0, Y = 16 * f + n, N.findReplayGain && (N.RadioGain > 510 && (N.RadioGain = 510), N.RadioGain < -510 && (N.RadioGain = -510), i0 = 8192, i0 |= 3072, N.RadioGain >= 0 ? i0 |= N.RadioGain : (i0 |= 512, i0 |= -N.RadioGain)), N.findPeakSample && (q = Math.abs(0 | N.PeakSample / 32767 * Math.pow(2, 23) + 0.5)), E0 != -1 && (V0 > 0 && (S0 = !0), V0 < E0 - 1 && (_ = !0)), y0 = H0 + ((f1 ? 1 : 0) << 4) + ((t ? 1 : 0) << 5) + ((_ ? 1 : 0) << 6) + ((S0 ? 1 : 0) << 7), s < 0 && (s = 0), b.mode) {
+    switch (b.VBR.ordinal() < J.length ? n = J[b.VBR.ordinal()] : n = 0, Y = 16 * f + n, N.findReplayGain && (N.RadioGain > 510 && (N.RadioGain = 510), N.RadioGain < -510 && (N.RadioGain = -510), i0 = 8192, i0 |= 3072, N.RadioGain >= 0 ? i0 |= N.RadioGain : (i0 |= 512, i0 |= -N.RadioGain)), N.findPeakSample && (q = Math.abs(0 | N.PeakSample / 32767 * Math.pow(2, 23) + 0.5)), E0 != -1 && (V0 > 0 && (S0 = true), V0 < E0 - 1 && (_ = true)), y0 = H0 + ((f1 ? 1 : 0) << 4) + ((t ? 1 : 0) << 5) + ((_ ? 1 : 0) << 6) + ((S0 ? 1 : 0) << 7), s < 0 && (s = 0), b.mode) {
       case MONO:
         M0 = 0;
         break;
@@ -9581,9 +9686,22 @@ function Q1() {
     return N > V.length ? -1 : (N < 1 || a.write(V, 0, N), 0);
   };
 }
-var g2 = Q1, Fa = Q0, ua = Fa.new_byte, er = Fa.assert, ar = Oe(), rr = V2, tr = Na, sr = Va(), ir = P2, nr = Oa(), _r = U2, lr = j1, vr = Ve();
+var g2 = Q1;
+var Fa = Q0;
+var ua = Fa.new_byte;
+var er = Fa.assert;
+var ar = Oe();
+var rr = V2;
+var tr = Na;
+var sr = Va();
+var ir = P2;
+var nr = Oa();
+var _r = U2;
+var lr = j1;
+var vr = Ve();
 t1();
-var or = W2, hr = g2;
+var or = W2;
+var hr = g2;
 function ur() {
   this.setModules = function(w, Z) {
   };
@@ -9603,7 +9721,7 @@ function cr(w, Z, X) {
   var z = new ar(), u0 = new ur(), W = new tr(), Q = new vr(), D = new rr(), g = new sr(), f0 = new ir(), A = new hr(), m = new or(), O = new br(), s0 = new _r(), K = new nr(), t0 = new fr(), U = new mr();
   z.setModules(W, Q, D, g, f0, A, m, O, U), Q.setModules(W, U, m, A), O.setModules(Q, m), D.setModules(z), f0.setModules(Q, s0, g, K), g.setModules(K, s0, z.enc.psy), s0.setModules(Q), K.setModules(g), A.setModules(z, Q, m), u0.setModules(t0, U), t0.setModules(m, O, D);
   var R = z.lame_init();
-  R.num_channels = w, R.in_samplerate = Z, R.brate = X, R.mode = lr.STEREO, R.quality = 3, R.bWriteVbrTag = !1, R.disable_reservoir = !0, R.write_id3tag_automatic = !1, z.lame_init_params(R);
+  R.num_channels = w, R.in_samplerate = Z, R.brate = X, R.mode = lr.STEREO, R.quality = 3, R.bWriteVbrTag = false, R.disable_reservoir = true, R.write_id3tag_automatic = false, z.lame_init_params(R);
   var o = 1152, u = 0 | 1.25 * o + 7200, d = ua(u);
   this.encodeBuffer = function(e, l) {
     w == 1 && (l = e), er(e.length == l.length), e.length > o && (o = e.length, u = 0 | 1.25 * o + 7200, d = ua(u));
@@ -9625,24 +9743,25 @@ A1.WAVE = _e("WAVE");
 A1.fmt_ = _e("fmt ");
 A1.data = _e("data");
 A1.readHeader = function(w) {
-  var Z = new A1(), X = w.getUint32(0, !1);
-  if (A1.RIFF == X && (w.getUint32(4, !0), A1.WAVE == w.getUint32(8, !1) && A1.fmt_ == w.getUint32(12, !1))) {
-    var z = w.getUint32(16, !0), u0 = 16 + 4;
+  var Z = new A1(), X = w.getUint32(0, false);
+  if (A1.RIFF == X && (w.getUint32(4, true), A1.WAVE == w.getUint32(8, false) && A1.fmt_ == w.getUint32(12, false))) {
+    var z = w.getUint32(16, true), u0 = 16 + 4;
     switch (z) {
       case 16:
       case 18:
-        Z.channels = w.getUint16(u0 + 2, !0), Z.sampleRate = w.getUint32(u0 + 4, !0);
+        Z.channels = w.getUint16(u0 + 2, true), Z.sampleRate = w.getUint32(u0 + 4, true);
         break;
       default:
         throw "extended fmt chunk not implemented";
     }
     u0 += z;
-    for (var W = A1.data, Q = 0; W != X && (X = w.getUint32(u0, !1), Q = w.getUint32(u0 + 4, !0), W != X); )
+    for (var W = A1.data, Q = 0; W != X && (X = w.getUint32(u0, false), Q = w.getUint32(u0 + 4, true), W != X); )
       u0 += Q + 8;
     return Z.dataLen = Q, Z.dataOffset = u0 + 8, Z;
   }
 };
-var Sr = fa.Mp3Encoder = cr, dr = fa.WavHeader = A1;
+var Sr = fa.Mp3Encoder = cr;
+var dr = fa.WavHeader = A1;
 export {
   Sr as Mp3Encoder,
   dr as WavHeader,
