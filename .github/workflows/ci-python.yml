@@ -87,7 +87,7 @@ jobs:
         # end to end: a voice, then ffmpeg, then a file you could play.
         run: |
           export MITREDEN_DIR="$(mktemp -d)"
-          python mitreden.py add "Ein Satz zum Testen." --tags ci
+          python mitreden.py add "Ein Satz zum Testen." --collections ci
           test -s "$MITREDEN_DIR/out/ein-satz-zum-testen.mp3"
           python mitreden.py backends
           echo "recorded $(ls "$MITREDEN_DIR/out" | wc -l) file(s)"

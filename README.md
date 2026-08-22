@@ -35,7 +35,9 @@ that really needs a backup.
 
 The repository is deliberately small: a Python file and the page it serves, no
 dependencies, a bit of ffmpeg. The code is in English, the interface speaks
-German and English, and this guide exists in both languages.
+German and English, and this guide exists in both languages. Commit messages
+are English too — the history is a developer document, and the sibling
+projects settled on the same rule.
 
 ## What you need
 

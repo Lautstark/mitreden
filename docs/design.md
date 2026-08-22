@@ -624,6 +624,10 @@ mitreden's `--muted` is `--text-dim`; it has no `--text-faint` and hard-codes on
 | `--accent-ink` | text placed **on** `--accent`. Must clear 4.5:1 against it. |
 | `--accent-strong` | the accent adjusted so it is legible **as text on `--bg`**. On a dark ground it may equal `--accent`; on a light one it must be darkened. |
 | `--accent-soft` | an accent-tinted plane: the current item, an accent notice. |
+| `--accent-hover` | the accent under the pointer. An explicit value, **not** `filter: brightness()` — that shifts hue on a saturated accent, and it cannot darken on a light ground, which is the direction a light scheme needs. |
+| `--danger` | the destructive colour, as text and as a fill. |
+| `--danger-ink` | text placed **on** `--danger`. Exists for the same reason `--accent-ink` does, and is the token most likely to be missed: a filled destructive button is usually built once, in whichever scheme its author was looking at, with `color: #fff` hardcoded. That survives a dark `--danger` on a light ground and fails a light one on a dark ground. bildhaft shipped exactly that — white on salmon, 2.48:1, on the button that deletes everything — and it was invisible in every screenshot because the button was only ever viewed in light mode. If a product has a filled destructive control and two schemes, it needs this token. |
+| `--danger-soft` | a danger-tinted plane: the hover behind a destructive menu item. |
 | `--danger` | destructive. Text colour, not a fill, except on a filled confirm button. |
 | `--danger-soft` | a danger-tinted plane: the hover behind a destructive menu item. |
 | `--ok` | a thing succeeded and stays succeeded. |
@@ -638,12 +642,29 @@ rather than inventing its own.
 
 **Shape and motion**
 
-| token | value | meaning |
+Radii follow the same rule as colour: **the names are normative, the values are
+per product, and so is adoption.** The values below are bildhaft's, given as a
+worked example rather than as a target.
+
+This is not a licence to diverge for its own sake — it is an admission that the
+four names do not fit every product's existing geometry. mitreden has five
+distinct radii in use (999px, 16px, 11px, 10px, 9px, 7px) against these four
+names. `--radius-pill` maps cleanly onto its four 999px uses; the rest do not,
+and adopting `--radius`/`--radius-sm` would mean choosing which of 10, 11 or
+16px becomes which. That is a change to how the product looks, arriving through
+a renaming exercise, and it is worse than a row left honestly unimplemented.
+
+So: implement the names you can map, leave the ones you cannot, and say which
+is which. bildhaft implements all four because its geometry already matched
+them. mitreden implements none of them yet. Both statements are true, and a
+table that says "14px" for both would make one of them false.
+
+| token | meaning | bildhaft |
 | --- | --- | --- |
-| `--radius` | 14px | cards, sheets, rows, the composer. |
-| `--radius-sm` | 9px | fields, buttons, popups, menu shells. |
-| `--radius-pill` | 999px | chips, icon buttons, toasts, anything whose height sets its shape. |
-| `--radius-item` | 7px | a row inside a popup. |
+| `--radius` | cards, sheets, rows, the composer. | 14px |
+| `--radius-sm` | fields, buttons, popups, menu shells. | 9px |
+| `--radius-pill` | chips, icon buttons, toasts, anything whose height sets its shape. | 999px |
+| `--radius-item` | a row inside a popup. | 7px |
 | `--shadow-sm` | 1px offset, 2px blur, very low alpha | a plane that has only just left the page. |
 | `--shadow` | a 2/6 pair plus a 12/32 pair | a plane that floats: popup, dialog. |
 | `--font` | `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif` | **identical string in both products.** |
@@ -665,6 +686,17 @@ down stops the next value being 13.
 **Reading column.** Content sits in one centred column of **720–840px**. Text you
 read runs at 15–16px with line-height 1.55. The sentence you are composing is set
 larger than everything else on the page (19–22px), because it is the point.
+
+> **Check the pairs, do not look at them.** Every foreground/background
+> combination the stylesheet can produce — including hover states, which no
+> screenshot shows — should be run through a WCAG contrast check per scheme,
+> and any failure solved numerically along the same hue rather than nudged by
+> eye. Doing this cost mitreden six failing pairs on its first light palette
+> and caught bildhaft an unreadable delete button. Values borrowed from the
+> sibling product must be re-checked against the borrowing product's own
+> grounds: `--text-faint` passed in mitreden and failed in bildhaft on the
+> identically-named `--surface-2`, because the two grounds are near but not
+> equal.
 
 ### 4.3 Rules
 

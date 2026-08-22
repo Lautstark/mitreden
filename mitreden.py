@@ -381,10 +381,38 @@ def output_args(cfg):
     return args
 
 
+# Which piper made a recording. It belongs in the fingerprint because piper is
+# what turns the text into sound: a release that changes how a voice speaks
+# would otherwise leave old recordings under names claiming to match new ones,
+# and a phrase set would end up half in one voice and half in the other — the
+# exact thing this program exists to prevent.
+#
+# Written down rather than read from the installed package, which looks like
+# the obvious way and is the wrong one. A fingerprint has to mean the same
+# thing everywhere: ask the local piper and a machine without piper disagrees
+# about every name, so it re-renders a set it already has. Kept in step with
+# the pin in the Dockerfile by tests/test_piper_version.py — bump both
+# together, and expect every piper-spoken phrase to be recorded again.
+PIPER_VERSION = "1.7.0"
+
+
 def fingerprint(text, cfg):
-    """Changes when the text, the voice OR the output format changes."""
+    """Changes when the text, the voice, the output format or the program that
+    speaks it changes.
+
+    What is deliberately NOT in here is anything about where things live. A
+    path says nothing about how a recording sounds, and putting one in means
+    the same voice fingerprints differently depending on the machine: the
+    container keeps its models under /voices, a laptop keeps them beside the
+    phrases, and moving between the two used to re-render everything for
+    nothing."""
     backend = cfg["backend"]
-    payload = json.dumps([text, backend, cfg.get(backend, {}), cfg.get("output", {})],
+    opt = dict(cfg.get(backend) or {})
+    opt.pop("binary", None)              # where the program is, not how it sounds
+    if backend == "piper":
+        opt["model"] = Path(opt.get("model", "")).name
+        opt["piper"] = PIPER_VERSION     # only piper: Azure renders elsewhere
+    payload = json.dumps([text, backend, opt, cfg.get("output", {})],
                          sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
