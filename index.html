@@ -8,7 +8,125 @@
     <meta name="description" content="Sätze werden zu Audiodateien, damit jedes Gerät mit derselben Stimme spricht." />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Narrow screens get a bar instead of a rail: the rail slides over the work
+         rather than squeezing it, and the scrim closes it. mitreden is sold as
+         usable from a phone, so this is not decoration. -->
+    <div class="topbar">
+      <button id="railopen" class="icon" data-i18n-aria="collections_show">☰</button>
+      <h1><img class="logo" src="icon.svg" alt="" width="28" height="28">mitreden</h1>
+    </div>
+    <div id="scrim" class="scrim" hidden></div>
+
+    <aside id="rail" class="rail">
+      <div class="rail__brand">
+        <h1><img class="logo" src="icon.svg" alt="" width="34" height="34">mitreden</h1>
+        <button id="railclose" class="icon" data-i18n-aria="collections_hide">✕</button>
+      </div>
+
+      <div class="rail__part">
+        <input id="q" type="search" data-i18n-ph="search_hint" autocomplete="off">
+      </div>
+
+      <div class="rail__part rail__grow">
+        <h2 data-i18n="filter_collections"></h2>
+        <div class="list" id="rows"></div>
+        <button id="newcol" class="quiet small" data-i18n="collection_new"></button>
+      </div>
+
+      <div class="rail__foot">
+        <button id="gear" class="flat" data-i18n="settings"></button>
+        <button id="import2" class="flat" data-i18n="import_label"></button>
+      </div>
+    </aside>
+
+    <main>
+
+    <dialog id="setup" class="sheet">
+      <div class="sheet__head">
+        <h2 data-i18n="settings"></h2>
+        <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-tab="voices" data-i18n="tab_voices"></button>
+        <button class="tab" data-tab="language" data-i18n="tab_language"></button>
+        <button class="tab" data-tab="data" data-i18n="tab_data"></button>
+      </div>
+
+      <section class="pane" data-pane="voices">
+        <div id="cloud"></div>
+      </section>
+
+      <section class="pane" data-pane="language" hidden>
+        <div class="card">
+          <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
+        </div>
+      </section>
+
+      <section class="pane" data-pane="data" hidden>
+        <div class="card">
+          <p class="sub"><b data-i18n="backup_title"></b> <span data-i18n="backup_intro"></span></p>
+        </div>
+        <div class="row">
+          <button class="primary" id="export" data-i18n="backup_export"></button>
+        </div>
+        <p class="hint" data-i18n="backup_hint"></p>
+        <input type="file" id="importfile" accept="application/json,.json" hidden>
+
+        <h3 class="danger__title" data-i18n="danger_title"></h3>
+        <p class="sub" data-i18n="danger_body"></p>
+        <button class="linkdanger" id="wipe" data-i18n="danger_do"></button>
+      </section>
+    </dialog>
+
+      <div class="compose">
+        <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
+        <button class="send" id="add" data-i18n-aria="add_phrase"
+          data-i18n-title="add_phrase">→</button>
+      </div>
+      <p class="chint">
+        <span><kbd>Enter</kbd> <span id="chint1"></span> ·
+          <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2"></span></span>
+        <span class="right"><select id="voice" class="asbutton"
+          data-i18n-aria="voice_label" data-i18n-title="voice_title"></select></span>
+      </p>
+      <p class="status" id="s" hidden></p>
+
+
+    <!-- The Sammlung you are in: its name, how much is in it, and what you can do
+         with the whole of it. bildhaft's row, with Herunterladen where Drucken is —
+         the same question, answered in audio instead of paper. -->
+    <div class="workhead">
+      <input id="colname" class="title-input" data-i18n-ph="collection_name_hint"
+        data-i18n-aria="collection_name_hint" autocomplete="off">
+      <span class="count" id="count"></span>
+      <!-- One native control, the same one the voice picker uses. A button with a
+           second button glued to its side was two things to get right in every
+           theme and browser, and it kept being wrong in one of them. -->
+      <select id="dlall" class="asbutton" data-i18n-aria="download_all"
+        data-i18n-title="download_all"></select>
+      <span class="menuwrap"><button id="colmore" class="icon" aria-haspopup="true"
+        aria-expanded="false" data-i18n-title="more_actions"
+        data-i18n-aria="more_actions">⋯</button></span>
+    </div>
+
+    <div class="filters">
+      <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
+    </div>
+
+
+    <div id="list"></div>
+
+    <!-- The page is the whole program now, so it has to say what it is and what
+         it does with what you type. Both are one line; neither belongs in a
+         dialog nobody opens. -->
+    <footer class="foot">
+      <a href="about.html" data-i18n="about_link"></a>
+      <span data-i18n="footer_local"></span>
+    </footer>
+    </main>
+
+    </html>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
