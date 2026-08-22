@@ -41,7 +41,15 @@
 
     <main>
 
-    <dialog id="setup" class="sheet">
+    <dialog id="info" class="sheet">
+    <div class="sheet__head">
+      <h2 id="infotitle"></h2>
+      <button id="infoclose" class="icon" data-i18n-aria="close">✕</button>
+    </div>
+    <div id="infobody"></div>
+  </dialog>
+
+  <dialog id="setup" class="sheet">
       <div class="sheet__head">
         <h2 data-i18n="settings"></h2>
         <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
@@ -121,9 +129,14 @@
     <!-- The page is the whole program now, so it has to say what it is and what
          it does with what you type. Both are one line; neither belongs in a
          dialog nobody opens. -->
+    <!-- Three dialogs, not pages: bildhaft's shape. The one-line privacy
+         summary is gone from here on purpose — a footer has no room to say
+         what does leave, and a claim without its exception reads as broader
+         than it is. The about dialog has the room. -->
     <footer class="foot">
-      <a href="about.html" data-i18n="about_link"></a>
-      <span data-i18n="footer_local"></span>
+      <button class="linklike" id="about" data-i18n="about_link"></button>
+      <button class="linklike" id="impressum">Impressum</button>
+      <button class="linklike" id="datenschutz">Datenschutz</button>
     </footer>
     </main>
 

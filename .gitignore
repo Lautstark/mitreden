@@ -1,40 +1,17 @@
-# Your own phrases and everything made from them — personal, stays local.
-# Start from phrases.example.json, which is the only phrase file in the repo.
-phrases.json
-phrases.json.*
-out/
-build/
+node_modules/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
 
-# Audio never belongs in here, wherever it turns up.
+# Audio never belongs in here, wherever it turns up: the recordings live in
+# the browser, and anything rendered to disk is reproducible.
 *.wav
 *.mp3
-*.aiff
-
-# Cached answer from the voice service, rebuilt whenever it is missing
-.azure-voices.json
 
 # Credentials
 .env
 .env.*
 
-# Python
-__pycache__/
-*.pyc
-.venv/
-
-# Cleanup folder of the Cowork sandbox
-_to_delete/
-
 # System
 .DS_Store
-
-# Half-written files from an interrupted save, never worth keeping.
-*.tmp
-
-# Audio the spike drops for offline comparison — reproducible, never committed.
-docs/spike/dump/
-node_modules
-dist
-test-results
-playwright-report
-*.tsbuildinfo

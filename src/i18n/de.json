@@ -58,7 +58,6 @@
   "failed": "Fehlgeschlagen: {error}",
   "filter_collections": "Sammlungen",
   "filter_voices": "Stimmen",
-  "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin.",
   "import_empty": "Keine Sätze in dieser Datei.",
   "import_failed": "Diese Datei ließ sich nicht lesen: {error}",
   "import_label": "Importieren",

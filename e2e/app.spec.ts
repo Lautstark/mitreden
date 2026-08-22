@@ -55,6 +55,19 @@ test('the settings dialog opens on every tab', async ({ page }) => {
   await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
 });
 
+test('the footer answers what this is, and the two German legal questions', async ({ page }) => {
+  await page.click('#about');
+  await expect(page.locator('#infotitle')).toHaveText('Was ist mitreden?');
+  // The claim and its one exception, together — the rule the old footer broke.
+  await expect(page.locator('#infobody')).toContainText('Hugging Face');
+  await page.click('#infoclose');
+  for (const [id, title] of [['impressum', 'Impressum'], ['datenschutz', 'Datenschutz']] as const) {
+    await page.click(`#${id}`);
+    await expect(page.locator('#infotitle')).toHaveText(title);
+    await page.click('#infoclose');
+  }
+});
+
 test('the page reaches no host but Hugging Face', async ({ page }) => {
   const offsite: string[] = [];
   page.on('request', (request) => {

@@ -58,7 +58,6 @@
   "failed": "Failed: {error}",
   "filter_collections": "Collections",
   "filter_voices": "Voices",
-  "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere.",
   "import_empty": "No sentences in that file.",
   "import_failed": "That file could not be read: {error}",
   "import_label": "Import",

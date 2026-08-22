@@ -13,8 +13,9 @@ import { lang, setLang, type Lang } from './i18n/index.ts';
 import { loadVoices, wireComposer } from './ui/composer.ts';
 import { draw as drawList, wireList } from './ui/list.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
+import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { wireSettings } from './ui/settings.ts';
-import { applyLang } from './ui/dom.ts';
+import { applyLang, el } from './ui/dom.ts';
 import { load, subscribe } from './ui/state.ts';
 
 function chooseLang(): void {
@@ -32,6 +33,10 @@ export async function start(): Promise<void> {
   wireComposer();
   wireList();
   wireSettings();
+  el('about').onclick = openAbout;
+  el('impressum').onclick = openImpressum;
+  el('datenschutz').onclick = openDatenschutz;
+  el('infoclose').onclick = () => el<HTMLDialogElement>('info').close();
   subscribe(drawRail);
   subscribe(drawList);
   await ensureCollection(lang() === 'de');

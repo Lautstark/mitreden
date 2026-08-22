@@ -216,39 +216,28 @@ than overwrites, so a backup can never cost you work that came after it.
 
 ## From source
 
-The whole program is three files: `ui.html` is the interface,
-`docs/backend-local.js` answers what the page asks, and `lang/*.json` is every
-word it says. `tools/build-site.py` puts the first and the last together into
-the page that gets published.
+The interface is `index.html` plus the modules under `src/`; `src/i18n/*.json`
+is every word it says. Vite builds it, TypeScript checks it, and both run off
+plain npm — the same setup as
+[bildhaft](https://github.com/Lautstark/bildhaft), on purpose.
 
 The speaking and the recording chain are not here. They come from
 [stimmquelle](https://github.com/Lautstark/stimmquelle), which
 [vorlaut](https://github.com/Lautstark/vorlaut) uses too — two products that
 both put a sentence on a child's talker cannot afford to disagree about how
-loud it comes out. `tools/vendor.py` fetches it into `docs/vendor/` pinned by
-hash, along with which voices may be shipped and which actually speak.
+loud it comes out. It is installed from npm, pinned to a commit.
 
 ```
 git clone https://github.com/Lautstark/mitreden.git
 cd mitreden
-python3 tools/build-site.py        # rebuild docs/index.html from ui.html
-python3 -m http.server -d docs 8771
+npm install
+npm run dev
 ```
 
-Open <http://localhost:8771>. Python is only there to serve files and run the
-build; nothing in the program itself needs it.
-
-```
-python3 tests/run.py               # everything
-python3 tools/vendor.py --check    # the vendored code is what was pinned
-```
-
-The third-party code in `docs/vendor/` is fetched by `tools/vendor.py` and
-pinned by hash in `tools/vendor.lock.json`. It is committed rather than
-fetched at runtime, because a page that pulls executing code from a CDN can
-have it changed underneath it — and because what gets published is `docs/`
-exactly as it stands here. The workflow uploads that folder; it does not
-build it, and there is no step in which anything could be fetched.
+Nothing is fetched from a CDN at runtime: the wasm the voice runs on is copied
+out of `node_modules` into the build, and a missing file fails the build rather
+than quietly reaching for a third party. The one request the running page makes
+is the voice model itself, once, from where the piper project publishes it.
 
 ## Contributing
 
@@ -257,23 +246,15 @@ roadmap and no promises. If you use it for your own child, or for someone you
 support: good. Bug reports and questions are welcome, even if answers may take
 a while.
 
-If you change something: `python3 tests/run.py` runs the tests. A few
-seconds, and the same run happens in CI on every push. A single one is
-`python3 tests/run.py voice`. What each is for is written at the top of its
-own file.
-
-One of them opens the page in a real browser and needs `pip install playwright
-&& playwright install chromium`. Without it that one test skips itself and the
-rest still run — but not in CI, where a skipped browser is a page nobody
-looked at. It blocks every request that would leave the machine, so it never
-waits on a voice download; `MITREDEN_E2E_FULL=1 python3
-tests/test_e2e_page.py` is the run that does fetch one and records for real.
+If you change something: `npm run test:e2e` builds the site and drives the
+real production bundle in a browser — Playwright, installed with
+`npx playwright install chromium`. `npm run typecheck` is the fast half and
+catches the mistakes that are actually made while moving code. Both run in CI
+on every push.
 
 The site is published by that same workflow rather than straight from the
 branch, and only once everything is green, so a commit that breaks the page
-reaches nobody. It needs **Settings → Pages → Source: GitHub Actions**; with
-the older branch setting, `docs/` goes out the moment it is pushed, tests or
-no tests.
+reaches nobody. It needs **Settings → Pages → Source: GitHub Actions**.
 
 If you are building something similar and could use advice, open an issue.
 There is little tooling for augmentative communication that you can hold in
