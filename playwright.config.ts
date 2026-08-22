@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4173;
+// E2E_PORT lets parallel checkouts run side by side; with reuseExistingServer,
+// a stray preview squatting on the shared port would silently serve the wrong app.
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 /**
  * The suite runs against the real production bundle, not the dev server, so a
