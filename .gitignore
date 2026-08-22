@@ -33,3 +33,8 @@ _to_delete/
 
 # Audio the spike drops for offline comparison — reproducible, never committed.
 docs/spike/dump/
+node_modules
+dist
+test-results
+playwright-report
+*.tsbuildinfo

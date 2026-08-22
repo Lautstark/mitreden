@@ -1,0 +1,42 @@
+/* >>> lautstark-design: generated tokens */
+/* The token names are shared with bildhaft, the sister project — see
+   docs/design.md. The names are the agreement; the values are ours. The accent
+   deliberately is not shared: mitreden is pink, bildhaft is orange, and that is
+   what tells two otherwise identical-looking programs apart at a glance.
+
+   Both schemes, because the first thing anyone notices is whether a program is
+   light or dark, and the two are meant to be recognisable as one tool. Dark
+   stays what the videos and the landing page show; it is no longer the only
+   thing there is. */
+:root{
+  color-scheme:light dark;         /* so the OS draws its own widgets to match */
+  --bg:#faf9f7; --surface:#ffffff; --surface-2:#f2f0ec; --surface-3:#e9e6e0;
+  --line:#e2ded7;
+  --text:#1c1a17; --text-dim:#6c665e; --text-faint:#726c64;
+  --accent:#ff8bc7; --accent-ink:#3d1027;
+  --accent-strong:#a8175c;         /* the accent as TEXT, dark enough on light */
+  --accent-hover:#f56cb0;          /* the accent under the pointer */
+  --shadow-sm:0 1px 2px rgba(28,26,23,.05);
+  --shadow:0 2px 6px rgba(28,26,23,.06),0 12px 32px rgba(28,26,23,.08);
+  --radius:14px; --radius-sm:9px; --radius-pill:999px; --radius-item:7px;
+  --sidebar-w:268px;
+  --accent-soft:#ffeef6;
+  --ok:#1a7f42; --warn:#8a5a00; --miss:#787168;
+  --danger:#b3261e; --danger-soft:#fdeceb;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e1014; --surface:#161920; --surface-2:#1c202a; --surface-3:#242a36;
+    --line:#242833;
+    --text:#f2efea; --text-dim:#8b93a5; --text-faint:#80889b;
+    --accent:#ff8bc7; --accent-ink:#14161c;
+    --accent-strong:#ff8bc7;       /* on this ground the accent already reads */
+    --accent-hover:#ffa3d2;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+    --shadow:0 2px 6px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.4);
+    --accent-soft:#2a1b25;
+    --ok:#3fb96b; --warn:#f0a202; --miss:#7c8496;
+    --danger:#e54b50; --danger-soft:#2a1416;
+  }
+}
+/* <<< lautstark-design */
