@@ -100,7 +100,7 @@ button.quiet:hover{color:var(--text)}
   background-repeat:no-repeat;background-position:right 10px center}
 .langpick:hover{color:var(--text);background-color:#1e222c}
 .langpick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* Shaped like the group chips, so the header reads as one row of controls
+/* Shaped like the collection chips, so the header reads as one row of controls
    instead of one control and one browser default. */
 .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 2px 0}
 .tools input[type=search]{flex:1;min-width:200px}
@@ -115,7 +115,7 @@ button.quiet:hover{color:var(--text)}
 .chip .n{opacity:.55;margin-left:6px;font-variant-numeric:tabular-nums}
 .chip.fold{border-style:dashed;opacity:.8}
 /* The box belongs to the phrase, so it sits with the phrase — not in the
-   middle of a row that a second line of groups can make twice as tall, where
+   middle of a row that a second line of collections can make twice as tall, where
    it ends up next to the small print instead. */
 .item{display:flex;gap:14px;align-items:flex-start;padding:15px 2px;
   border-bottom:1px solid var(--line)}
@@ -460,16 +460,16 @@ let ALL=[], SHOW_ALL=false, ALL_TAGS=false;
 // Which rows are ticked. Kept across redraws, so filtering or searching does
 // not quietly drop what you picked; ids that vanish are pruned on load.
 const SEL=new Set();
-// Several groups can be picked at once and they combine with OR: pick two books
+// Several collections can be picked at once and they combine with OR: two books
 // and you get the phrases of both. The free text search narrows that further,
 // so the two mechanisms are ANDed with each other.
 const TAGS=new Set();
-// One group per picture book adds up fast. Only the most used ones are on
-// screen; the rest is one click away, and the search finds group names too.
+// One collection per picture book adds up fast. Only the most used are on
+// screen; the rest is one click away, and the search finds their names too.
 const CHIP_CAP=12;
 
 // Rendering thousands of rows makes the page crawl, and nobody reads that far
-// anyway — search and groups are the real answer to a big phrase set. So the
+// anyway — search and collections are the real answer to a big set. So the
 // list stops here and offers the rest on request. Counts and downloads always
 // cover everything that matches, not just what is drawn.
 const CAP=200;
@@ -489,7 +489,7 @@ function found(){
   const a=bare(q), b=umlaut(q);
   return ALL.filter(i=>{const h=hay(i);return h.includes(a)||h.includes(b)});
 }
-// What the list shows: search first, then the group filter, then the voice
+// What the list shows: search first, then the collection filter, then the voice
 // filter. Every axis narrows; none of them changes anything.
 const voiceOf=i=>i.state==='missing'?NOCHNICHT:(i.voice||NOCHNICHT);
 const shown=()=>{
@@ -533,7 +533,7 @@ function drawVoiceChips(hits){
   $('vrow').hidden=names.length<2&&!VOICES.size;
   if($('vrow').hidden)return;
   chip(t('chip_all'),hits.length,null,VOICES,'vchips');
-  // Same cap as the groups: a wall of pills is not a filter any more.
+  // Same cap as the collections: a wall of pills is not a filter any more.
   let vis=names;
   if(!ALL_VOICES&&names.length>CHIP_CAP){
     const top=names.slice(0,CHIP_CAP);
@@ -772,7 +772,7 @@ async function load(){
   await loadVoices(data.voice);
   const live=new Set();
   for(const i of ALL)for(const x of (i.tags||[]))live.add(x);
-  for(const x of [...TAGS])if(!live.has(x))TAGS.delete(x);   // group is gone
+  for(const x of [...TAGS])if(!live.has(x))TAGS.delete(x);   // collection gone
   const alive=new Set(ALL.map(i=>i.id));
   for(const id of [...SEL])if(!alive.has(id))SEL.delete(id);  // phrase is gone
   draw();

@@ -269,37 +269,47 @@ AZURE_SPEECH_KEY=your-key
 If you settle on a cloud voice, back up the generated files as well. A service
 can disappear, a local file cannot.
 
-## Groups, search, download
+## Collections, search, download
 
-Past a few dozen sentences you want some order. mitreden uses **groups, not
-folders** — one sentence can be in several:
+Past a few dozen sentences you want some order. mitreden uses **collections,
+not folders** — one sentence can be in several at once.
+
+That is not a detail of the interface, it is the point. A collection does not
+own its sentences; it points at them. If it owned them, a sentence you use at
+nursery *and* at home would be two sentences, and two sentences are two
+recordings that can drift into two different voices. One text stays one
+sentence and one audio file, however many collections it belongs to.
+
+In the file the field is still called `tags`, and it will stay that way: those
+files are sitting on other people's disks as their only backup, and a word on
+a screen is not worth a migration.
 
 ```json
 { "id": "i-need-help", "text": "I need help.",
   "tags": ["nursery", "home", "emergency"] }
 ```
 
-Above the list are two rows to click: **Groups** and **Voices**, plus a search
-box. The voices row also holds "Not recorded", in case something is missing.
-Several can be picked at once, and the rows work together: group "play" and
-voice "Kerstin" shows what is both.
+Above the list are two rows to click: **Collections** and **Voices**, plus a
+search box. The voices row also holds "Not recorded", in case something is missing.
+Several can be picked at once, and the rows work together: collection "play"
+and voice "Kerstin" shows what is both.
 
 How to tell filters from actions: **filters are pills, actions are boxes.**
 The pills only change what you see. The buttons in the separate box below do
 something — and they only appear once you have ticked some sentences. What
-groups a new sentence gets is decided solely by its own field at the top.
+collections a new sentence joins is decided solely by its own field at the top.
 
-Several groups can be picked at once and combine with OR; the free text
+Several collections can be picked at once and combine with OR; the free text
 narrows it further. The search runs in the browser, without waiting, over text
-*and* group names, and is forgiving about umlauts: `hor auf`, `hoer auf` and
+*and* collection names, and is forgiving about umlauts: `hor auf`, `hoer auf` and
 `Hör auf` all find the same sentence.
 
-The row shows the twelve most used groups and folds the rest behind
+The row shows the twelve most used collections and folds the rest behind
 "+ n more". Everything else about a sentence sits in the ⋮ at the right edge
 of its row.
 
 **One text, one file.** Add a sentence that already exists and no second entry
-appears — the existing one just picks up the new group. Capitalisation and
+appears — the existing one just picks up the new collection. Capitalisation and
 extra spaces do not matter, punctuation does: "Again!" and "Again." are spoken
 differently, so they are two sentences.
 
@@ -315,13 +325,13 @@ you change its text. The checkboxes in front of the rows are for the two
 things that concern several sentences: downloading and **switching to another
 voice**. Both buttons appear as soon as something is ticked: "Download as MP3"
 directly, everything rarer behind the chevron next to it — as WAV, change
-voice, add to a group, remove from one, delete. It is the same menu the ⋮ of a
+voice, add to a collection, remove from one, delete. It is the same menu the ⋮ of a
 row shows for a single sentence.
 
 For several sentences there is **adding and removing, but no replacing**.
-Ticked sentences usually have different groups, and a filter may be hiding
+Ticked sentences usually sit in different collections, and a filter may hide
 some — replacing would silently throw away something you cannot see. In a
-single row "Change groups" still replaces, because there the existing groups
+single row "Change collections" still replaces, because there the existing ones
 are in the field.
 
 Should a recording fail, the "Not recorded" pill in the voices row says so.
