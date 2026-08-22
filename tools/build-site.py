@@ -26,20 +26,11 @@ OUT = ROOT / "docs" / "app" / "index.html"
 # The backend has to have run before the page's own script does, so it is a
 # plain script and not a module: a module would be deferred to after it.
 #
-# The import map is for vits-web, which still imports onnxruntime-web by bare
-# name and so expects a bundler. 1.18.0 on purpose: vits-web loads its wasm
-# binaries from that exact version, and a mismatched pair fails deep inside
-# the runtime with nothing useful to read. An import map has to be in the
-# document before the first module loads, which is why it lives here and not
-# in backend-local.js.
-HEAD = """<script type="importmap">
-{{
-  "imports": {{
-    "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/esm/ort.wasm.min.js"
-  }}
-}}
-</script>
-<script>window.MITREDEN_STRINGS = {strings};</script>
+# There is no import map any more. The published vits-web bundle imports
+# onnxruntime-web by bare name, expecting a bundler to resolve it; the copy in
+# vendor/ has that rewritten to the file next to it, which is a better fix than
+# teaching the page to paper over it.
+HEAD = """<script>window.MITREDEN_STRINGS = {strings};</script>
 <script src="backend-local.js"></script>
 """
 

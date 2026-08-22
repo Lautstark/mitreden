@@ -138,11 +138,14 @@
   }
 
   // ------------------------------------------------------------------ piper
+  // Both come out of vendor/, fetched once by tools/vendor.py and served from
+  // here. Loaded on demand rather than up front: opening the page should not
+  // cost a megabyte of decoder nobody has asked to use yet.
   let ttsp = null;
-  const tts = () => (ttsp ||= import('https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/vits-web.js'));
+  const tts = () => (ttsp ||= import('./vendor/vits-web.js'));
 
   let lamep = null;
-  const lame = () => (lamep ||= import('https://cdn.jsdelivr.net/npm/@breezystack/lamejs@1.2.7/dist/lamejs.js'));
+  const lame = () => (lamep ||= import('./vendor/lamejs.js'));
 
   let onProgress = null;   // set while a batch is running, so the page can say so
 
