@@ -41,6 +41,17 @@ export const findTwin = (items, text) => {
   return items.find(i => normText(i.text) === key) || null;
 };
 
+// The same problem one level up. normTag truncates at 24 characters, so two
+// names that differ only near the end — "Sammlung vom 22.08.2026" and the same
+// with "(2)" after it — arrive at the same key, and a create for the second
+// one silently found the first and did nothing. The number goes on the key.
+export function freeKey(declared, name) {
+  const base = normTag(name);
+  const taken = new Set(declared.map(c => c.key));
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+}
+
 export function freeId(items, text) {
   const base = slug(text);
   const taken = new Set(items.map(i => i.id));

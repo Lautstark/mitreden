@@ -69,6 +69,7 @@ function drawVoiceChips(hits){
 // you do all day. Cmd or Ctrl adds a second one, because here a sentence can
 // genuinely be in two at once and that has to be reachable.
 export function draw(){
+  drawDownload();                       // its labels are words, so they follow the language
   const hits=found(), items=shown().slice().reverse();  // newest first
 
   // Chips count within the current search, so they stay useful while typing.
@@ -213,10 +214,23 @@ async function del(it){
 // every device wants mp3, so making that the click and wav the second step is
 // the honest ordering.
 const recorded=()=>shown().filter(i=>i.state!=='missing').map(i=>i.id);
-$('dlall').onclick=()=>packMany(recorded(),'mp3');
-$('dlallmore').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
-  add(t('download_wav'),false,()=>{closeMenus();packMany(recorded(),'wav')});
-});
+// The first option is the control's own name, so the closed select reads
+// "Download" rather than pretending a format is already chosen. Picking one
+// starts the download and the label comes straight back.
+function drawDownload(){
+  const sel=$('dlall'), was=document.activeElement===sel;
+  sel.innerHTML='';
+  sel.appendChild(new Option(t('download_all'),''));
+  sel.appendChild(new Option(t('download_mp3'),'mp3'));
+  sel.appendChild(new Option(t('download_wav'),'wav'));
+  sel.value='';
+  if(was)sel.focus();
+}
+$('dlall').onchange=e=>{
+  const fmt=e.target.value;
+  e.target.value='';
+  if(fmt)packMany(recorded(),fmt);
+};
 
 // A whole Sammlung as one zip.
 async function packMany(ids,fmt){

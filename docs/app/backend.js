@@ -9,10 +9,10 @@ import { OUT } from './settings.js';
 import { VOICES, DEFAULT_VOICE, modelOf, labelOf, voiceById } from './voices.js';
 import {
   db, idb, loadPhrases, savePhrases, loadCollections, saveCollections,
-  ensureCollection, defaultName, loadSettings, saveSettings,
+  ensureCollection, defaultName, setLangDe, loadSettings, saveSettings,
   getAudio, putAudio, dropAudio, activeVoice,
 } from './store.js';
-import { normTag, normText, findTwin, freeId, fingerprint, slug } from './ids.js';
+import { normTag, normText, findTwin, freeId, freeKey, fingerprint, slug } from './ids.js';
 import { speak, azureVoices, setProgress } from './speak.js';
 import { process as makeAudio, asFormat } from './media.js';
 import { zip } from './zip.js';
@@ -85,7 +85,7 @@ async function phrasesWithState() {
 
 async function get(route) {
   if (route === '/api/strings') return json(window.MITREDEN_STRINGS || {});
-  if (route.startsWith('/api/lang/')) { LANG_DE = route.endsWith('/de'); return json({ ok: true }); }
+  if (route.startsWith('/api/lang/')) { setLangDe(route.endsWith('/de')); return json({ ok: true }); }
   // No cloud services here. A key typed into a public page would be a
   // different promise than the one the container makes, so the panel stays
   // empty rather than half-true.
@@ -323,10 +323,13 @@ async function post(route, body) {
       let shown = String(body.name || '').trim();
       let key = name;
       if (!shown) {
+        // The name counts up so it reads plainly; the key counts up separately,
+        // because truncation would throw the "(2)" away and hand back the key
+        // of the Sammlung that already exists.
         const base = defaultName();
         shown = base;
         for (let n = 2; declared.some(c => c.name === shown); n++) shown = `${base} (${n})`;
-        key = normTag(shown);
+        key = freeKey(declared, shown);
       }
       if (!key || !shown) return fail('A collection needs a name.', 400);
       if (!declared.some(c => c.key === key)) {

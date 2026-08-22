@@ -61,6 +61,9 @@ function closeRail(){
     $('rail').classList.remove('open');$('scrim').hidden=true;
   }
 }
+// Modules are strict, so this has to exist before it is assigned: without it
+// the first keystroke threw and the name was never saved.
+let renameTimer;
 function scheduleRename(){
   const here=DECLARED.find(c=>COLLECTIONS.has(c.key))||DECLARED[0];
   if(!here)return;

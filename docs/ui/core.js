@@ -11,28 +11,15 @@ import { backend } from '../app/backend.js';
 export const $=id=>document.getElementById(id);
 
 // --- Woher die Daten kommen -------------------------------------------
-// Nothing here leaves the machine. backend-local.js answers everything out of
-// the browser itself — IndexedDB for the sentences, piper compiled to WASM for
-// the voice — and sets MITREDEN_BACKEND before this file runs.
+// Nothing here leaves the machine. app/backend.js answers everything out of the
+// browser itself — IndexedDB for the sentences, piper compiled to WASM for the
+// voice.
 //
 // It still goes through one object rather than being called directly, because
 // the routes are the seam: they are what a second implementation would have to
-// answer, and what the container used to answer before there was no container.
-// --- Woher die Daten kommen -------------------------------------------
-// Nothing here leaves the machine. backend-local.js answers everything out of
-// the browser itself — IndexedDB for the sentences, piper compiled to WASM for
-// the voice — and sets MITREDEN_BACKEND before this file runs.
-//
-// It still goes through one object rather than being called directly, because
-// the routes are the seam: they are what a second implementation would have to
-// answer, and what the container used to answer before there was no container.
+// answer, and they are what the tests drive.
 export const api = backend;
 
-// --- Sprachen ---------------------------------------------------------
-// The strings come from lang/*.json so that translating means editing a file,
-// not hunting through the program. Keys are English; a key that is missing in
-// one language falls back to English, and then to the key itself, so a gap is
-// visible instead of blank.
 // --- Sprachen ---------------------------------------------------------
 // The strings come from lang/*.json so that translating means editing a file,
 // not hunting through the program. Keys are English; a key that is missing in
@@ -47,8 +34,6 @@ export function t(key,vars){
   if(vars)for(const k in vars)s=s.split('{'+k+'}').join(vars[k]);
   return s;
 }
-// Singular and plural are separate keys — languages disagree about where the
-// line falls, and "1 Sätze" is the kind of thing you stop seeing yourself.
 // Singular and plural are separate keys — languages disagree about where the
 // line falls, and "1 Sätze" is the kind of thing you stop seeing yourself.
 export const tn=(key,n,vars)=>t(key+(n===1?'_one':'_other'),Object.assign({n},vars));

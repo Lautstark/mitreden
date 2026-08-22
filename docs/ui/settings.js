@@ -85,10 +85,6 @@ $('gear').onclick=()=>{drawSetup();$('setup').showModal()};
 // Only the static site offers these: there the sentences live in the browser
 // and nothing else holds a copy. In the container phrases.json is already a
 // file you can see, back up and edit.
-// --- Sichern und Laden ------------------------------------------------
-// Only the static site offers these: there the sentences live in the browser
-// and nothing else holds a copy. In the container phrases.json is already a
-// file you can see, back up and edit.
 $('export').onclick=async()=>{
   const r=await api.get('/api/export');
   if(!r.ok){say(t('failed',{error:await r.text()}));return}
@@ -98,7 +94,6 @@ $('export').onclick=async()=>{
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 };
-$('import').onclick=()=>$('importfile').click();
 $('importfile').onchange=async e=>{
   const file=e.target.files&&e.target.files[0];
   e.target.value='';                    // so the same file can be picked twice
@@ -125,10 +120,10 @@ $('wipe').onclick=async()=>{
   say(t('danger_done'));
   $('setup').close();load();
 };
-$('import2').onclick=()=>{$('setup').showModal();drawSetup();
-  for(const x of document.querySelectorAll('#tabs .tab'))x.classList.toggle('on',x.dataset.tab==='data');
-  for(const p of document.querySelectorAll('.pane'))p.hidden=p.dataset.pane!=='data';
-  $('importfile').click()};
+// Importing is one act, so it is one click: the file picker, straight away.
+// It used to open the settings, switch to a tab and then open the picker over
+// the top of it, which left the dialog behind afterwards.
+$('import2').onclick=()=>$('importfile').click();
 
 // One row of tabs, one pane visible. The panes are in the markup rather than
 // built here, so a translator can see them.

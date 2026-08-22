@@ -67,6 +67,10 @@ export const defaultName = () => {
   return `${LANG_DE ? 'Sammlung vom' : 'Collection of'} ${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
 };
 export let LANG_DE = true;                   // set from the page, only affects the name
+// An imported binding cannot be assigned from the module that imported it, so
+// the page's language never arrived and an English page named its first
+// Sammlung in German.
+export const setLangDe = value => { LANG_DE = value; };
 
 export async function ensureCollection() {
   const declared = await loadCollections();

@@ -260,6 +260,42 @@ def browser_checks(play, base: str, report: Report) -> None:
     page.wait_for_function("() => document.querySelectorAll('.item').length === 1")
     report.check(True, "clearing the search brings the sentence back")
 
+    # A Sammlung is made, named and thrown away entirely through the page, and
+    # every step of that is a separate piece of wiring. Renaming broke on an
+    # undeclared timer variable — strict mode, so the first keystroke threw and
+    # the name silently never saved — and deleting once reported success while
+    # removing nothing. Neither is visible without walking the whole path.
+    page.click("#newcol")
+    page.wait_for_function("() => document.querySelectorAll('#rows .list__item').length === 2")
+    made = page.input_value("#colname")
+    report.check(bool(made.strip()), "a new Sammlung arrives named and open", f"title is {made!r}")
+
+    page.fill("#colname", "Beim Essen")
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('#rows .list__name')]"
+        ".some(e => e.textContent === 'Beim Essen')",
+        timeout=5_000)
+    report.check(True, "typing in the title renames the Sammlung")
+
+    page.reload(wait_until="load")
+    page.wait_for_selector("#rows .list__item")
+    names = page.eval_on_selector_all("#rows .list__name", "els => els.map(e => e.textContent)")
+    report.check("Beim Essen" in names, "the new name survives a reload", f"sidebar shows {names}")
+
+    # A reload leaves nothing selected, so the header acts on the first
+    # Sammlung. Open the one this test made before reaching for its menu.
+    page.click("#rows .list__item:has(.list__name:text-is('Beim Essen'))")
+    page.wait_for_function(
+        "() => document.getElementById('colname').value === 'Beim Essen'", timeout=5_000)
+    page.once("dialog", lambda d: d.accept())
+    page.click("#colmore")
+    page.click(".menu button.danger, [role=menu] button.danger")
+    page.wait_for_function(
+        "() => ![...document.querySelectorAll('#rows .list__name')]"
+        ".some(e => e.textContent === 'Beim Essen')",
+        timeout=5_000)
+    report.check(True, "and it can be deleted again")
+
     # The footer link is the only way off this page, and it is a relative
     # path in a folder that gets published as it stands.
     about = page.get_attribute("footer a", "href")

@@ -65,6 +65,94 @@ ANY_DECL = re.compile(r"^(?:export )?(?:async )?(?:function|const|let|var)\s+([\
 IMPORT = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'([^']+)'", re.M)
 
 
+
+# Everything a module binds a name with. Deliberately generous: counting one
+# name too many costs a missed fault, counting one too few cries wolf, and a
+# check that cries wolf is one nobody reads.
+BIND_KW = re.compile(r"\b(?:let|const|var)\s+")
+GLOBALS = set("""
+window document console navigator location history screen fetch Response Request Headers
+setTimeout clearTimeout setInterval clearInterval queueMicrotask requestAnimationFrame
+Promise Array Object String Number Boolean Math JSON Date RegExp Map Set WeakMap WeakSet
+Error TypeError RangeError Symbol Proxy Reflect Intl AbortController
+Uint8Array Int16Array Uint16Array Int32Array Uint32Array Float32Array Float64Array
+ArrayBuffer DataView Blob File FileReader FormData URL URLSearchParams TextEncoder TextDecoder
+indexedDB IDBKeyRange caches crypto performance structuredClone atob btoa
+AudioContext OfflineAudioContext Audio Image Option Event CustomEvent KeyboardEvent Worker
+addEventListener removeEventListener dispatchEvent matchMedia getComputedStyle
+alert confirm prompt isNaN parseInt parseFloat encodeURIComponent decodeURIComponent
+globalThis undefined NaN Infinity self
+""".split())
+
+
+def without_noise(src: str) -> str:
+    """Comments and string bodies, blanked, so only code is read.
+
+    Scanned rather than matched. A regex for block comments reads `lang/*.json`
+    inside a line comment as the start of one and swallows everything up to the
+    next `*/` — which here was two dozen lines of real declarations, quietly
+    turning them into names nothing declared.
+    """
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c, nxt = src[i], src[i + 1:i + 2]
+        if c == "/" and nxt == "/":
+            while i < n and src[i] != "\n":
+                i += 1
+        elif c == "/" and nxt == "*":
+            i += 2
+            while i < n and src[i:i + 2] != "*/":
+                i += 1
+            i += 2
+        elif c in "'\"`":
+            quote, i = c, i + 1
+            while i < n and src[i] != quote:
+                i += 2 if src[i] == "\\" else 1
+            i += 1
+            out.append(quote * 2)
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def bound_names(src: str) -> set[str]:
+    names: set[str] = set()
+    # let/const/var, including `const a = 1, b = 2` and destructuring patterns
+    for m in BIND_KW.finditer(src):
+        i = m.end()
+        depth, j = 0, i
+        while j < len(src):
+            c = src[j]
+            if c in "([{":
+                depth += 1
+            elif c in ")]}":
+                if depth == 0:
+                    break
+                depth -= 1
+            elif depth == 0 and c == ";":
+                break
+            elif depth == 0 and c == "\n":
+                if not src[i:j].rstrip().endswith((",", "=", "(", "&&", "||", "?", ":", "+")):
+                    break
+            j += 1
+        names |= set(re.findall(r"[A-Za-z_$][\w$]*", src[i:j]))
+    names |= set(re.findall(r"\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)", src))
+    names |= set(re.findall(r"\bclass\s+([A-Za-z_$][\w$]*)", src))
+    names |= set(re.findall(r"\bcatch\s*\(\s*([A-Za-z_$][\w$]*)", src))
+    # parameter lists, of both function and arrow forms
+    for m in re.finditer(r"\(([^()]*)\)\s*(?:=>|\{)", src):
+        names |= set(re.findall(r"[A-Za-z_$][\w$]*", m.group(1)))
+    names |= set(re.findall(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=>", src))
+    for names_part, _ in IMPORT.findall(src):
+        for raw in names_part.split(","):
+            got = raw.strip().split(" as ")[-1].strip()
+            if got:
+                names.add(got)
+    names |= set(re.findall(r"\bimport\s+([A-Za-z_$][\w$]*)", src))
+    return names
+
+
 def main() -> int:
     mods = modules()
     if not mods:
@@ -105,6 +193,42 @@ def main() -> int:
                 got = raw.strip().split(" as ")[-1].strip()
                 if got and got in mine:
                     shadowed.append(f"{path.name} imports {got} and declares it too")
+    # 2b. no module assigns to a name it imported. An imported binding is
+    # read-only, so the assignment throws at runtime — in strict mode, silently
+    # as far as the page is concerned, because it happens inside whatever
+    # handler ran. The page's language was set this way and never arrived.
+    written = []
+    for path, s in mods.items():
+        imported = set()
+        for names, _ in IMPORT.findall(s):
+            for raw in names.split(","):
+                got = raw.strip().split(" as ")[-1].strip()
+                if got:
+                    imported.add(got)
+        for name in sorted(imported):
+            hit = re.search(r"(?<![\w$.])" + re.escape(name) +
+                            r"\s*(?:\+\+|--|[+\-*/%|&^]?=(?![=>]))", s)
+            if hit:
+                written.append(f"{path.name} assigns to {name}, which it imports")
+    check("no module assigns to what it imports", not written,
+          "\n".join(f"        {w}" for w in written))
+
+    # 2c. no module assigns to a name nothing ever declared. Modules are strict,
+    # so this throws where it stands — inside a handler, where the page simply
+    # stops doing that one thing and says nothing. Renaming a Sammlung and the
+    # page's own language both failed this way, in different files, unnoticed.
+    stray = []
+    for path, s in mods.items():
+        clean = without_noise(s)
+        known = bound_names(clean) | GLOBALS
+        for m in re.finditer(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*"
+                             r"(?:\+\+|--|[+\-*/%|&^]?=(?![=>]))", clean):
+            if m.group(1) not in known:
+                stray.append(f"{path.name} assigns to {m.group(1)}, which is declared nowhere")
+    stray = sorted(set(stray))
+    check("no module assigns to a name it never declared", not stray,
+          "\n".join(f"        {w}" for w in stray))
+
     check("no module shadows what it imports", not shadowed,
           "; ".join(shadowed[:3]))
 
