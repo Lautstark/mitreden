@@ -8,7 +8,7 @@ Ich baue das für meine dreieinhalbjährige Tochter, die unterstützt
 kommuniziert.
 
 *Diese Seite bringt dich zum Laufen. Die ausführliche Anleitung — NAS,
-Cloud-Stimmen, Formate, Gruppen — steht auf [Englisch](README.md).*
+Cloud-Stimmen, Formate, Sammlungen — steht auf [Englisch](README.md).*
 
 ## Wofür das gut ist
 
@@ -87,7 +87,7 @@ erzeugen lässt — dafür lohnt eine Sicherung.
 ## Mehr
 
 Alles Weitere steht in der [englischen Anleitung](README.md): Dauerbetrieb auf
-dem NAS, eigene Piper-Modelle, Azure und ElevenLabs, Ausgabeformate, Gruppen
+dem NAS, eigene Piper-Modelle, Azure und ElevenLabs, Ausgabeformate, Sammlungen
 und Suche, die Kommandozeile.
 
 Fehlerberichte und Fragen sind willkommen — gern auf Deutsch.

@@ -10,9 +10,11 @@ The output format lives in config.json too: mp3 by default, anything ffmpeg
 can write if you need something else. Lossy formats get a bitrate from there
 as well — a voice needs a generous one to stay clear.
 
-Phrases can belong to groups ("kindergarten", "spiel"). Groups are labels, not
-folders: one phrase can be in several of them, and out/ stays flat — one text,
-one audio file, no matter how many groups point at it.
+Phrases can belong to collections ("kindergarten", "spiel"). A collection is a
+label, not a folder: one phrase can be in several at once, and out/ stays flat
+— one text, one audio file, however many collections point at it. That is the
+whole reason a collection does not own its phrases. If it did, a sentence used
+in two places would be two phrases, and two phrases drift into two voices.
 
 Usage:
     python3 mitreden.py ui              # web interface at http://localhost:8770
@@ -26,7 +28,7 @@ Usage:
     python3 mitreden.py build --all     # re-render everything (after a voice change)
     python3 mitreden.py delete <id>     # delete a phrase and its files
     python3 mitreden.py dedupe          # show duplicates (--apply to merge them)
-    python3 mitreden.py export <group> <folder>   # copy one group somewhere else
+    python3 mitreden.py export <collection> <folder>  # copy one somewhere else
     python3 mitreden.py backends        # show which backends are usable
 
 No pip dependencies. All you need is ffmpeg and a TTS backend.
@@ -238,10 +240,10 @@ def slug(text, fallback="phrase"):
 
 
 def norm_tag(text):
-    """Groups get the same treatment as ids, so "Kindergarten" and
-    "kindergarten " are one group and not two.
+    """Collections get the same treatment as ids, so "Kindergarten" and
+    "kindergarten " are one collection and not two.
 
-    Without a name there is no group — hence no filename fallback here."""
+    Without a name there is no collection — hence no filename fallback here."""
     return slug(text, "")[:24]
 
 
@@ -273,8 +275,8 @@ def add_lines(items, lines, tags=()):
     """Append phrases to `items`, in place.
 
     A line whose text already exists does not become a second entry — the
-    existing phrase just picks up the new groups. That is what keeps one text
-    at one audio file, however many groups it belongs to.
+    existing phrase just picks up the new collections. That is what keeps one
+    text at one audio file, however many collections it belongs to.
 
     Returns (new items, phrases that were already there)."""
     tags = [t for t in (norm_tag(x) for x in tags) if t]
@@ -301,13 +303,13 @@ def add_lines(items, lines, tags=()):
 
 
 def change_tags(ids, tags, mode="set"):
-    """Groups for one phrase or many. Returns the ids that were touched.
+    """Collections for one phrase or many. Returns the ids that were touched.
 
-    "set" replaces and is what a single row does, where the current groups are
+    "set" replaces and is what a single row does, where the current collections are
     filled in and you can see what disappears. Over a selection that would be
-    a silent deletion — the phrases have different groups, and a filter may be
+    a silent deletion — the phrases have different collections, and a filter may be
     hiding some of them — so a selection adds or removes instead, which only
-    ever touches the groups you named."""
+    ever touches the collections you named."""
     clean = [t for t in dict.fromkeys(norm_tag(x) for x in tags) if t]
     wanted = set(ids)
     items = load_phrases()
@@ -956,9 +958,9 @@ def delete_phrase(pid):
 def dedupe(apply=False):
     """Merge phrases that say the same thing.
 
-    Groups make duplicates easy to create by hand, and phrase sets that grew
-    before groups existed have them anyway. The oldest entry wins, takes over
-    the groups of the others, and their audio files go away.
+    Collections make duplicates easy to create by hand, and phrase sets that grew
+    before collections existed have them anyway. The oldest entry wins, takes
+    over the collections of the others, and their audio files go away.
 
     Nothing is written unless apply=True. phrases.json is the only copy these
     sentences have, so the merge is worth seeing before it happens.
@@ -980,7 +982,7 @@ def dedupe(apply=False):
     return keep, merges
 
 
-def in_group(item, tag):
+def in_collection(item, tag):
     return not tag or tag in (item.get("tags") or [])
 
 
@@ -1024,8 +1026,8 @@ def zip_phrases(ids, cfg, fmt=None):
     return buf.getvalue(), n
 
 
-def export_group(tag, dest, cfg):
-    """Copy one group into a folder, for carrying it somewhere else.
+def export_collection(tag, dest, cfg):
+    """Copy one collection into a folder, for carrying it somewhere else.
 
     Returns (copied names, ids that are not recorded yet)."""
     tag = norm_tag(tag) if tag else ""
@@ -1033,7 +1035,7 @@ def export_group(tag, dest, cfg):
     dest.mkdir(parents=True, exist_ok=True)
     copied, missing = [], []
     for item in load_phrases():
-        if not in_group(item, tag):
+        if not in_collection(item, tag):
             continue
         f = out_file(item["id"], cfg)
         if f.exists():
@@ -1477,9 +1479,9 @@ def main():
             print("Run `mitreden.py dedupe --apply` to actually do it.")
     elif cmd == "export":
         if len(args) < 3:
-            sys.exit("Usage: mitreden.py export <group|all> <folder>")
+            sys.exit("Usage: mitreden.py export <collection|all> <folder>")
         tag = "" if args[1] in ("all", "*") else args[1]
-        copied, missing = export_group(tag, args[2], load_config())
+        copied, missing = export_collection(tag, args[2], load_config())
         print(f"exported {len(copied)} files to {args[2]}")
         for pid in missing:
             print(f"  not recorded yet   {pid}", file=sys.stderr)
