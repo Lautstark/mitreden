@@ -35,7 +35,7 @@ verlässt.
 — [mitreden.command](docs/mitreden.command) auf dem Mac,
 [mitreden.bat](docs/mitreden.bat) unter Windows,
 [mitreden.sh](docs/mitreden.sh) unter Linux. Es gibt sie auch auf
-[der Webseite](https://steffipetaffy.github.io/mitreden/de.html), die in einer
+[der Webseite](https://lautstark.github.io/mitreden/de.html), die in einer
 halben Minute zeigt, wie das aussieht. Sie holt mitreden, startet es und
 öffnet den Browser. Docker muss installiert sein; steht es nicht bereit, sagt
 die Datei es dir. Solange das Fenster offen bleibt, läuft mitreden.

@@ -65,7 +65,7 @@ straight away — no account, no key, nothing leaving your network.
 it — [mitreden.command](docs/mitreden.command) on a Mac,
 [mitreden.bat](docs/mitreden.bat) on Windows, [mitreden.sh](docs/mitreden.sh)
 on Linux. They can also be downloaded from
-[the website](https://steffipetaffy.github.io/mitreden/), which shows what
+[the website](https://lautstark.github.io/mitreden/), which shows what
 this looks like in half a minute.
 It fetches mitreden, starts it and opens your browser. Docker has to be
 installed; the file says so if it is not. As long as the window stays open,
@@ -437,7 +437,7 @@ install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
 `voices/`.
 
 ```
-git clone https://github.com/SteffiPeTaffy/mitreden.git
+git clone https://github.com/Lautstark/mitreden.git
 cd mitreden
 cp phrases.example.json phrases.json
 python3 mitreden.py backends   # which backend says "found" on your machine?
