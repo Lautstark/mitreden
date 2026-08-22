@@ -42,6 +42,13 @@ VENDOR = ROOT / "docs" / "vendor"
 LOCK = Path(__file__).resolve().parent / "vendor.lock.json"
 
 JSDELIVR = "https://cdn.jsdelivr.net/npm"
+
+# The family's own package: the tested voice list, and the recording chain that
+# used to be docs/audio.js. Pinned to a commit, which on GitHub is immutable, so
+# the same rule holds as for a versioned file on a CDN — the hash in the lock is
+# what we saw. vorlaut vendors the same commit.
+STIMMQUELLE = "0ff9af2152c30525b347f497f65a3f0c4f06c184"
+STIMMQUELLE_RAW = f"https://raw.githubusercontent.com/Lautstark/stimmquelle/{STIMMQUELLE}"
 PIPER_WASM = f"{JSDELIVR}/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize"
 ONNX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/"
 
@@ -51,7 +58,20 @@ CODE = [
     (f"{JSDELIVR}/@diffusionstudio/vits-web@1.0.3/dist/vits-web.js", "vits-web.js"),
     (f"{JSDELIVR}/@diffusionstudio/vits-web@1.0.3/dist/piper-DeOu3H9E.js", "piper-DeOu3H9E.js"),
     (f"{JSDELIVR}/onnxruntime-web@1.18.0/dist/esm/ort.wasm.min.js", "ort.wasm.min.js"),
-    (f"{JSDELIVR}/@breezystack/lamejs@1.2.7/dist/lamejs.js", "lamejs.js"),
+    # Which voices may be shipped and which actually speak. It used to be an
+    # array in backend-local.js, and there was another in vorlaut, and the rule
+    # about what may be handed on was written out in three places — all three
+    # correct on the day a CC BY-NC-SA voice was sitting in the array, because a
+    # list of voices with no room for a reason only records what passed.
+    (f"{STIMMQUELLE_RAW}/voices.json", "voices.json"),
+    # The recording chain. Committed in that repository rather than built at
+    # install, because this one has no npm to build it with.
+    (f"{STIMMQUELLE_RAW}/dist/browser/index.js", "stimmquelle.js"),
+    # Its lazy chunk, and the name matters: stimmquelle.js asks for
+    # "./lamejs.js" only when something wants an MP3, so it has to land beside
+    # it under exactly that name. This is also the lamejs that used to be
+    # vendored here directly — one copy now, behind the encoder that uses it.
+    (f"{STIMMQUELLE_RAW}/dist/browser/lamejs.js", "lamejs.js"),
 ]
 
 # The blobs, only with --with-binaries. Two onnxruntime builds are left out.
@@ -145,15 +165,22 @@ def main():
         # is silent both ways: bump the vendored bundle and leave the constant,
         # and new audio hides under old names; bump the constant alone, and
         # every phrase is recorded again by the engine that already made it.
+        # Two things decide what a recording sounds like and both are vendored:
+        # vits-web turns the text into sound, stimmquelle trims and levels it.
+        # So ENGINE_VERSION names both, and both halves are checked here.
         backend = (ROOT / "docs" / "backend-local.js").read_text(encoding="utf-8")
         named = re.search(r"ENGINE_VERSION\s*=\s*'([^']+)'", backend)
         vits = lock["files"].get("vits-web.js", {}).get("url", "")
         pinned = re.search(r"vits-web@([0-9][^/]*)/", vits)
-        if not named or not pinned:
-            bad.append("could not find ENGINE_VERSION or the vits-web pin to compare")
-        elif named.group(1) != f"vits-web@{pinned.group(1)}":
-            bad.append(f"ENGINE_VERSION is {named.group(1)}, "
-                       f"but vits-web@{pinned.group(1)} is what is vendored")
+        chain = lock["files"].get("stimmquelle.js", {}).get("url", "")
+        commit = re.search(r"/stimmquelle/([0-9a-f]{7,40})/", chain)
+        if not named or not pinned or not commit:
+            bad.append("could not find ENGINE_VERSION or one of the pins to compare")
+        else:
+            want = f"vits-web@{pinned.group(1)} stimmquelle@{commit.group(1)[:7]}"
+            if named.group(1) != want:
+                bad.append(f"ENGINE_VERSION is {named.group(1)}, but {want} is "
+                           f"what is vendored")
         if bad:
             print("\n".join(f"  {b}" for b in bad), file=sys.stderr)
             raise SystemExit("vendored files do not match tools/vendor.lock.json.")

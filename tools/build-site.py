@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 UI = ROOT / "ui.html"
 LANGS = ROOT / "lang"
 OUT = ROOT / "docs" / "index.html"
+VENDOR = ROOT / "docs" / "vendor"
 
 # The backend has to have run before the page's own script does, so it is a
 # plain script and not a module: a module would be deferred to after it.
@@ -30,13 +31,28 @@ OUT = ROOT / "docs" / "index.html"
 # onnxruntime-web by bare name, expecting a bundler to resolve it; the copy in
 # vendor/ has that rewritten to the file next to it, which is a better fix than
 # teaching the page to paper over it.
-HEAD = """<script>window.MITREDEN_STRINGS = {strings};</script>
+HEAD = """<script>window.MITREDEN_STRINGS = {strings};
+window.STIMMQUELLE = {voices};</script>
 <script src="backend-local.js"></script>
 """
 
 NOTE = """<!-- Built by tools/build-site.py from ui.html. Do not edit by hand:
      the next build overwrites it, and the container would keep the old text. -->
 """
+
+
+def voices():
+    """The tested voice list, baked in the same way the strings are.
+
+    backend-local.js runs as a plain script rather than a module, so it can
+    neither import nor wait for a fetch: the list has to be there before its
+    first line. Same problem the strings have, same answer.
+
+    The file is vendored by tools/vendor.py and pinned by hash, so what lands
+    here is a commit of Lautstark/stimmquelle rather than whatever that
+    repository happens to say today.
+    """
+    return json.loads((VENDOR / "voices.json").read_text(encoding="utf-8"))
 
 
 def strings():
@@ -50,8 +66,9 @@ def build():
     if marker not in page:
         raise SystemExit("ui.html no longer starts its script the way this "
                          "expects — tools/build-site.py needs adjusting.")
-    head = HEAD.format(strings=json.dumps(strings(), ensure_ascii=False,
-                                          sort_keys=True))
+    head = HEAD.format(
+        strings=json.dumps(strings(), ensure_ascii=False, sort_keys=True),
+        voices=json.dumps(voices(), ensure_ascii=False, sort_keys=True))
     return NOTE + page.replace(marker, head + marker, 1)
 
 

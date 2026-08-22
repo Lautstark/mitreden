@@ -18,38 +18,29 @@
 
   // ---------------------------------------------------------------- voices
   //
-  // A tested list, not the piper catalogue. Two questions have to be answered
-  // before a voice belongs here, and voices.json answers neither of them.
+  // Not a list here any more. It comes from Lautstark/stimmquelle, vendored by
+  // tools/vendor.py and baked into the page by tools/build-site.py the same way
+  // the interface strings are — this file runs as a plain script so that it is
+  // ready before the page's own, which leaves it unable to import and unable to
+  // wait for a fetch. Same problem the strings have, same answer.
   //
-  // DOES IT RUN? Only medium and high survive. Every low and x_low model fails
-  // the same way — the phonemizer works from a fixed symbol table instead of
-  // the phoneme_id_map inside each model's own .onnx.json, and the older
-  // tables are smaller. That is why Kerstin is missing: she is published as
-  // low only, and fixing the phonemizer is what would bring her back. See
-  // docs/spike/README.md.
+  // vorlaut reads the same file. It used to be an array here and another there,
+  // arrived at separately rather than copied, and the rule about which voices
+  // may be handed on was written out in full in three places. All three were
+  // correct on the day a CC BY-NC-SA voice was sitting in this array, because a
+  // list of voices with no room for a reason only ever records what passed.
   //
-  // MAY IT BE HANDED ON? A page that gives somebody a finished audio file is
-  // passing the voice on, exactly as the container image does, so the rule in
-  // the README applies here word for word: read the MODEL_CARD next to the
-  // model, not the file name. en_US-hfc_female-medium stood in this list on
-  // the strength of running perfectly. Its card says CC BY-NC-SA 4.0 — non
-  // commercial, share-alike — which is not a condition a recording made for
-  // somebody else's child can carry. It is out, and the question is written
-  // down here so that working again is not enough to bring it back.
-  //
-  // en_US-ljspeech-medium took its place, checked against both questions
-  // rather than one: public domain on its card, and recorded here before
-  // it was added.
-  //
-  // The two questions are independent. A voice can run and be unusable, and
-  // the licence one is the easier to forget, because nothing fails when it is
-  // got wrong.
-  const VOICES = [
-    { id: 'piper:de_DE-thorsten-medium', name: 'Thorsten', lang: 'de', mb: 63 },
-    { id: 'piper:de_DE-thorsten_emotional-medium', name: 'Thorsten (emotional)', lang: 'de', mb: 63 },
-    { id: 'piper:en_US-kristin-medium', name: 'Kristin', lang: 'en', mb: 63 },
-    { id: 'piper:en_US-ljspeech-medium', name: 'LJSpeech', lang: 'en', mb: 63 },
-  ];
+  // Three conditions, not two. A voice must be free to hand on, it must speak
+  // in a browser, and any attribution its licence attaches has to be one this
+  // page renders — which it does not, so anything owing one is left out rather
+  // than offered on a permission we have not met. That currently costs
+  // de_DE-mls-medium, and the way to get it is to show the notice.
+  const CATALOGUE = (window.STIMMQUELLE || { voices: [] }).voices;
+  const VOICES = CATALOGUE
+    .filter(v => v.licence.ship && v.browser === 'ok' && !v.licence.attribution)
+    .map(v => ({ id: `piper:${v.id}`, name: v.name, lang: v.lang,
+                 mb: Math.round(v.bytes / 1048576) }));
+
   const DEFAULT_VOICE = VOICES[0].id;
   const modelOf = id => id.replace(/^piper:/, '');
   const labelOf = v => [v.name, 'piper', v.lang].join(' · ');
@@ -155,7 +146,12 @@
   // The model's name is used, never a URL. Where a voice is fetched from says
   // nothing about how it sounds, and a fingerprint has to mean the same thing
   // on every machine.
-  const ENGINE_VERSION = 'vits-web@1.0.3';
+  // Both halves of what makes the sound: vits-web turns the text into speech,
+  // stimmquelle trims and levels it. Either changing means old recordings must
+  // not keep names claiming to match new ones, and both are vendored, so both
+  // are named here and `tools/vendor.py --check` fails if this disagrees with
+  // what is actually in vendor/. One constant and one guard rather than two.
+  const ENGINE_VERSION = 'vits-web@1.0.3 stimmquelle@0ff9af2';
 
   async function fingerprint(text, voiceId) {
     const payload = JSON.stringify([text, 'piper', modelOf(voiceId),
@@ -215,9 +211,6 @@
   let ttsp = null;
   const tts = () => (ttsp ||= import('./vendor/vits-web.js'));
 
-  let lamep = null;
-  const lame = () => (lamep ||= import('./vendor/lamejs.js'));
-
   let onProgress = null;   // set while a batch is running, so the page can say so
 
   async function speak(text, voiceId) {
@@ -230,64 +223,55 @@
 
   // ------------------------------------------------- trim, level and encode
   //
-  // The arithmetic lives in audio.js, so it can be checked without a browser —
-  // see tests/browser/audio.test.mjs. Decoding and resampling stay here,
-  // because they are the parts that need an AudioContext.
+  // All of it from stimmquelle, vendored like everything else in vendor/.
+  // docs/audio.js is gone and the two AudioContexts around it with it.
+  //
+  // The package reaches further than audio.js did. audio.js held the arithmetic
+  // and left decoding and resampling behind an AudioContext because they seemed
+  // to need one; stimmquelle carries its own RIFF decoder and a windowed-sinc
+  // resampler, so the whole chain runs under node. That is not tidiness. A
+  // second implementation of a filter chain is only defensible because it can
+  // be measured against the real ffmpeg, and the AudioContext version could
+  // never have had its first and last steps inside that measurement.
+  //
+  // vorlaut runs the same file. Two products that both put a sentence on a
+  // child's talker cannot afford to disagree about how loud it comes out, and
+  // until now the only thing keeping them in step was that one person wrote
+  // both.
   let dspp = null;
-  const dsp = () => (dspp ||= import('./audio.js'));
-
-  async function resample(buf, rate) {
-    const ctx = new OfflineAudioContext(1, Math.ceil(buf.duration * rate), rate);
-    const src = ctx.createBufferSource();
-    src.buffer = buf; src.connect(ctx.destination); src.start();
-    return ctx.startRendering();
-  }
-
-  async function encodeMp3(samples, rate) {
-    const { Mp3Encoder } = await lame();
-    const { toPcm16 } = await dsp();
-    const enc = new Mp3Encoder(1, rate, OUT.bitrate);
-    const pcm = toPcm16(samples), parts = [];
-    for (let i = 0; i < pcm.length; i += 1152) {
-      const b = enc.encodeBuffer(pcm.subarray(i, i + 1152));
-      if (b.length) parts.push(new Uint8Array(b));
-    }
-    const end = enc.flush();
-    if (end.length) parts.push(new Uint8Array(end));
-    return new Blob(parts, { type: 'audio/mpeg' });
-  }
+  const dsp = () => (dspp ||= import('./vendor/stimmquelle.js'));
 
   // One recording, start to finish: piper's raw wav in, the finished file out.
+  // The mp3 encoder is lamejs, and it is behind its own import inside the
+  // package — a quarter of a megabyte that only arrives when something actually
+  // asks for an mp3.
   async function process(wavBlob) {
-    const { level, MEASURE_RATE } = await dsp();
-    const ctx = new AudioContext();
-    const decoded = await ctx.decodeAudioData(await wavBlob.arrayBuffer());
-    await ctx.close();
-
-    const measured = await resample(decoded, MEASURE_RATE);   // BS.1770 wants 48 kHz
-    const { samples } = level(measured.getChannelData(0), MEASURE_RATE);
-
-    const tmp = new AudioContext({ sampleRate: MEASURE_RATE });
-    const buf = tmp.createBuffer(1, samples.length, MEASURE_RATE);
-    buf.copyToChannel(samples, 0);
-    await tmp.close();
-    const final = await resample(buf, OUT.sample_rate);
-    return encodeMp3(final.getChannelData(0), OUT.sample_rate);
+    const { postprocess, encodeMp3 } = await dsp();
+    const { samples, rate } = postprocess(new Uint8Array(await wavBlob.arrayBuffer()),
+                                          { rate: OUT.sample_rate });
+    return new Blob([await encodeMp3(samples, rate, OUT.bitrate)],
+                    { type: 'audio/mpeg' });
   }
 
-  // Decoding a finished file back to samples, for a download in another
-  // format. Same rule as the container: the audio is not touched again beyond
-  // the format change — it was trimmed and levelled when it was made.
+  // Decoding a finished file back to samples, for a download in another format.
+  // Same rule as before: the audio is not touched again beyond the format
+  // change — it was trimmed and levelled when it was made.
+  //
+  // The AudioContext that survives, and the only one left. What it decodes is
+  // an mp3; the package reads RIFF because that is what synthesisers emit.
+  // Decoding what this program itself chose to write is this program's problem,
+  // and it genuinely needs the browser for it.
   async function asFormat(blob, fmt) {
     if (fmt === OUT.format || !fmt) return blob;
     if (fmt !== 'wav') throw new Error(`This page can only write mp3 and wav, not ${fmt}.`);
     const ctx = new AudioContext();
     const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
     await ctx.close();
-    const at = decoded.sampleRate === OUT.sample_rate ? decoded
-                                                     : await resample(decoded, OUT.sample_rate);
-    const { encodeWav } = await dsp();
-    return encodeWav(at.getChannelData(0), OUT.sample_rate);
+    const { resample, encodeWav } = await dsp();
+    const at = decoded.sampleRate === OUT.sample_rate
+      ? decoded.getChannelData(0)
+      : resample(decoded.getChannelData(0), decoded.sampleRate, OUT.sample_rate);
+    return new Blob([encodeWav(at, OUT.sample_rate)], { type: 'audio/wav' });
   }
 
   // ------------------------------------------------------------- recording

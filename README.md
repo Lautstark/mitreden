@@ -216,10 +216,17 @@ than overwrites, so a backup can never cost you work that came after it.
 
 ## From source
 
-The whole program is four files: `ui.html` is the interface, `docs/audio.js`
-is the recording chain, `docs/backend-local.js` answers what the page asks,
-and `lang/*.json` is every word it says. `tools/build-site.py` puts the first
-and the last together into the page that gets published.
+The whole program is three files: `ui.html` is the interface,
+`docs/backend-local.js` answers what the page asks, and `lang/*.json` is every
+word it says. `tools/build-site.py` puts the first and the last together into
+the page that gets published.
+
+The speaking and the recording chain are not here. They come from
+[stimmquelle](https://github.com/Lautstark/stimmquelle), which
+[vorlaut](https://github.com/Lautstark/vorlaut) uses too — two products that
+both put a sentence on a child's talker cannot afford to disagree about how
+loud it comes out. `tools/vendor.py` fetches it into `docs/vendor/` pinned by
+hash, along with which voices may be shipped and which actually speak.
 
 ```
 git clone https://github.com/Lautstark/mitreden.git
