@@ -41,53 +41,26 @@ projects settled on the same rule.
 
 ## What you need
 
-Docker. The container brings everything else along: Python, ffmpeg, and four
-voices — two German, two English.
+A browser. Nothing else.
 
-Without Docker it is Python 3 and `ffmpeg`, and nothing else after that: no
-pip packages, no framework.
-
-```
-brew install ffmpeg          # macOS
-sudo apt install ffmpeg      # Debian/Ubuntu
-```
-
-Plus a voice, then. `say` (macOS) and `espeak` (Linux) are already there and
-cost nothing, but they sound robotic — good enough to check that the chain
-works. See [Choosing a voice](#choosing-a-voice).
+**[Open mitreden](https://lautstark.github.io/mitreden/app/)** and start
+typing. There is no account, no key, no installation, and nothing to keep
+running. The voice is downloaded once — about 60 MB the first time, then it
+stays on your machine — and after that every recording happens in the tab.
+Nothing you type is ever sent anywhere.
 
 ## Getting started
 
-The quickest way is the container. It brings four voices along, so it speaks
-straight away — no account, no key, nothing leaving your network.
+Type sentences into the box, one per line, and press "Add sentence". Each one
+is spoken and appears in the list below with a player. Tick the ones you want
+and download them as MP3 or WAV, then copy them onto the talker, the reading
+pen or wherever they need to go.
 
-**Without a terminal:** put one of these files into an empty folder and open
-it — [mitreden.command](docs/mitreden.command) on a Mac,
-[mitreden.bat](docs/mitreden.bat) on Windows, [mitreden.sh](docs/mitreden.sh)
-on Linux. They can also be downloaded from
-[the website](https://lautstark.github.io/mitreden/), which shows what
-this looks like in half a minute.
-It fetches mitreden, starts it and opens your browser. Docker has to be
-installed; the file says so if it is not. As long as the window stays open,
-mitreden runs.
+The sentences stay in the browser you typed them in. That is the one thing
+worth a copy: **Settings → Save sentences to a file**. Clearing the browser's
+data takes them with it, and unlike the audio they cannot be made again.
 
-On a Mac the file was downloaded from the internet, so the first start needs
-right-click → Open instead of a double-click. macOS asks once, not again.
-
-**With a terminal**, the same thing in one line:
-
-```
-mkdir mitreden && cd mitreden
-docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest
-```
-
-Open <http://localhost:8770>, type sentences — one line per sentence — and
-press "Add sentence". The audio files land in `out/`, inside the folder you
-started in, together with a `config.json` that mitreden writes for itself.
-
-That is everything. For a permanent setup, see
-[Running it on a NAS](#running-it-on-a-nas); for more voices,
-[Choosing a voice](#choosing-a-voice).
+For more voices, see [Choosing a voice](#choosing-a-voice).
 
 ### From the command line
 
@@ -101,12 +74,10 @@ python3 mitreden.py build --all  # everything again, after a voice change
 python3 mitreden.py delete i-need-help
 ```
 
-In the container the same commands run inside it, so there is nothing to
-install and nothing to clone — `mitreden` is the container's name:
-
-```
-docker exec mitreden python mitreden.py add "I need help." --collections emergency
-```
+This is the same pipeline the browser runs, with real ffmpeg and a real
+piper instead of their WebAssembly builds. It is useful for scripting a large
+set, and it is the reference the browser build is measured against — see
+[From source](#from-source).
 
 **Typo?** The ⋮ at the right edge of a row changes the text without creating
 the sentence again. It is recorded again right away. The id, and with it the
@@ -213,14 +184,19 @@ at the field, written to the `.env` next to your sentences with permissions
 Which also means: whoever reaches the interface can set a key there. It has no
 login. Home network only.
 
-**The container brings four piper voices along** — Thorsten and Kerstin in
-German, John and Kristin in English, all four CC0 or public domain. With those
-mitreden speaks immediately, without an account, without a key, without
-anything ever leaving your network.
+**The website offers four piper voices** — Thorsten and Thorsten (emotional)
+in German, Kristin and HFC female in English, all CC0 or public domain. Each
+is fetched once, on first use, and then stays on your machine.
 
-If you add another piper voice, look at its `MODEL_CARD` first: quite a few of
-the better-known English voices are under non-commercial or unclear licences
-and do not belong in an image you pass on. Your own models are added by
+The list is short on purpose, and it is a tested list rather than piper's
+catalogue. Every `low` and `x_low` model fails in the browser, because the
+phonemizer works from a fixed symbol table instead of the one inside each
+model — which is why Kerstin is missing, and she is published as `low` only.
+A voice you can pick that then fails would be worse than no choice at all.
+
+If you add another piper voice for the command line, look at its `MODEL_CARD`
+first: quite a few of the better-known English voices are under
+non-commercial or unclear licences and cannot be passed on. Your own models are added by
 dropping an `.onnx` together with its `.onnx.json` into a `voices/` folder
 next to your sentences. If your models live somewhere else, `MITREDEN_VOICES`
 says where — in the image it points at `/voices`.
@@ -352,62 +328,37 @@ python3 mitreden.py export nursery ~/Desktop/nursery
 python3 mitreden.py export all ~/Desktop/everything
 ```
 
-## Running it on a NAS
+## Running it yourself
 
-mitreden is a tool, not a service — for home use it is enough to start it on
-your machine. But if it should run permanently, so that you can add sentences
-from your phone and `phrases.json` sits in the NAS backup, there is a ready
-image. You do not need the repository for that — only a folder for your data
-and this `docker-compose.yml`:
-
-```yaml
-services:
-  mitreden:
-    image: ghcr.io/steffipetaffy/mitreden:latest
-    ports: ["8770:8770"]
-    volumes: ["./:/data"]
-    restart: unless-stopped
-```
+The website is the whole product and needs nothing running. But everything it
+does, the command line does too — with real ffmpeg and a real piper rather
+than their WebAssembly builds, which is useful for a large set and is how the
+browser build is checked.
 
 ```
-docker compose pull && docker compose up -d
+git clone https://github.com/Lautstark/mitreden.git
+cd mitreden
+python3 mitreden.py add "I need help." --collections emergency
+python3 mitreden.py build
 ```
 
-On first start mitreden writes its own `config.json` and picks a voice that
-works here — piper, in the container. It speaks straight away, without any
-key. If you want a cloud voice, its key goes into a `.env` next to it, and the
-voice appears in the picker. Everything that is yours — sentences, config,
-`out/`, keys — lives in that one folder. The program comes from the image and
-is brought up to date with `docker compose pull`, without touching your data.
-
-The image is built in CI for amd64 and arm64, so your NAS pulls it ready-made.
-Building it yourself works too: clone the repository and run
-`docker compose up -d --build`.
-
-On a Synology your own user id matters: otherwise the container runs as root,
-and whatever it creates belongs to root and can no longer be edited over the
-network share. Call `id` over SSH and put `user: "1026:100"` into the compose
-file.
-
-And the port belongs on your home network. Because: **the interface has no
-login.** Whoever reaches the port can add sentences, delete them, and record
-on your key. On your own network or over a VPN that is fine, on the open
-internet it is not. That is why mitreden listens on `localhost` only unless
-explicitly sent onto the network:
+Python 3 and `ffmpeg`, and nothing after that: no pip packages, no framework.
 
 ```
-python3 mitreden.py ui --host 0.0.0.0 --port 8770
+brew install ffmpeg          # macOS
+sudo apt install ffmpeg      # Debian/Ubuntu
 ```
 
-One thing that is no longer a gap: a page on another site cannot make your
-browser change anything here. Adding, deleting and recording are refused
-unless the request comes from mitreden's own page, so a tab you left open
-somewhere else cannot quietly work on your behalf. That is not a login, and it
-does not make the port safe to publish — it only means the risk is who can
-reach the port, not what else you happen to be browsing.
+Plus a voice. `say` (macOS) and `espeak` (Linux) are already there and cost
+nothing, but they sound robotic — good enough to check the chain works. For
+the voices the website uses, install piper and drop a model beside your
+sentences; see [Choosing a voice](#choosing-a-voice).
 
-Where your data lives is controlled by `MITREDEN_DIR`. Without the variable it
-is the folder next to `mitreden.py` — so nothing changes on your machine.
+`python3 mitreden.py ui` also serves the interface locally, which is the same
+page the website serves. It listens on `localhost` only, and it has no login:
+if you send it onto your network with `--host 0.0.0.0`, anyone who reaches
+the port can add, delete and record. On your own network that is fine; on the
+open internet it is not.
 
 ## Your content stays local
 
@@ -428,13 +379,24 @@ go — it is, as said above, the only thing that cannot be recreated.
 
 ## From source
 
-For working on mitreden, or for running it without Docker. This is the
-developer's way in — to just use it, the container above is less work.
+For working on mitreden. To just use it,
+[the website](https://lautstark.github.io/mitreden/app/) needs nothing at all.
 
 You need Python 3 and ffmpeg, and a voice: `say` on macOS and `espeak` on
 Linux are already there, but they sound robotic. For a good local voice,
 install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
 `voices/`.
+
+```
+pip install piper-tts==1.7.0
+```
+
+The version matters and is pinned on purpose. piper is what turns text into
+sound, so a release that changes how a voice speaks would leave older
+recordings sitting under fingerprints claiming to match new ones — one set of
+sentences, two voices. `PIPER_VERSION` in `mitreden.py` names the same
+version, `tests/test_fingerprint.py` checks the two agree, and bumping them
+together re-records everything piper made.
 
 ```
 git clone https://github.com/Lautstark/mitreden.git

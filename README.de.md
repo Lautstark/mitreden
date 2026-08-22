@@ -27,34 +27,23 @@ rein, Audiodateien raus, im Format, das dein Gerät versteht.
 
 ## Loslegen
 
-Am schnellsten geht es mit dem Container. Er bringt vier Stimmen mit und
-spricht deshalb sofort — ohne Konto, ohne Schlüssel, ohne dass etwas dein Netz
-verlässt.
+Du brauchst einen Browser. Sonst nichts.
 
-**Ohne Terminal:** Eine dieser Dateien in einen leeren Ordner legen und öffnen
-— [mitreden.command](docs/mitreden.command) auf dem Mac,
-[mitreden.bat](docs/mitreden.bat) unter Windows,
-[mitreden.sh](docs/mitreden.sh) unter Linux. Es gibt sie auch auf
-[der Webseite](https://lautstark.github.io/mitreden/de.html), die in einer
-halben Minute zeigt, wie das aussieht. Sie holt mitreden, startet es und
-öffnet den Browser. Docker muss installiert sein; steht es nicht bereit, sagt
-die Datei es dir. Solange das Fenster offen bleibt, läuft mitreden.
+**[mitreden öffnen](https://lautstark.github.io/mitreden/app/)** und lostippen
+— eine Zeile pro Satz, dann „Satz hinzufügen". Kein Konto, kein Schlüssel,
+nichts zu installieren, nichts, was laufen muss. Die Stimme wird einmal
+geladen, etwa 60 MB beim ersten Mal, und bleibt dann auf deinem Gerät. Danach
+entsteht jede Aufnahme im Tab, und nichts von dem, was du tippst, geht
+irgendwohin.
 
-Auf dem Mac kommt die Datei aus dem Internet, deshalb braucht der erste Start
-Rechtsklick → Öffnen statt eines Doppelklicks. macOS fragt einmal, danach
-nicht mehr.
+Jeder Satz erscheint mit einem Abspieler in der Liste. Die gewünschten
+anhaken und als MP3 oder WAV herunterladen — und von dort auf den Talker, den
+Hörstift oder wohin sie sollen.
 
-**Mit Terminal** geht dasselbe in einer Zeile:
-
-```
-mkdir mitreden && cd mitreden
-docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest
-```
-
-<http://localhost:8770> öffnen, Sätze eintippen — eine Zeile pro Satz —,
-„Satz hinzufügen" drücken. Die Audiodateien landen in `out/`, in dem Ordner,
-in dem du gestartet hast, zusammen mit einer `config.json`, die mitreden sich
-selbst schreibt.
+Die Sätze liegen in dem Browser, in dem du sie getippt hast. Das ist das eine,
+wovon sich eine Kopie lohnt: **Einstellungen → Sätze in einer Datei sichern.**
+Wer die Browserdaten löscht, löscht sie mit, und anders als die Audiodateien
+lassen sie sich nicht wiederherstellen.
 
 Das ist alles.
 
@@ -65,18 +54,19 @@ wird: Jeder neue Satz bekommt sie, bestehende behalten ihre, bis du sie
 ankreuzt und „Stimme ändern" wählst. Eine Stimme für alles bleibt der
 Normalfall — „Alle auswählen", einmal aufnehmen, fertig.
 
-**Im Container sind vier Piper-Stimmen dabei** — Thorsten und Kerstin auf
-Deutsch, John und Kristin auf Englisch, alle vier CC0 oder gemeinfrei. Damit
-spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas dein
-Netz verlässt.
+**Vier Piper-Stimmen stehen zur Wahl** — Thorsten und Thorsten (emotional) auf
+Deutsch, Kristin und HFC female auf Englisch, alle vier CC0 oder gemeinfrei.
+Damit spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas
+dein Gerät verlässt.
 
-Wer eine Cloud-Stimme will: Das Zahnrad neben der Sprachauswahl nimmt den
-Schlüssel entgegen, danach stehen die Stimmen des Dienstes zur Wahl. Der
-Schlüssel landet in einer `.env` neben deinen Sätzen und wird nie wieder
-angezeigt.
+Die Liste ist bewusst kurz und ausprobiert, nicht abgeschrieben: Alle `low`-
+und `x_low`-Modelle scheitern im Browser, weshalb Kerstin fehlt — es gibt sie
+nur als `low`. Eine Stimme, die man wählen kann und die dann nicht spricht,
+wäre schlimmer als keine Auswahl.
 
-Was zugleich heißt: Wer die Oberfläche erreicht, kann dort einen Schlüssel
-setzen. Sie hat keine Anmeldung. Nur im Heimnetz.
+Cloud-Stimmen gibt es auf der Webseite nicht. Ein Schlüssel auf einer
+öffentlichen Seite wäre ein anderes Versprechen als das, was hier gilt; wer
+Azure oder ElevenLabs nutzen möchte, tut das über die Kommandozeile.
 
 ## Deine Inhalte bleiben lokal
 

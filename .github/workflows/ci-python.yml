@@ -70,8 +70,8 @@ jobs:
       - name: The published page is not a version behind
         # docs/app/index.html is built from ui.html by tools/build-site.py.
         # Editing the interface and forgetting to rebuild would leave the
-        # static site quietly older than the container — same page, different
-        # behaviour, and nothing to see until it matters.
+        # published site quietly older than the source it is built from —
+        # same page, different behaviour, and nothing to see until it matters.
         run: python tools/build-site.py --check
 
       - name: Tests

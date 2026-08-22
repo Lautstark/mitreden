@@ -54,25 +54,20 @@ einen Talker, auf Taster, auf das, was als Nächstes kommt.</p>
 
 <h2>Ausprobieren</h2>
 <div class="get">
-  <p>Eine dieser Dateien in einen leeren Ordner legen und öffnen. Sie holt
-  mitreden, startet es und öffnet den Browser. Vier Stimmen sind dabei, es
-  spricht also sofort — ohne Konto, ohne Schlüssel, ohne dass etwas dein Netz
-  verlässt.</p>
+  <p>Es läuft in diesem Browser. Kein Konto, kein Schlüssel, nichts zu
+  installieren und nichts, was danach weiterläuft.</p>
   <div class="btns">
-    <a class="btn primary" href="mitreden.command" download>macOS</a>
-    <a class="btn" href="mitreden.bat" download>Windows</a>
-    <a class="btn" href="mitreden.sh" download>Linux</a>
+    <a class="btn primary" href="app/?lang=de">mitreden öffnen</a>
   </div>
-  <p class="fine">Docker muss installiert sein — steht es nicht bereit, sagt
-  die Datei es dir. Auf dem Mac braucht der erste Start Rechtsklick → Öffnen,
-  weil die Datei aus dem Internet kommt.</p>
+  <p class="fine">Die Stimme wird einmal geladen — beim ersten Mal etwa 60 MB,
+  danach bleibt sie auf deinem Gerät. Jede Aufnahme entsteht dann im Tab, und
+  nichts von dem, was du tippst, geht irgendwohin.</p>
 </div>
 
-<p>Mit Terminal ist es eine Zeile:</p>
-<pre><code>docker run -d -p 8770:8770 -v "$PWD:/data" ghcr.io/steffipetaffy/mitreden:latest</code></pre>
-<p>Alles, was du schreibst, bleibt in diesem Ordner: Sätze, Audiodateien,
-Einstellungen. Es geht nichts irgendwohin, solange du nicht selbst eine
-Cloud-Stimme wählst.</p>
+<p>Alles liegt in dem Browser, in dem du es getippt hast. Halte deshalb eine
+Kopie deiner Sätze bereit: <em>Einstellungen &rarr; Sätze in einer Datei
+sichern.</em> Die Audiodateien lassen sich jederzeit neu erzeugen, die Sätze
+nicht.</p>
 
 <h2>Was es nicht ist</h2>
 <p>Kein Talker und kein Ersatz für einen. Es ist die Werkstatt dahinter: Text

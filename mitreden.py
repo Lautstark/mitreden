@@ -61,8 +61,8 @@ ROOT = Path(__file__).resolve().parent
 
 # Everything that is yours — phrases, config, audio, key — lives in DATA. That
 # is the script's own folder, unless MITREDEN_DIR points somewhere else. The
-# split is what lets a container keep the code to itself and still put your
-# phrases on a NAS, where they get backed up.
+# split is what lets the program live in one place and your phrases in
+# another — a synced folder, a NAS, wherever they get backed up.
 DATA = Path(os.environ.get("MITREDEN_DIR") or ROOT).expanduser()
 PHRASES = DATA / "phrases.json"
 CONFIG = DATA / "config.json"
@@ -138,8 +138,8 @@ def load_env():
 def first_config():
     """The config a fresh installation starts with.
 
-    Which voice depends on where mitreden is running: the container brings
-    piper models along, a Mac has say, Linux usually espeak. Picking one that
+    Which voice depends on where mitreden is running: a Mac has say, Linux
+    usually espeak, and piper wherever someone installed it. Picking one that
     works here means a fresh start speaks without anyone editing a file — and
     without a key for a service nobody signed up for."""
     cfg = json.loads(json.dumps(DEFAULT_CONFIG))     # a copy, not the original
@@ -160,8 +160,8 @@ def write_atomic(path, text, mode=None):
 
     write_text truncates first and writes after, and everything that matters
     here goes through it: phrases.json is the only copy these sentences have,
-    config.json is what makes them sound alike. A Ctrl-C, a full disk or a
-    container stopping in that window used to leave an empty file behind.
+    config.json is what makes them sound alike. A Ctrl-C or a full disk in
+    that window used to leave an empty file behind.
     A temporary file next to it and a rename cannot land half-way.
 
     mode is set on the temporary file, before it becomes the real one — so a
@@ -391,8 +391,9 @@ def output_args(cfg):
 # the obvious way and is the wrong one. A fingerprint has to mean the same
 # thing everywhere: ask the local piper and a machine without piper disagrees
 # about every name, so it re-renders a set it already has. Kept in step with
-# the pin in the Dockerfile by tests/test_piper_version.py — bump both
-# together, and expect every piper-spoken phrase to be recorded again.
+# the version the README tells people to install, by tests/test_fingerprint.py
+# — bump both together, and expect every piper-spoken phrase to be recorded
+# again.
 PIPER_VERSION = "1.7.0"
 
 
@@ -402,10 +403,9 @@ def fingerprint(text, cfg):
 
     What is deliberately NOT in here is anything about where things live. A
     path says nothing about how a recording sounds, and putting one in means
-    the same voice fingerprints differently depending on the machine: the
-    container keeps its models under /voices, a laptop keeps them beside the
-    phrases, and moving between the two used to re-render everything for
-    nothing."""
+    the same voice fingerprints differently depending on the machine: one
+    keeps its models in /usr/share, another beside the phrases, and carrying a
+    phrases.json between the two used to re-render everything for nothing."""
     backend = cfg["backend"]
     opt = dict(cfg.get(backend) or {})
     opt.pop("binary", None)              # where the program is, not how it sounds
@@ -1412,9 +1412,8 @@ def main():
             elif a.startswith("--port="):
                 port = int(a.split("=", 1)[1])
             i += 1
-        # Localhost by default: the interface has no login, so it stays on this
-        # machine unless you say otherwise. In a container --host 0.0.0.0 is
-        # the only way the port forward reaches it.
+        # Localhost by default: the interface has no login, so it stays on
+        # this machine unless you say otherwise.
         shown = "localhost" if host in ("127.0.0.1", "0.0.0.0") else host
         print(f"mitreden is running at http://{shown}:{port}  (Ctrl-C to stop)")
         if host == "0.0.0.0":

@@ -21,10 +21,16 @@ the voice, the output format and the program doing the speaking. Never where
 any of it happens to live.
 
 The last check here is the link between two files that cannot read each other.
-The Dockerfile pins the piper that gets installed; mitreden.py names the piper
-the fingerprint counts. Drift is silent in both directions — pin bumped and
-constant left behind means new audio under old names, constant bumped and pin
-left behind means every phrase rendered again by the piper that made it.
+The README tells people which piper to install; mitreden.py names the piper
+the fingerprint counts. Drift is silent in both directions — the instruction
+bumped and the constant left behind means new audio under old names, the
+constant bumped and the instruction left behind means every phrase rendered
+again by the piper that already made it.
+
+It used to read the pin out of the Dockerfile. There is no Dockerfile any
+more — the browser build is the product and the container is gone — so the
+place that tells someone which piper to install is the README, and that is
+what this now reads.
 """
 
 from __future__ import annotations
@@ -108,17 +114,18 @@ def check_piper_version_counts() -> None:
 
 def check_the_pin_and_the_constant_agree() -> None:
     """The link between two files that cannot read each other."""
-    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    found = re.search(r"piper-tts\s*==\s*([0-9][0-9A-Za-z.\-]*)", dockerfile)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    found = re.search(r"piper-tts\s*==\s*([0-9][0-9A-Za-z.\-]*)", readme)
     if not found:
-        check("the Dockerfile pins piper-tts", False,
-              "no `piper-tts==` found — an unpinned piper can change the voice "
-              "under a fingerprint that says nothing changed")
+        check("the README pins piper-tts", False,
+              "no `piper-tts==` found — telling people to install whatever is "
+              "current lets the voice change under a fingerprint that says "
+              "nothing changed")
         return
-    check("the Dockerfile pins piper-tts", True, found.group(1))
+    check("the README pins piper-tts", True, found.group(1))
     check("the pin and PIPER_VERSION are the same version",
           found.group(1) == m.PIPER_VERSION,
-          f"Dockerfile {found.group(1)}, mitreden.py {m.PIPER_VERSION}")
+          f"README {found.group(1)}, mitreden.py {m.PIPER_VERSION}")
 
 
 def main() -> int:
