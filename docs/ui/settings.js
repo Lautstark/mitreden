@@ -68,7 +68,7 @@ async function saveKey(c,key,region){
 
 // One Sammlung as a file, named after it and dated, the way bildhaft names its
 // exports — so a folder of them sorts and reads sensibly a year later.
-async function exportCollection(c){
+export async function exportCollection(c){
   const r=await api.post('/api/export',{collection:c.key});
   if(!r.ok){say(t('failed',{error:await r.text()}));return}
   const safe=(c.name||'sammlung').replace(/[^\p{L}\p{N}\s-]/gu,'').trim()||'sammlung';

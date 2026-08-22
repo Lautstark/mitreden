@@ -62,7 +62,10 @@ def declared(line: str) -> list[str]:
                 names.append(more.group(1))
     return names
 ANY_DECL = re.compile(r"^(?:export )?(?:async )?(?:function|const|let|var)\s+([\w$]+)", re.M)
-IMPORT = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'([^']+)'", re.M)
+# The path may be empty: bound_names reads a copy with string bodies blanked,
+# and a `+` here quietly matched nothing there, so every imported name looked
+# undeclared.
+IMPORT = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'([^']*)'", re.M)
 
 
 
@@ -70,6 +73,12 @@ IMPORT = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'([^']+)'", re.M)
 # name too many costs a missed fault, counting one too few cries wolf, and a
 # check that cries wolf is one nobody reads.
 BIND_KW = re.compile(r"\b(?:let|const|var)\s+")
+# Words that can stand before a bracket without being a call.
+KEYWORDS = set("""
+if for while switch catch return typeof instanceof void delete await yield new async
+function class do else try in of case break continue throw import export default
+""".split())
+
 GLOBALS = set("""
 window document console navigator location history screen fetch Response Request Headers
 setTimeout clearTimeout setInterval clearInterval queueMicrotask requestAnimationFrame
@@ -225,6 +234,14 @@ def main() -> int:
                              r"(?:\+\+|--|[+\-*/%|&^]?=(?![=>]))", clean):
             if m.group(1) not in known:
                 stray.append(f"{path.name} assigns to {m.group(1)}, which is declared nowhere")
+        # Calling one is the same fault wearing a different hat, and it is how
+        # both a menu action and the whole voice picker died: the split left a
+        # function in a file where neither it nor what it calls existed.
+        for m in re.finditer(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(", clean):
+            name = m.group(1)
+            if name not in known and name not in KEYWORDS:
+                stray.append(f"{path.name} calls {name}, which is declared nowhere")
+
     stray = sorted(set(stray))
     check("no module assigns to a name it never declared", not stray,
           "\n".join(f"        {w}" for w in stray))

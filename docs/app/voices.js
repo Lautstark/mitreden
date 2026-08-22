@@ -44,11 +44,4 @@ export const labelOf = v => {
 };
 export const voiceById = id => VOICES.find(v => v.id === id);
 // The catalogue plus whatever Azure is currently offering. Kept async and
-// separate because the cloud half needs a network call and most callers do
-// not need it.
-const anyVoice = async id => {
-  const local = voiceById(id);
-  if (local || !id.startsWith('azure:')) return local || null;
-  return (await listVoices()).find(v => v.id === id) || null;
-};
 

@@ -12,6 +12,7 @@ let SHOW_ALL=false, ALL_TAGS=false, ALL_VOICES=false;
 import { $, api, applyLang, closeMenus, loadStrings, menuOn, post, say, t, tn } from './core.js';
 import { ALL, CAP, CHIP_CAP, COLLECTIONS, DECLARED, NOCHNICHT, VOICES, found, load, shown, stateText } from './state.js';
 import { deleteCollection } from './rail.js';
+import { exportCollection } from './settings.js';
 
 function chip(label,n,collection,set,where){
   const b=document.createElement('button');

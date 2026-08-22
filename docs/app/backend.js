@@ -41,6 +41,16 @@ const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 const fail = (msg, status = 400) => new Response(msg, { status });
 
+// Any voice this page can actually use, cloud ones included. It lives beside
+// listVoices because it calls it: the split had left it in voices.js, where
+// neither the name it calls nor the name that calls it existed, so changing
+// the voice threw before it could save anything.
+const anyVoice = async id => {
+  const local = voiceById(id);
+  if (local || !id.startsWith('azure:')) return local || null;
+  return (await listVoices()).find(v => v.id === id) || null;
+};
+
 async function listVoices() {
   const active = await activeVoice();
   const out = VOICES.map(v => ({ id: v.id, label: labelOf(v), backend: 'piper' }));
