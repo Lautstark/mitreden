@@ -116,5 +116,7 @@
   "collection_delete": "Delete collection",
   "ask_collection_delete": "Delete \"{name}\"?\n\nThe collection goes, the {n} sentences in it stay.",
   "done_collection_new": "\"{name}\" created.",
-  "done_collection_delete": "\"{name}\" deleted, the sentences stayed."
+  "done_collection_delete": "\"{name}\" deleted, the sentences stayed.",
+  "into_collection": "Goes into {name}",
+  "into_none": "Goes into no collection"
 }

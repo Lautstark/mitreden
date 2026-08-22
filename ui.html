@@ -73,6 +73,8 @@
   padding:0 2px;font-size:16px;line-height:1}
 .row:hover .row__more,.row.on .row__more{opacity:.75}
 .newname{width:100%;margin-top:6px}
+.into{margin:0 0 8px;font-size:13px;color:var(--accent-strong)}
+.into--none{color:var(--text-faint)}
 button.small{font-size:13px;padding:6px 9px}
 button.quiet{background:none;border:1px dashed var(--line);color:var(--text-dim)}
 button.quiet:hover{background:var(--surface-2);color:var(--text)}
@@ -359,9 +361,10 @@ button.quiet:hover{color:var(--text)}
 
 <div class="hero">
   <label for="t" data-i18n="new_phrases"></label>
+  <!-- Which Sammlung this lands in, said where you are typing rather than
+       asked as a question you have already answered by opening one. -->
+  <p class="into" id="into" hidden></p>
   <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
-  <label class="tight" for="nt" data-i18n="collections_label"></label>
-  <input id="nt" type="text" data-i18n-ph="collections_hint" autocomplete="off">
   <div class="row">
     <button class="primary" id="add" data-i18n="add_phrase"></button>
     <select id="voice" class="asbutton" data-i18n-aria="voice_label"
@@ -688,6 +691,11 @@ function drawRail(hits){
   };
 
   row(null,t('collection_all'),ALL.length,!COLLECTIONS.size);
+  const into=$('into');
+  const one=COLLECTIONS.size===1?DECLARED.find(c=>c.key===[...COLLECTIONS][0]):null;
+  into.hidden=false;
+  into.textContent=one?t('into_collection',{name:one.name}):t('into_none');
+  into.classList.toggle('into--none',!one);
   for(const c of DECLARED) row(c.key,c.name,c.count,COLLECTIONS.has(c.key));
 }
 
@@ -1019,9 +1027,14 @@ $('q').oninput=draw;
 $('add').onclick=async()=>{
   const lines=$('t').value.split('\n').map(s=>s.trim()).filter(Boolean);
   if(!lines.length){say(t('type_first'));return}
-  // Only what stands in the field. A filter further down is a way of looking
-  // at the list, not a hidden instruction about the phrase you are typing.
-  const collections=$('nt').value.split(',').map(s=>s.trim()).filter(Boolean);
+  // A sentence goes into the Sammlung you are in. There is no field for it,
+  // because there is nothing to decide: you opened a Sammlung, you typed, it
+  // belongs there. Naming it again in a box beside the text was the old
+  // labels-on-a-phrase idea wearing the new word.
+  //
+  // With several open, or with none, it goes in uncollected. Guessing which of
+  // two you meant would be worse than asking nothing.
+  const collections=COLLECTIONS.size===1?[...COLLECTIONS]:[];
   say(t('busy_add'));
   const res=await post('/api/phrases',{lines,collections});
   if(res){

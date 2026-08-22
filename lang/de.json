@@ -116,5 +116,7 @@
   "collection_delete": "Sammlung löschen",
   "ask_collection_delete": "„{name}\" löschen?\n\nDie Sammlung verschwindet, die {n} Sätze darin bleiben.",
   "done_collection_new": "„{name}\" angelegt.",
-  "done_collection_delete": "„{name}\" gelöscht, die Sätze sind geblieben."
+  "done_collection_delete": "„{name}\" gelöscht, die Sätze sind geblieben.",
+  "into_collection": "Landet in {name}",
+  "into_none": "Landet in keiner Sammlung"
 }
