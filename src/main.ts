@@ -6,6 +6,7 @@
 // Tokens first: they are the values everything below resolves against, and
 // they are generated from the declaration shared with bildhaft and vorlaut.
 import '@lautstark/design/tokens/mitreden.css';
+import '@lautstark/design/components.css';
 import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';

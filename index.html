@@ -24,13 +24,13 @@
       </div>
 
       <div class="rail__part">
-        <input id="q" type="search" data-i18n-ph="search_hint" autocomplete="off">
+        <input id="q" class="field" type="search" data-i18n-ph="search_hint" autocomplete="off">
       </div>
 
       <div class="rail__part rail__grow">
         <h2 data-i18n="filter_collections"></h2>
         <div class="list" id="rows"></div>
-        <button id="newcol" class="quiet small" data-i18n="collection_new"></button>
+        <button id="newcol" class="btn quiet sm" data-i18n="collection_new"></button>
       </div>
 
       <div class="rail__foot">
@@ -42,7 +42,7 @@
     <main>
 
     <dialog id="info" class="sheet">
-    <div class="sheet__head">
+    <div class="head">
       <h2 id="infotitle"></h2>
       <button id="infoclose" class="icon" data-i18n-aria="close">✕</button>
     </div>
@@ -50,7 +50,7 @@
   </dialog>
 
   <dialog id="setup" class="sheet">
-      <div class="sheet__head">
+      <div class="head">
         <h2 data-i18n="settings"></h2>
         <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
       </div>
@@ -77,7 +77,7 @@
           <p class="sub"><b data-i18n="backup_title"></b> <span data-i18n="backup_intro"></span></p>
         </div>
         <div class="row">
-          <button class="primary" id="export" data-i18n="backup_export"></button>
+          <button class="btn primary" id="export" data-i18n="backup_export"></button>
         </div>
         <p class="hint" data-i18n="backup_hint"></p>
         <input type="file" id="importfile" accept="application/json,.json" hidden>
@@ -114,7 +114,7 @@
            theme and browser, and it kept being wrong in one of them. -->
       <select id="dlall" class="asbutton" data-i18n-aria="download_all"
         data-i18n-title="download_all"></select>
-      <span class="menuwrap"><button id="colmore" class="icon" aria-haspopup="true"
+      <span class="menu-anchor"><button id="colmore" class="icon" aria-haspopup="true"
         aria-expanded="false" data-i18n-title="more_actions"
         data-i18n-aria="more_actions">⋯</button></span>
     </div>

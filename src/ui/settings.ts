@@ -39,14 +39,14 @@ export async function drawSetup(): Promise<void> {
   card.innerHTML = `
     <div class="card__head"><h3>Azure Speech</h3><span class="badge state"></span></div>
     <p class="hint probe" role="status"></p>
-    <p class="sub body"></p><p class="warn"></p>
+    <p class="sub body"></p><p class="notice bad warn"></p>
     <label for="azurekey"></label>
-    <input id="azurekey" type="password" autocomplete="off">
+    <input id="azurekey" class="field" type="password" autocomplete="off">
     <label class="region" for="azureregion"></label>
-    <input id="azureregion" class="region" type="text" list="azureregions" spellcheck="false">
+    <input id="azureregion" class="field region" type="text" list="azureregions" spellcheck="false">
     <datalist id="azureregions">${AZURE_REGIONS.map((r) => `<option value="${r}">`).join('')}</datalist>
     <p class="hint region"></p>
-    <div class="row"><button class="primary save"></button><button class="quiet forget"></button></div>`;
+    <div class="row"><button class="btn primary save"></button><button class="btn quiet forget"></button></div>`;
 
   const azure = saved.azure;
   const state = card.querySelector<HTMLElement>('.state')!;

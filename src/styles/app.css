@@ -52,8 +52,8 @@
    set back to 'false', so every line ever edited kept an accent border. */
 .item .line:focus{border-color:transparent;background:var(--surface);
   box-shadow:0 0 0 2px var(--accent);outline:none;cursor:text}
-.sheet__head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.sheet__head h2{margin:0;flex:1}
+/* .head/.foot and the sheet's silhouette come from components.css. */
+.sheet .head h2{flex:1}
 /* One row of tabs, the shape bildhaft uses: a track with the live one lifted
    out of it rather than underlined. */
 .tabs{display:flex;gap:2px;background:var(--surface-2);border-radius:var(--radius-pill);
@@ -71,8 +71,7 @@
 .card__head h3{margin:0;font-size:15px}
 .badge{margin-left:auto;font-size:12px;font-weight:600;padding:3px 9px;
   border-radius:999px;background:var(--accent-soft);color:var(--accent-strong)}
-.warn{background:var(--danger-soft);color:var(--danger);border-radius:9px;
-  padding:9px 11px;font-size:13.5px;margin:8px 0}
+.notice.warn{margin:8px 0;font-size:13.5px}
 .flat{background:transparent;border:0;color:var(--text-dim);font:inherit;
   font-size:13.5px;padding:5px 11px;border-radius:var(--radius-pill);cursor:pointer}
 .flat:hover{background:var(--surface-2);color:var(--text)}
@@ -117,9 +116,7 @@
 kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   color:var(--text-dim);border-radius:4px;padding:1px 5px}
 .into--none{color:var(--text-faint)}
-button.small{font-size:13px;padding:6px 9px}
-button.quiet{background:none;border:1px dashed var(--line);color:var(--text-dim)}
-button.quiet:hover{background:var(--surface-2);color:var(--text)}
+
 .icon{background:none;border:0;color:var(--text-dim);font-size:17px;
   cursor:pointer;padding:4px 6px;border-radius:8px}
 .icon:hover{background:var(--surface-2);color:var(--text)}
@@ -159,25 +156,20 @@ h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:
 .logo{width:clamp(34px,7vw,52px);height:auto;flex:none}
 .sub{color:var(--text-dim);margin:6px 0 36px;font-size:15px}
 label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:10px}
-textarea{width:100%;min-height:132px;resize:vertical;background:var(--bg);
-  color:var(--text);border:1px solid var(--line);border-radius:11px;padding:14px;
-  font:inherit;font-size:19px}
 textarea::placeholder,input::placeholder{color:var(--text-faint)}
-textarea:focus,input:focus,button:focus-visible{
-  outline:2px solid var(--accent);outline-offset:2px}
-input[type=text],input[type=search],input[type=password]{width:100%;background:var(--bg);color:var(--text);
-  border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:15px}
+/* Fields are components.css's .field — a fill, not a hole. The focus ring is
+   the global :focus-visible rule from the same file. The composer's textarea
+   is bare on purpose, so its box carries the ring for it. */
+.compose:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
-button{font:inherit;border-radius:var(--radius-pill);padding:8px 14px;
-  border:0;background:var(--surface-2);color:var(--text);cursor:pointer;
-  white-space:nowrap;transition:background .13s ease,color .13s ease}
-button:hover:not(:disabled){background:var(--surface-3)}
-button:disabled{opacity:.4;cursor:default}
-button:disabled:hover{background:transparent}
-button.primary{background:var(--accent);color:var(--accent-ink);font-weight:600}
-button.primary:hover{background:var(--accent-hover)}
-button.quiet{border-color:transparent;color:var(--text-dim);padding:11px 12px}
-button.quiet:hover{color:var(--text)}
+/* The button family is components.css's .btn. What is left here is the UA
+   reset every control shares (bildhaft carries the same line), mitreden's own
+   density step, and the 130ms rule for the controls that are not .btn and so
+   no longer inherit it from a styled button element. */
+button,input,select,textarea{font:inherit;color:inherit}
+.btn.sm{font-size:13px;padding:6px 9px}
+.flat,.linkdanger,.icon,.dots,.tab,.linklike,.item .collection{
+  transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
 .status[hidden]{display:none}
@@ -186,17 +178,13 @@ button.quiet:hover{color:var(--text)}
 .bar .count{font-weight:650;font-size:15px}
 /* Beside the title, where a page-wide setting belongs — not down at the list,
    which would suggest it changes something about the list. */
-.gear{font-size:17px;line-height:1;padding:7px 11px;border-radius:999px;
-  color:var(--text-dim);border-color:var(--line)}
-.gear:hover{color:var(--text)}
 /* A sheet, not a wizard: a fresh install already speaks, so this is somewhere
    you go when you want more — never something standing in the way. */
-.sheet{background:var(--bg);color:var(--text);border:0;
-  border-radius:18px;padding:24px;max-width:600px;width:calc(100% - 40px)}
+/* The sheet's look comes from components.css; a native <dialog> needs an
+   explicit width, and the backdrop weight is per product by agreement. */
+.sheet{width:calc(100% - 40px)}
 .sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
-.sheet h2{margin:0 0 6px;font-size:20px;letter-spacing:-.02em}
 .sheet .sub{margin:0 0 14px}
-.sheet .warn{color:var(--warn);font-size:13px;line-height:1.5;margin:0 0 18px}
 .pane .langpick{width:100%;max-width:none;margin-top:4px}
 .langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
   color:var(--text-dim);background:transparent;border:1px solid var(--line);
@@ -209,16 +197,9 @@ button.quiet:hover{color:var(--text)}
 /* Shaped like the collection chips, so the header reads as one row of controls
    instead of one control and one browser default. */
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:16px 2px 0}
-.chip{font:inherit;font-size:13px;font-weight:500;padding:6px 13px;border-radius:999px;
-  border:1px solid var(--line);background:transparent;color:var(--text-dim);cursor:pointer}
-.chip:hover{background:var(--surface-3);color:var(--text)}
-/* A filled accent is reserved for the one submit action, as in bildhaft. */
-.chip.on{background:var(--accent-soft);border-color:transparent;
-  color:var(--accent-strong);font-weight:600}
-.chip.on:hover{background:var(--accent-soft)}
-/* No opacity on the count: bildhaft took exactly this out, because at .7 over
-   --accent-soft it fell to 2.91:1. */
-.chip .n{margin-left:6px;font-variant-numeric:tabular-nums}
+/* Chips are components.css's .chip, selected on aria-pressed. The fold —
+   "+ n more" — is dashed because it widens the list rather than filtering it. */
+.chip.fold{border-color:var(--line);border-style:dashed}
 /* The box belongs to the phrase, so it sits with the phrase — not in the
    middle of a row that a second line of collections can make twice as tall, where
    it ends up next to the small print instead. */
@@ -289,7 +270,7 @@ button.quiet:hover{color:var(--text)}
      it gets turned over — but only here: in light it is already right. */
   .item audio{filter:invert(.92) hue-rotate(180deg)}
 }
-.menuwrap{position:relative;flex:none}
+.menu-anchor{flex:none}
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
 .dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}
@@ -300,17 +281,8 @@ button.quiet:hover{color:var(--text)}
 .linklike{padding:0;border:0;background:none;font:inherit;color:var(--text-dim);
   text-decoration:underline;cursor:pointer;border-radius:0}
 .linklike:hover{background:none;color:var(--text)}
-.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;
-  background:var(--surface);outline:1px solid var(--line);border:0;
-  border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:4px;min-width:190px;
-  display:flex;flex-direction:column}
-.menu button{background:none;border:0;font:inherit;font-size:14px;
-  color:var(--text);text-align:left;padding:8px 11px;border-radius:var(--radius-item);
-  cursor:pointer;white-space:nowrap}
-.menu button:hover:not(:disabled){background:var(--surface-2)}
-.menu button.danger{color:var(--danger)}
-.menu button.danger:hover{background:var(--danger-soft)}
-.empty{color:var(--text-faint);padding:40px 20px;font-size:15px;text-align:center}
+/* The menu is components.css's, panel and items alike. */
+
 .more{width:100%;margin-top:18px;color:var(--text-dim);font-size:14px}
 /* On a phone the player is wider than the room left over, and it used to push
    the delete button off the screen. Give it a line of its own instead. */
@@ -325,7 +297,7 @@ button.quiet:hover{color:var(--text)}
      stay side by side underneath rather than one of them wrapping alone. */
   .workhead .count{margin-left:0;order:3;flex:1 0 100%}
   .workhead .split{order:4}
-  .workhead .menuwrap{order:5;margin-left:0}
+  .workhead .menu-anchor{order:5;margin-left:0}
   /* The picker was pinned right and cut its own label off. */
   .chint .right{margin-left:0;flex:1 0 100%}
   .asbutton{width:100%;max-width:none}
@@ -335,7 +307,7 @@ button.quiet:hover{color:var(--text)}
 @media (max-width:720px){
   .item{flex-wrap:wrap;gap:10px}
   .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
-  .menuwrap{order:3}
+  .menu-anchor{order:3}
   .item audio{order:4;flex:1 1 100%;width:100%}
 }
 @media (max-width:560px){

@@ -61,7 +61,7 @@ export function menuOn(button: HTMLElement, build: (add: AddItem) => void): void
 }
 
 addEventListener('click', (event) => {
-  if (!(event.target as HTMLElement).closest('.menuwrap')) closeMenus();
+  if (!(event.target as HTMLElement).closest('.menu-anchor')) closeMenus();
 });
 addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeMenus();

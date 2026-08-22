@@ -41,7 +41,8 @@ function drawVoiceChips(hits: readonly PhraseWithState[]): void {
   const visible = allVoices ? names : names.slice(0, CHIP_CAP);
   for (const name of visible) {
     const chip = document.createElement('button');
-    chip.className = `chip${VOICE_FILTER.has(name) ? ' on' : ''}`;
+    chip.className = 'chip';
+    chip.setAttribute('aria-pressed', String(VOICE_FILTER.has(name)));
     chip.textContent = `${name === NO_VOICE ? t('chip_not_recorded') : name} ${counts.get(name)}`;
     chip.onclick = () => {
       if (VOICE_FILTER.has(name)) VOICE_FILTER.delete(name);
@@ -52,7 +53,7 @@ function drawVoiceChips(hits: readonly PhraseWithState[]): void {
   }
   if (!allVoices && names.length > CHIP_CAP) {
     const more = document.createElement('button');
-    more.className = 'chip more';
+    more.className = 'chip fold';
     more.textContent = t('show_all', { n: names.length });
     more.onclick = () => { allVoices = true; draw(); };
     box.appendChild(more);
@@ -110,7 +111,7 @@ export function draw(): void {
 
   if (!showAll && items.length > CAP) {
     const more = document.createElement('button');
-    more.className = 'more';
+    more.className = 'btn more';
     more.textContent = t('show_all', { n: items.length });
     more.onclick = () => { showAll = true; draw(); };
     list.appendChild(more);
@@ -154,14 +155,14 @@ function row(item: PhraseWithState): HTMLElement {
   }
 
   const wrap = document.createElement('div');
-  wrap.className = 'menuwrap';
+  wrap.className = 'menu-anchor';
   const dots = document.createElement('button');
   dots.className = 'dots';
   dots.setAttribute('aria-haspopup', 'true');
   dots.setAttribute('aria-expanded', 'false');
   dots.title = t('more_actions');
   dots.setAttribute('aria-label', t('more_actions'));
-  dots.textContent = '⋮';
+  dots.textContent = '⋯';
   dots.onclick = () => openMenu(dots, item);
   wrap.appendChild(dots);
   node.appendChild(wrap);
