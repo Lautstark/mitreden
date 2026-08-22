@@ -92,6 +92,18 @@ und Suche, die Kommandozeile.
 
 Fehlerberichte und Fragen sind willkommen — gern auf Deutsch.
 
+## Verwandt
+
+[bildhaft](https://github.com/SteffiPeTaffy/bildhaft) ist ein Schwesterprojekt:
+deutschen Satz eintippen, eine Reihe UK-Piktogramme zurückbekommen,
+korrigieren, ausdrucken. Läuft ebenfalls ganz im Browser. Es ist derselbe Satz,
+zweimal gesehen: bildhaft gibt ihm Symbole, mitreden gibt ihm eine Stimme.
+
+Beide tragen dasselbe Zeichen, dieselbe Sprechblase, nur in anderer Farbe. Und
+dasselbe Prinzip: bildhaft speichert Symbol-Verweise statt Bilder, mitreden
+speichert Sätze statt Audio. So funktioniert die exportierte Datei bei dem, der
+sie bekommt — egal, welche Symbole oder Stimmen dort da sind.
+
 ## Lizenz
 
 MIT — siehe [LICENSE](LICENSE). Mach damit, was du willst.
