@@ -168,7 +168,7 @@ def main():
         # Two things decide what a recording sounds like and both are vendored:
         # vits-web turns the text into sound, stimmquelle trims and levels it.
         # So ENGINE_VERSION names both, and both halves are checked here.
-        backend = (ROOT / "docs" / "backend-local.js").read_text(encoding="utf-8")
+        backend = (ROOT / "docs" / "app" / "settings.js").read_text(encoding="utf-8")
         named = re.search(r"ENGINE_VERSION\s*=\s*'([^']+)'", backend)
         vits = lock["files"].get("vits-web.js", {}).get("url", "")
         pinned = re.search(r"vits-web@([0-9][^/]*)/", vits)

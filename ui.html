@@ -483,7 +483,9 @@ button.quiet:hover{color:var(--text)}
   <span data-i18n="footer_local"></span>
 </footer>
 </main>
-<script>
+<script type="module">
+import { backend } from './app/backend.js';
+
 const $=id=>document.getElementById(id);
 
 // --- Woher die Daten kommen -------------------------------------------
@@ -494,7 +496,7 @@ const $=id=>document.getElementById(id);
 // It still goes through one object rather than being called directly, because
 // the routes are the seam: they are what a second implementation would have to
 // answer, and what the container used to answer before there was no container.
-const api = window.MITREDEN_BACKEND;
+const api = backend;
 
 // --- Sprachen ---------------------------------------------------------
 // The strings come from lang/*.json so that translating means editing a file,

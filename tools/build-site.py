@@ -33,7 +33,6 @@ VENDOR = ROOT / "docs" / "vendor"
 # teaching the page to paper over it.
 HEAD = """<script>window.MITREDEN_STRINGS = {strings};
 window.STIMMQUELLE = {voices};</script>
-<script src="backend-local.js"></script>
 """
 
 NOTE = """<!-- Built by tools/build-site.py from ui.html. Do not edit by hand:
@@ -44,9 +43,10 @@ NOTE = """<!-- Built by tools/build-site.py from ui.html. Do not edit by hand:
 def voices():
     """The tested voice list, baked in the same way the strings are.
 
-    backend-local.js runs as a plain script rather than a module, so it can
-    neither import nor wait for a fetch: the list has to be there before its
-    first line. Same problem the strings have, same answer.
+    The backend is a module graph and could import it, but a fetch would be a
+    request the page does not otherwise make and a moment where the voices are
+    not yet known. Baked in, it is simply there. Same problem the strings have,
+    same answer.
 
     The file is vendored by tools/vendor.py and pinned by hash, so what lands
     here is a commit of Lautstark/stimmquelle rather than whatever that
@@ -62,7 +62,7 @@ def strings():
 
 def build():
     page = UI.read_text(encoding="utf-8")
-    marker = "<script>\nconst $=id=>document.getElementById(id);"
+    marker = '<script type="module">'
     if marker not in page:
         raise SystemExit("ui.html no longer starts its script the way this "
                          "expects — tools/build-site.py needs adjusting.")
