@@ -445,8 +445,8 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.1.1";
-var PIPELINE_VERSION = 1;
+var VERSION = "2.2.0";
+var PIPELINE_VERSION = 2;
 
 // src/level.ts
 function checkRate(rate, what) {
@@ -692,6 +692,38 @@ function truePeakDb(x, rate) {
   for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
   return 20 * Math.log10(peak || 1e-12);
 }
+var LOOKAHEAD_SEC = 15e-4;
+var RELEASE_SEC = 0.05;
+function limitTruePeak(x, rate, ceilingDb) {
+  checkRate(rate, "the sample rate");
+  const ceiling = Math.pow(10, ceilingDb / 20);
+  const dense = resample(x, rate, rate * 4);
+  const need2 = new Float32Array(x.length).fill(1);
+  for (let i = 0; i < dense.length; i++) {
+    const a = Math.abs(dense[i]);
+    if (a <= ceiling) continue;
+    const j = Math.min(x.length - 1, Math.floor(i / 4));
+    const g2 = ceiling / a;
+    if (g2 < need2[j]) need2[j] = g2;
+  }
+  const look = Math.max(1, Math.round(LOOKAHEAD_SEC * rate));
+  const env = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) {
+    let m = 1;
+    const from = Math.max(0, i - look), to = Math.min(x.length - 1, i + look);
+    for (let j = from; j <= to; j++) if (need2[j] < m) m = need2[j];
+    env[i] = m;
+  }
+  const rel = Math.exp(-1 / Math.max(1, RELEASE_SEC * rate));
+  const out = new Float32Array(x.length);
+  let g = 1, lowest = 1;
+  for (let i = 0; i < x.length; i++) {
+    g = env[i] < g ? env[i] : env[i] + (g - env[i]) * rel;
+    if (g < lowest) lowest = g;
+    out[i] = x[i] * g;
+  }
+  return { samples: out, reducedDb: lowest < 1 ? -20 * Math.log10(lowest) : 0 };
+}
 function postprocess(wavBytes, o = {}) {
   const rate = o.rate === void 0 ? 44100 : o.rate;
   checkRate(rate, "the output rate");
@@ -702,13 +734,20 @@ function postprocess(wavBytes, o = {}) {
   const lufs = integratedLufs(resample(shaped, inRate, MEASURE_RATE));
   const out = resample(shaped, inRate, rate);
   let gainDb = TARGET_LUFS - lufs;
-  const peakDb = truePeakDb(out, rate);
-  const headroom = TARGET_PEAK_DBTP - peakDb;
-  const clamped = gainDb > headroom;
-  if (clamped) gainDb = headroom;
-  const gain = Math.pow(10, gainDb / 20);
-  const levelled = new Float32Array(out.length);
-  for (let i = 0; i < out.length; i++) levelled[i] = out[i] * gain;
+  let levelled = out, reducedDb = 0;
+  for (let pass = 0; pass < 4; pass++) {
+    const gain = Math.pow(10, gainDb / 20);
+    const raised = new Float32Array(out.length);
+    for (let i = 0; i < out.length; i++) raised[i] = out[i] * gain;
+    const limited = limitTruePeak(raised, rate, TARGET_PEAK_DBTP);
+    levelled = limited.samples;
+    reducedDb = limited.reducedDb;
+    if (!reducedDb) break;
+    const got = integratedLufs(resample(levelled, rate, MEASURE_RATE));
+    const short = TARGET_LUFS - got;
+    if (!Number.isFinite(short) || Math.abs(short) < 0.1) break;
+    gainDb += short;
+  }
   return {
     wav: encodeWav(levelled, rate),
     samples: levelled,
@@ -716,8 +755,9 @@ function postprocess(wavBytes, o = {}) {
     seconds: levelled.length / rate,
     lufs,
     gainDb,
-    clamped,
-    peakDb: peakDb + gainDb
+    clamped: reducedDb > 0,
+    limitedDb: reducedDb,
+    peakDb: truePeakDb(levelled, rate)
   };
 }
 
@@ -1227,6 +1267,7 @@ export {
   hasSystemVoices,
   integratedLufs,
   isAllowed,
+  limitTruePeak,
   listVoices,
   loadSystemVoices,
   localeOf,

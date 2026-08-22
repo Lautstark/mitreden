@@ -48,10 +48,10 @@ JSDELIVR = "https://cdn.jsdelivr.net/npm"
 # the same rule holds as for a versioned file on a CDN — the hash in the lock is
 # what we saw. vorlaut vendors the same commit.
 #
-# This is v2.1.1. Bump it together with the dependency in package.json: they are
+# This is v2.2.0. Bump it together with the dependency in package.json: they are
 # two pins at the same package and they drifted 16 commits apart once, across the
 # commit that closed the licence gate on synthesize().
-STIMMQUELLE = "51d9ece1f4a54f949a18994ab48d0247313f079b"
+STIMMQUELLE = "a4da2eadf7c08d4bb48206a29b8b9abe377ac57d"
 STIMMQUELLE_RAW = f"https://raw.githubusercontent.com/Lautstark/stimmquelle/{STIMMQUELLE}"
 PIPER_WASM = f"{JSDELIVR}/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize"
 ONNX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/onnxruntime-web/1.18.0/"
