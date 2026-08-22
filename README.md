@@ -87,28 +87,6 @@ That is everything. For a permanent setup, see
 [Running it on a NAS](#running-it-on-a-nas); for more voices,
 [Choosing a voice](#choosing-a-voice).
 
-### Without Docker
-
-You need Python 3 and ffmpeg, and a voice: `say` on macOS and `espeak` on
-Linux are already there, but they sound robotic. For a good local voice,
-install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
-`voices/`.
-
-```
-git clone https://github.com/SteffiPeTaffy/mitreden.git
-cd mitreden
-cp phrases.example.json phrases.json
-python3 mitreden.py backends   # which backend says "found" on your machine?
-```
-
-That command already writes a `config.json` and picks a backend that works
-here, so there is nothing to fill in. Change it only if you want a different
-voice. Then:
-
-```
-python3 mitreden.py ui
-```
-
 ### From the command line
 
 It works the same without the interface:
@@ -119,6 +97,13 @@ python3 mitreden.py edit look "Look!"
 python3 mitreden.py build        # only new or changed ones
 python3 mitreden.py build --all  # everything again, after a voice change
 python3 mitreden.py delete i-need-help
+```
+
+In the container the same commands run inside it, so there is nothing to
+install and nothing to clone — `mitreden` is the container's name:
+
+```
+docker exec mitreden python mitreden.py add "I need help." --tags emergency
 ```
 
 **Typo?** The ⋮ at the right edge of a row changes the text without creating
@@ -431,6 +416,31 @@ out/  build/        everything made from them
 
 For `phrases.json` a private repository or a backup outside git is the way to
 go — it is, as said above, the only thing that cannot be recreated.
+
+## From source
+
+For working on mitreden, or for running it without Docker. This is the
+developer's way in — to just use it, the container above is less work.
+
+You need Python 3 and ffmpeg, and a voice: `say` on macOS and `espeak` on
+Linux are already there, but they sound robotic. For a good local voice,
+install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
+`voices/`.
+
+```
+git clone https://github.com/SteffiPeTaffy/mitreden.git
+cd mitreden
+cp phrases.example.json phrases.json
+python3 mitreden.py backends   # which backend says "found" on your machine?
+```
+
+That command already writes a `config.json` and picks a backend that works
+here, so there is nothing to fill in. Change it only if you want a different
+voice. Then:
+
+```
+python3 mitreden.py ui
+```
 
 ## Contributing
 
