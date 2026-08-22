@@ -137,6 +137,50 @@
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
   }
 
+  // -------------------------------------------------------------- bildhaft
+  //
+  // bildhaft (github.com/SteffiPeTaffy/bildhaft) turns a typed German sentence
+  // into a row of AAC pictograms. It is the same sentence mitreden speaks, so
+  // a picture book translated there should not have to be typed again here.
+  //
+  // Its files hold symbol *references* rather than pictures, the way ours hold
+  // sentences rather than audio — which is why either file still works on a
+  // device that owns different symbols or different voices.
+  //
+  // Three shapes to read: one collection, a whole-library backup, and the v1
+  // name for a collection, which called the same thing a session and pointed
+  // its sentences at a `sessionId`. Nothing is rejected on version: we only
+  // ever look at one field, and a file we cannot read simply brings no
+  // sentences, which reads as an empty import rather than as an error.
+  const BILDHAFT_FORMATS = ['bildhaft.collection', 'bildhaft.session', 'bildhaft.backup'];
+
+  function fromBildhaft(doc) {
+    if (!doc || typeof doc !== 'object' || !BILDHAFT_FORMATS.includes(doc.format)) return null;
+
+    // A collection file names its one group up front; a backup carries the
+    // names in a list and lets each sentence point at its own.
+    const named = new Map();
+    for (const c of Array.isArray(doc.collections) ? doc.collections : [])
+      if (c && c.id) named.set(c.id, c.name || '');
+    const single = doc.collection || doc.session || null;
+
+    const out = [];
+    for (const s of Array.isArray(doc.sentences) ? doc.sentences : []) {
+      // What the user typed, not the normalised lookup key — the sentence is
+      // going to be spoken, so its capitals and punctuation matter.
+      const text = typeof (s && s.rawInput) === 'string' ? s.rawInput : '';
+      if (!text.trim()) continue;
+      // A backup row whose collection is missing keeps the sentence and loses
+      // only its group. bildhaft drops such rows because a sentence without a
+      // collection has nowhere to live there; here a sentence stands alone.
+      const name = single ? (single.name || '') : (named.get(s.collectionId || s.sessionId) || '');
+      // No id: bildhaft's are internal, ours are file names. And no voice —
+      // bildhaft has none, so these take whatever is selected here.
+      out.push({ text, tags: name ? [name] : [] });
+    }
+    return out;
+  }
+
   // ------------------------------------------------------------------ piper
   // Both come out of vendor/, fetched once by tools/vendor.py and served from
   // here. Loaded on demand rather than up front: opening the page should not
@@ -536,11 +580,13 @@
 
     if (route === '/api/import') {
       // A bare list is what the container writes. An object with items in it
-      // is what someone might reasonably hand over instead.
-      const incoming = Array.isArray(body.items) ? body.items
+      // is what someone might reasonably hand over instead. A bildhaft export
+      // is a different product's file, flattened to the same shape first.
+      const incoming = fromBildhaft(body.items)
+                     || (Array.isArray(body.items) ? body.items
                      : Array.isArray(body.items && body.items.items) ? body.items.items
-                     : null;
-      if (!incoming) return fail('That is not a list of sentences.', 400);
+                     : null);
+      if (!incoming) return fail('That is neither a list of sentences nor a bildhaft export.', 400);
 
       let added = 0, merged = 0, revoiced = 0;
       for (const raw of incoming) {
