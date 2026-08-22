@@ -642,12 +642,29 @@ rather than inventing its own.
 
 **Shape and motion**
 
-| token | value | meaning |
+Radii follow the same rule as colour: **the names are normative, the values are
+per product, and so is adoption.** The values below are bildhaft's, given as a
+worked example rather than as a target.
+
+This is not a licence to diverge for its own sake — it is an admission that the
+four names do not fit every product's existing geometry. mitreden has five
+distinct radii in use (999px, 16px, 11px, 10px, 9px, 7px) against these four
+names. `--radius-pill` maps cleanly onto its four 999px uses; the rest do not,
+and adopting `--radius`/`--radius-sm` would mean choosing which of 10, 11 or
+16px becomes which. That is a change to how the product looks, arriving through
+a renaming exercise, and it is worse than a row left honestly unimplemented.
+
+So: implement the names you can map, leave the ones you cannot, and say which
+is which. bildhaft implements all four because its geometry already matched
+them. mitreden implements none of them yet. Both statements are true, and a
+table that says "14px" for both would make one of them false.
+
+| token | meaning | bildhaft |
 | --- | --- | --- |
-| `--radius` | 14px | cards, sheets, rows, the composer. |
-| `--radius-sm` | 9px | fields, buttons, popups, menu shells. |
-| `--radius-pill` | 999px | chips, icon buttons, toasts, anything whose height sets its shape. |
-| `--radius-item` | 7px | a row inside a popup. |
+| `--radius` | cards, sheets, rows, the composer. | 14px |
+| `--radius-sm` | fields, buttons, popups, menu shells. | 9px |
+| `--radius-pill` | chips, icon buttons, toasts, anything whose height sets its shape. | 999px |
+| `--radius-item` | a row inside a popup. | 7px |
 | `--shadow-sm` | 1px offset, 2px blur, very low alpha | a plane that has only just left the page. |
 | `--shadow` | a 2/6 pair plus a 12/32 pair | a plane that floats: popup, dialog. |
 | `--font` | `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif` | **identical string in both products.** |
