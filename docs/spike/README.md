@@ -30,8 +30,31 @@ takes 4–7 s on an M-series Mac, most of it session setup rather than inference
 `de_DE-kerstin-low` — mitreden's current default — **does not work**: its
 phoneme table is older and smaller than the one vits-web's phonemizer produces,
 so inference dies with `idx=140 must be within the inclusive range [-130,129]`.
-Any voice picker on a static site has to be a tested list, not the piper
-catalogue.
+
+That is not one bad model. Every `low` and `x_low` voice fails the same way,
+and only `medium` and `high` survive:
+
+```
+OK    de_DE-thorsten-medium              OK    de_DE-thorsten-high
+OK    de_DE-thorsten_emotional-medium    OK    de_DE-mls-medium
+OK    en_US-kristin-medium               OK    en_US-hfc_female-medium
+FAIL  de_DE-kerstin-low                  FAIL  de_DE-thorsten-low
+FAIL  de_DE-eva_k-x_low                  FAIL  de_DE-ramona-low
+FAIL  de_DE-karlsson-low                 FAIL  en_US-john-medium  (files missing
+                                                from the mirror, listed anyway)
+```
+
+Two consequences. A voice picker here has to be a tested list, not the piper
+catalogue — `voices.json` lies in both directions. And of the container's four
+voices only two survive: **there is no drop-in German female voice**, because
+Kerstin is published as `low` only. `de_DE-mls-medium` is the one German
+alternative that runs, and it is a multi-speaker corpus model rather than a
+single voice.
+
+The cause is that vits-web phonemizes against a fixed symbol table instead of
+the `phoneme_id_map` in each model's own `.onnx.json`. Reading that map would
+unlock the `low` voices — and with them Kerstin — but means owning the
+phonemizer glue rather than calling a library.
 
 **ffmpeg.wasm cannot be used for the levelling.** This is the finding that
 matters, and it reverses the obvious plan.
