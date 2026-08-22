@@ -1,7 +1,7 @@
 <!doctype html><html lang="de"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>mitreden</title>
-<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <style>
 /* The token names are shared with bildhaft, the sister project — see
    docs/design.md. The names are the agreement; the values are ours. The accent
@@ -201,6 +201,9 @@ button.quiet:hover{color:var(--text)}
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
 .dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}
+.foot{margin:38px 0 8px;padding-top:14px;border-top:1px solid var(--line);
+  display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--text-faint)}
+.foot a{color:var(--text-dim)}
 .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:200px;
   display:flex;flex-direction:column;padding:6px;background:var(--surface);
   border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow)}
@@ -236,7 +239,7 @@ button.quiet:hover{color:var(--text)}
 </style>
 <main>
 <div class="top">
-  <h1><img class="logo" src="/icon.svg" alt="" width="44" height="44">mitreden</h1>
+  <h1><img class="logo" src="icon.svg" alt="" width="44" height="44">mitreden</h1>
   <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
   <button id="gear" class="gear" data-i18n-title="settings"
     data-i18n-aria="settings">⚙</button>
@@ -299,27 +302,27 @@ button.quiet:hover{color:var(--text)}
 </div>
 
 <div id="list"></div>
+
+<!-- The page is the whole program now, so it has to say what it is and what
+     it does with what you type. Both are one line; neither belongs in a
+     dialog nobody opens. -->
+<footer class="foot">
+  <a href="about.html" data-i18n="about_link"></a>
+  <span data-i18n="footer_local"></span>
+</footer>
 </main>
 <script>
 const $=id=>document.getElementById(id);
 
 // --- Woher die Daten kommen -------------------------------------------
-// Everything that leaves this page goes through here. Served by the
-// container, that is the server on the other end. The same page on a static
-// site answers out of the browser itself, with no server anywhere — it sets
-// MITREDEN_BACKEND before this file runs. Both hand back a Response, so
-// nothing below this line has to know which one it is talking to.
-const api = window.MITREDEN_BACKEND || {
-  get:  route => fetch(route),
-  post: (route, body) => fetch(route, {method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify(body||{})}),
-  // The player's src, and the file behind the download menu. Two calls
-  // because they are two different questions: the first has to answer at once
-  // while a row is being drawn, the second may go and build a file first.
-  audio: id => '/audio/' + id,
-  fileURL: (id, fmt) => '/audio/' + id + '?dl=1&format=' + encodeURIComponent(fmt),
-};
+// Nothing here leaves the machine. backend-local.js answers everything out of
+// the browser itself — IndexedDB for the sentences, piper compiled to WASM for
+// the voice — and sets MITREDEN_BACKEND before this file runs.
+//
+// It still goes through one object rather than being called directly, because
+// the routes are the seam: they are what a second implementation would have to
+// answer, and what the container used to answer before there was no container.
+const api = window.MITREDEN_BACKEND;
 
 // --- Sprachen ---------------------------------------------------------
 // The strings come from lang/*.json so that translating means editing a file,

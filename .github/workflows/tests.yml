@@ -1,0 +1,67 @@
+name: Tests
+
+# The website is the program, so what has to hold is: it builds from its
+# source, the third-party code it serves is what was pinned, and the recording
+# chain still does what it promises.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ui.html
+      - icon.svg
+      - lang/**
+      - docs/**
+      - tests/**
+      - tools/**
+      - .github/workflows/tests.yml
+  pull_request:
+    paths:
+      - ui.html
+      - icon.svg
+      - lang/**
+      - docs/**
+      - tests/**
+      - tools/**
+      - .github/workflows/tests.yml
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: The vendored code is what it says it is
+        # docs/vendor/ is third-party code committed into this repository and
+        # served to every visitor. The lock file holds the hash of what was
+        # fetched; this catches an edit, an accident, or anything that arrived
+        # by a route other than tools/vendor.py. It also checks that the engine
+        # named in the fingerprint matches the bundle actually vendored.
+        run: python tools/vendor.py --check
+
+      - name: The published page is not a version behind
+        # docs/index.html is built from ui.html by tools/build-site.py. Editing
+        # the interface and forgetting to rebuild would publish a page older
+        # than its source, with nothing to see until it matters.
+        run: python tools/build-site.py --check
+
+      - name: The page is there and is a page
+        run: |
+          python -c "
+          import pathlib
+          page = pathlib.Path('docs/index.html').read_text(encoding='utf-8')
+          assert page.rstrip().endswith('</html>'), page[-40:]
+          assert '</script>' in page, 'the page has lost its script'
+          assert 'MITREDEN_STRINGS' in page, 'the languages were not baked in'
+          print(f'{len(page)} characters')"
+
+      - name: Tests
+        # Every tests/test_*.py, and the folder is the list. The browser half
+        # is JavaScript and runs under node through tests/test_browser_audio.py.
+        run: python tests/run.py

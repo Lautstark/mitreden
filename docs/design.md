@@ -71,7 +71,7 @@ short of pinning an image tag. That is the container impact every item on the
 change list has to answer for.
 
 **`ui.html` also ships as a website.** `tools/build-site.py` builds
-`docs/app/index.html` from the same file, and `docs/app/backend-local.js` answers
+`docs/index.html` from the same file, and `docs/backend-local.js` answers
 the same routes out of the browser with no server at all. So an interface change
 lands in *two* places, and anything marked *server-shaped* below has to work in
 both or be gated. (This was written when that build lived only on a branch; it is

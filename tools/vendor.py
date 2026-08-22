@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetches the browser app's third-party code into docs/app/vendor/.
+"""Fetches the browser app's third-party code into docs/vendor/.
 
     python3 tools/vendor.py                  # the JavaScript
     python3 tools/vendor.py --with-binaries  # and the wasm blobs (~28 MB)
@@ -38,7 +38,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-VENDOR = ROOT / "docs" / "app" / "vendor"
+VENDOR = ROOT / "docs" / "vendor"
 LOCK = Path(__file__).resolve().parent / "vendor.lock.json"
 
 JSDELIVR = "https://cdn.jsdelivr.net/npm"
@@ -145,7 +145,7 @@ def main():
         # is silent both ways: bump the vendored bundle and leave the constant,
         # and new audio hides under old names; bump the constant alone, and
         # every phrase is recorded again by the engine that already made it.
-        backend = (ROOT / "docs" / "app" / "backend-local.js").read_text(encoding="utf-8")
+        backend = (ROOT / "docs" / "backend-local.js").read_text(encoding="utf-8")
         named = re.search(r"ENGINE_VERSION\s*=\s*'([^']+)'", backend)
         vits = lock["files"].get("vits-web.js", {}).get("url", "")
         pinned = re.search(r"vits-web@([0-9][^/]*)/", vits)

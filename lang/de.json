@@ -104,5 +104,7 @@
   "menu_record": "Jetzt aufnehmen",
   "busy_build": "Nehme {n} auf …",
   "done_build": "{n} aufgenommen.",
-  "nothing_to_record": "Die sind alle schon aufgenommen."
+  "nothing_to_record": "Die sind alle schon aufgenommen.",
+  "about_link": "Was ist mitreden?",
+  "footer_local": "Alles passiert in diesem Browser. Nichts von dem, was du tippst, geht irgendwohin."
 }

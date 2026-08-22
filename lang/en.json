@@ -104,5 +104,7 @@
   "menu_record": "Record now",
   "busy_build": "Recording {n} …",
   "done_build": "{n} recorded.",
-  "nothing_to_record": "Those are all recorded already."
+  "nothing_to_record": "Those are all recorded already.",
+  "about_link": "What is mitreden?",
+  "footer_local": "Everything happens in this browser. Nothing you type is sent anywhere."
 }

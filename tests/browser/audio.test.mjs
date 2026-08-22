@@ -17,7 +17,7 @@
 import {
   MEASURE_RATE, TARGET_LUFS, TARGET_PEAK_DB,
   trim, integratedLufs, level, toPcm16, encodeWav,
-} from '../../docs/app/audio.js';
+} from '../../docs/audio.js';
 
 const failures = [];
 const check = (name, ok, detail = '') => {
@@ -45,6 +45,36 @@ function utterance({ seconds = 1.2, lead = 0.4, tail = 0.4, amp = 0.05, rate = M
 
 const peakOf = x => x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
 const dbfs = v => 20 * Math.log10(v);
+
+/* --- is the ruler itself right? ---------------------------------------- */
+
+/*
+ * Everything below measures the output with integratedLufs — the same function
+ * that decided the gain in the first place. That is circular: a wrong
+ * implementation would satisfy every one of those checks.
+ *
+ * These three break the circle. The expected values were produced by ffmpeg's
+ * ebur128 filter, reading WAV files this module itself wrote, while mitreden
+ * still had a Python half with real ffmpeg to be checked against. They are
+ * therefore an outside opinion, frozen. 440 Hz is in the list on purpose:
+ * K-weighting is deliberately not flat there, so a tone off 1 kHz catches a
+ * filter that is merely plausible.
+ *
+ * If these drift, the fault is in this module, not in the test. Do not
+ * re-derive the numbers from this code.
+ */
+function theMeasurementAgreesWithAnOutsideOpinion() {
+  const tone = (freq, amp, seconds = 5, rate = MEASURE_RATE) => {
+    const x = new Float32Array(rate * seconds);
+    for (let i = 0; i < x.length; i++) x[i] = amp * Math.sin(2 * Math.PI * freq * i / rate);
+    return x;
+  };
+  for (const [freq, amp, expected] of [[1000, 0.1, -23.0], [1000, 0.5, -9.0], [440, 0.2, -17.7]]) {
+    const got = integratedLufs(tone(freq, amp));
+    check(`${freq} Hz at amplitude ${amp} measures ${expected} LUFS, as ffmpeg reads it`,
+          Math.abs(got - expected) < 0.1, `got ${got.toFixed(2)}`);
+  }
+}
 
 /* --- the promise ------------------------------------------------------- */
 
@@ -141,6 +171,7 @@ function pcmClampsRatherThanWraps() {
   check('silence stays silent', pcm[2] === 0);
 }
 
+theMeasurementAgreesWithAnOutsideOpinion();
 levelsLandOnTarget();
 neverBreachesTheCeiling();
 silenceIsTrimmedButNotTheWord();

@@ -26,15 +26,17 @@ text in, audio files out, in the format your device understands.
 
 ## How it works
 
-`phrases.json` is the source of truth — a list of sentences. `out/` is the
-result, one audio file per sentence. Everything in between happens in the web
-interface: type the sentences, and the audio files appear.
+The sentences are the source of truth — a list, kept in the browser. The audio
+is the result, one file per sentence, made on the spot and downloaded when you
+want it.
 
-Because `out/` can be recreated at any time, `phrases.json` is the only thing
-that really needs a backup.
+Because the audio can be made again at any time, the sentences are the only
+thing that really needs a backup. They come out as `phrases.json`, a plain
+list you can read.
 
-The repository is deliberately small: a Python file and the page it serves, no
-dependencies, a bit of ffmpeg. The code is in English, the interface speaks
+The repository is deliberately small: a page, the recording chain it runs, and
+the words it says in two languages. No framework, no build step for the
+interface, and no dependency it fetches while you are using it. The code is in English, the interface speaks
 German and English, and this guide exists in both languages. Commit messages
 are English too — the history is a developer document, and the sibling
 projects settled on the same rule.
@@ -62,29 +64,6 @@ data takes them with it, and unlike the audio they cannot be made again.
 
 For more voices, see [Choosing a voice](#choosing-a-voice).
 
-### From the command line
-
-It works the same without the interface:
-
-```
-python3 mitreden.py add "I need help." --collections emergency
-python3 mitreden.py edit look "Look!"
-python3 mitreden.py build        # only new or changed ones
-python3 mitreden.py build --all  # everything again, after a voice change
-python3 mitreden.py delete i-need-help
-```
-
-This is the same pipeline the browser runs, with real ffmpeg and a real
-piper instead of their WebAssembly builds. It is useful for scripting a large
-set, and it is the reference the browser build is measured against — see
-[From source](#from-source).
-
-**Typo?** The ⋮ at the right edge of a row changes the text without creating
-the sentence again. It is recorded again right away. The id, and with it the
-file name, stays as it is — the file may long since be sitting on a talker or
-a reading pen, and a forgotten question mark should not rename it there. For a
-genuinely different sentence, a new entry is the right way.
-
 ## German or English
 
 The language picker sits at the top right. On your first visit mitreden
@@ -103,7 +82,7 @@ the key itself appears: a gap should be visible, not blank.
 
 ## What comes out
 
-One file per sentence in `out/`, named after its id. The id stays out of the
+One file per sentence, named after its id. The id stays out of the
 list — it is a file name, not something to read. It appears in one place, when
 you change a text, because that is where it matters: the file name stays as it
 is, and what is already on a device keeps working. It is built from the first
@@ -112,25 +91,10 @@ not become a long file name. Two sentences with the same beginning get a
 number appended. Existing ids stay as they are — they may already be written
 on a device.
 
-The default is MP3 at 44.1 kHz mono, which just about every device and app
-understands. The format lives in `config.json` and can be anything ffmpeg can
-write:
-
-```json
-{ "output": { "format": "mp3", "sample_rate": 44100, "channels": 1,
-              "bitrate": "192k" } }
-```
-
-`"mp3"` saves space and is what most apps and devices expect; a smaller
-`sample_rate` helps when the target device is short on storage.
-
-`bitrate` only applies to the space-saving formats (mp3, ogg, m4a, opus) — for
-WAV and FLAC it is ignored. 192k sounds clean, 96k halves that and still holds
-up for a single voice. Without it ffmpeg picks something itself, and for
-speech that is often too little: muffled and tinny.
-
-After a change, run `build` once — mitreden works out for itself what has to
-be rendered again, and clears the old files away.
+Recordings are MP3 at 44.1 kHz mono, which just about every device and app
+understands. WAV comes out of the same menu when a device insists on it —
+converted on the way out, from audio that was already trimmed and levelled, so
+the two sound the same.
 
 Every file is silence-trimmed and normalised to −16 LUFS. Without that one
 sentence is barely audible and the next one shouts.
@@ -148,104 +112,20 @@ Every row says which voice it was recorded in. A voice is called
 The language is there because that is the reason two voices in the same list
 really differ — in a household with two languages, say.
 
-```
-python3 mitreden.py voices                              # what works here?
-python3 mitreden.py voice piper:de_DE-thorsten-medium   # use this from now on
-python3 mitreden.py build --all --voice piper:de_DE-thorsten-medium
-```
+To move sentences already recorded, tick them and choose "Change voice" from
+the actions menu. "Select all" first makes every sentence match.
 
-The last command moves every existing sentence over to that voice.
+Cloud voices — Azure, ElevenLabs — are deliberately not offered. A key typed
+into a public web page is a different promise from the one this makes, and it
+is not one worth making for a handful of extra voices: the four here are free,
+offline after the first download, and cannot be switched off by a company
+changing its mind.
 
-For Azure, `languages` decides which voices are on offer — Azure has 556, and
-that is no longer a choice:
-
-```json
-{ "azure": { "languages": ["de-DE", "en-US"], … } }
-```
-
-An entry with a dash means exactly that locale, one without means every locale
-of that language (`"de"` also takes de-AT and de-CH). Without the setting it
-stays at the language of the configured voice. For `["de-DE", "en-US"]` that
-is 75 voices. The list comes from Azure itself and is cached for a week;
-without a network connection the configured voice remains, so the picker is
-never empty.
-
-Only what actually works is offered: a cloud voice once its key is set, a
-local one once the program behind it exists. A voice you can pick that then
-fails while recording would be worse than no choice at all.
-
-A key can also be entered in the interface itself: the gear next to the
-language picker opens the settings, and there a key unlocks the voices of that
-service. For Azure the region belongs with it — a key is bound to one, and the
-wrong pairing fails with a 401. The key is checked while you are still looking
-at the field, written to the `.env` next to your sentences with permissions
-0600, and never shown again: the interface only ever learns whether one is set.
-
-Which also means: whoever reaches the interface can set a key there. It has no
-login. Home network only.
-
-**The website offers four piper voices** — Thorsten and Thorsten (emotional)
-in German, Kristin and HFC female in English, all CC0 or public domain. Each
-is fetched once, on first use, and then stays on your machine.
-
-The list is short on purpose, and it is a tested list rather than piper's
-catalogue. Every `low` and `x_low` model fails in the browser, because the
-phonemizer works from a fixed symbol table instead of the one inside each
-model — which is why Kerstin is missing, and she is published as `low` only.
-A voice you can pick that then fails would be worse than no choice at all.
-
-If you add another piper voice for the command line, look at its `MODEL_CARD`
-first: quite a few of the better-known English voices are under
-non-commercial or unclear licences and cannot be passed on. Your own models are added by
-dropping an `.onnx` together with its `.onnx.json` into a `voices/` folder
-next to your sentences. If your models live somewhere else, `MITREDEN_VOICES`
-says where — in the image it points at `/voices`.
-
-By hand it still works through `config.json`, followed by
-`python3 mitreden.py build --all`.
-
-**`say` / `espeak`** — already there, no setup, no account. Robotic, but the
-fastest way to check that everything runs.
-
-```json
-{ "backend": "say", "say": { "voice": "Anna" } }
-```
-
-**`piper`** — local, offline, free, open source. The models are
-[ready to download](https://huggingface.co/rhasspy/piper-voices) from the
-piper project itself. It will still run the same way in ten years, without an
-account and without a subscription.
-
-**`azure`** — neural voices over the cloud, noticeably more alive than
-anything local. The free tier (F0) is usually enough for these amounts.
-`rate` and `pitch` apply to the generated files and take effect after a
-`build --all`.
-
-```json
-{ "backend": "azure",
-  "azure": { "voice": "de-DE-GiselaNeural", "region": "germanywestcentral",
-             "key_env": "AZURE_SPEECH_KEY", "rate": "-5%", "pitch": "0%" } }
-```
-
-**`elevenlabs`** — can clone a real voice. The best quality, but subscription
-and cloud — and the consent of the person whose voice you are cloning.
-
-Keys **never** go into a file in the repository, they go into an environment
-variable. `config.json` only holds the *name*, in `key_env`:
-
-```
-export AZURE_SPEECH_KEY="your-key"
-```
-
-More permanently through a `.env` next to `mitreden.py`, which is read at
-startup and is listed in `.gitignore`:
-
-```
-AZURE_SPEECH_KEY=your-key
-```
-
-If you settle on a cloud voice, back up the generated files as well. A service
-can disappear, a local file cannot.
+**piper** is what speaks, compiled to WebAssembly and running in the tab. The
+models come from the piper project's own publication on Hugging Face, fetched
+once and then kept on your machine. It will still work in ten years, without
+an account and without a subscription, because nothing about it depends on a
+service staying up.
 
 ## Collections, search, download
 
@@ -288,12 +168,8 @@ appears — the existing one just picks up the new collection. Capitalisation an
 extra spaces do not matter, punctuation does: "Again!" and "Again." are spoken
 differently, so they are two sentences.
 
-```
-python3 mitreden.py dedupe           # shows what would be merged
-python3 mitreden.py dedupe --apply   # actually merges it
-```
-
-Without `--apply` nothing is touched.
+Loading a file works the same way: sentences that are already there are
+merged rather than duplicated, and you are told how many were.
 
 **Selecting.** Recording happens by itself — when you add a sentence and after
 you change its text. The checkboxes in front of the rows are for the two
@@ -317,101 +193,54 @@ sight. A single sentence can also be recorded again from the ⋮.
 **Downloading.** The button packs up the ticked sentences — as MP3 directly,
 as WAV through the chevron next to it. The format is independent of how the
 files were recorded; that is for the one device that does not fit in. The
-conversion happens for the download only, `out/` stays as it is.
+conversion happens on the way out — what is stored stays as it is.
 
 A single file comes out of the ⋮ of its row, in the same formats.
 
-On the command line:
-
-```
-python3 mitreden.py export nursery ~/Desktop/nursery
-python3 mitreden.py export all ~/Desktop/everything
-```
-
-## Running it yourself
-
-The website is the whole product and needs nothing running. But everything it
-does, the command line does too — with real ffmpeg and a real piper rather
-than their WebAssembly builds, which is useful for a large set and is how the
-browser build is checked.
-
-```
-git clone https://github.com/Lautstark/mitreden.git
-cd mitreden
-python3 mitreden.py add "I need help." --collections emergency
-python3 mitreden.py build
-```
-
-Python 3 and `ffmpeg`, and nothing after that: no pip packages, no framework.
-
-```
-brew install ffmpeg          # macOS
-sudo apt install ffmpeg      # Debian/Ubuntu
-```
-
-Plus a voice. `say` (macOS) and `espeak` (Linux) are already there and cost
-nothing, but they sound robotic — good enough to check the chain works. For
-the voices the website uses, install piper and drop a model beside your
-sentences; see [Choosing a voice](#choosing-a-voice).
-
-`python3 mitreden.py ui` also serves the interface locally, which is the same
-page the website serves. It listens on `localhost` only, and it has no login:
-if you send it onto your network with `--host 0.0.0.0`, anyone who reaches
-the port can add, delete and record. On your own network that is fine; on the
-open internet it is not.
-
 ## Your content stays local
 
-The repository only holds `phrases.example.json` as a starting point. Your own
-`phrases.json`, everything made from it and your keys are in `.gitignore` and
-never travel along:
+Nothing you type leaves your machine. There is no server to send it to: the
+sentences live in the browser's own storage, the voice is downloaded once and
+then works offline, and the audio is made in the tab. The only request that
+ever goes out is the one that fetches a voice model, from the piper project's
+publication on Hugging Face.
 
-```
-phrases.json        your sentences
-phrases.json.*      backups of it
-out/  build/        everything made from them
-*.wav *.mp3 *.aiff  audio, wherever it turns up
-.env  .env.*        keys
-```
+That has one consequence worth taking seriously. **The sentences are in that
+browser and nowhere else.** Clearing its site data deletes them, as does a
+browser that decides to reclaim storage. The audio can always be made again;
+the sentences cannot.
 
-For `phrases.json` a private repository or a backup outside git is the way to
-go — it is, as said above, the only thing that cannot be recreated.
+So: **Settings → Save sentences to a file**, and keep it somewhere real. What
+comes out is a plain JSON file you can read, and loading it back merges rather
+than overwrites, so a backup can never cost you work that came after it.
 
 ## From source
 
-For working on mitreden. To just use it,
-[the website](https://lautstark.github.io/mitreden/app/) needs nothing at all.
-
-You need Python 3 and ffmpeg, and a voice: `say` on macOS and `espeak` on
-Linux are already there, but they sound robotic. For a good local voice,
-install [piper](https://github.com/OHF-Voice/piper1-gpl) and put a model into
-`voices/`.
-
-```
-pip install piper-tts==1.7.0
-```
-
-The version matters and is pinned on purpose. piper is what turns text into
-sound, so a release that changes how a voice speaks would leave older
-recordings sitting under fingerprints claiming to match new ones — one set of
-sentences, two voices. `PIPER_VERSION` in `mitreden.py` names the same
-version, `tests/test_fingerprint.py` checks the two agree, and bumping them
-together re-records everything piper made.
+The whole program is four files: `ui.html` is the interface, `docs/audio.js`
+is the recording chain, `docs/backend-local.js` answers what the page asks,
+and `lang/*.json` is every word it says. `tools/build-site.py` puts the first
+and the last together into the page that gets published.
 
 ```
 git clone https://github.com/Lautstark/mitreden.git
 cd mitreden
-cp phrases.example.json phrases.json
-python3 mitreden.py backends   # which backend says "found" on your machine?
+python3 tools/build-site.py        # rebuild docs/index.html from ui.html
+python3 -m http.server -d docs 8771
 ```
 
-That command already writes a `config.json` and picks a backend that works
-here, so there is nothing to fill in. Change it only if you want a different
-voice. Then:
+Open <http://localhost:8771>. Python is only there to serve files and run the
+build; nothing in the program itself needs it.
 
 ```
-python3 mitreden.py ui
+python3 tests/run.py               # everything
+python3 tools/vendor.py --check    # the vendored code is what was pinned
 ```
+
+The third-party code in `docs/vendor/` is fetched by `tools/vendor.py` and
+pinned by hash in `tools/vendor.lock.json`. It is committed rather than
+fetched at runtime, because a page that pulls executing code from a CDN can
+have it changed underneath it — and because GitHub Pages serves `docs/`
+straight from the branch, with no build step that could fetch anything.
 
 ## Contributing
 

@@ -64,21 +64,32 @@ und `x_low`-Modelle scheitern im Browser, weshalb Kerstin fehlt — es gibt sie
 nur als `low`. Eine Stimme, die man wählen kann und die dann nicht spricht,
 wäre schlimmer als keine Auswahl.
 
-Cloud-Stimmen gibt es auf der Webseite nicht. Ein Schlüssel auf einer
-öffentlichen Seite wäre ein anderes Versprechen als das, was hier gilt; wer
-Azure oder ElevenLabs nutzen möchte, tut das über die Kommandozeile.
+Cloud-Stimmen gibt es bewusst nicht. Ein Schlüssel auf einer öffentlichen
+Seite wäre ein anderes Versprechen als das, was hier gilt — und die vier
+Stimmen hier sind kostenlos, nach dem ersten Laden offline und von keinem
+Anbieter abschaltbar.
 
 ## Deine Inhalte bleiben lokal
 
-Deine Sätze, alles daraus Gemachte und deine Schlüssel stehen in `.gitignore`
-und wandern nie mit. `phrases.json` ist das Einzige, was sich nicht wieder
-erzeugen lässt — dafür lohnt eine Sicherung.
+Nichts von dem, was du tippst, verlässt dein Gerät. Es gibt keinen Server, an
+den es gehen könnte: Die Sätze liegen im Speicher des Browsers, die Stimme
+wird einmal geladen und arbeitet danach offline, und die Aufnahme entsteht im
+Tab. Die einzige Anfrage, die je hinausgeht, holt ein Stimmmodell.
+
+Das hat eine Folge, die es ernst zu nehmen lohnt: **Die Sätze liegen in diesem
+Browser und sonst nirgends.** Wer seine Browserdaten löscht, löscht sie mit.
+Die Audiodateien lassen sich jederzeit neu erzeugen, die Sätze nicht.
+
+Also: **Einstellungen → Sätze in einer Datei sichern**, und die Datei irgendwo
+Echtes hinlegen. Heraus kommt eine lesbare JSON-Datei, und beim Laden wird
+zusammengeführt statt überschrieben — eine Sicherung kann dich also nie Arbeit
+kosten, die danach entstanden ist.
 
 ## Mehr
 
-Alles Weitere steht in der [englischen Anleitung](README.md): Dauerbetrieb auf
-dem NAS, eigene Piper-Modelle, Azure und ElevenLabs, Ausgabeformate, Sammlungen
-und Suche, die Kommandozeile.
+Alles Weitere steht in der [englischen Anleitung](README.md): Stimmen
+wechseln, Ausgabeformate, Sammlungen und Suche, Sichern und Laden, und wie man
+an mitreden selbst arbeitet.
 
 Fehlerberichte und Fragen sind willkommen — gern auf Deutsch.
 
