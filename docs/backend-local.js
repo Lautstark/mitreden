@@ -39,12 +39,29 @@
   const VOICES = CATALOGUE
     .filter(v => v.licence.ship && v.browser === 'ok' && !v.licence.attribution)
     .map(v => ({ id: `piper:${v.id}`, name: v.name, lang: v.lang,
-                 mb: Math.round(v.bytes / 1048576) }));
+                 quality: v.quality, mb: Math.round(v.bytes / 1048576) }));
 
   const DEFAULT_VOICE = VOICES[0].id;
   const modelOf = id => id.replace(/^piper:/, '');
-  const labelOf = v => [v.name, 'piper', v.lang].join(' · ');
+  // Name, where it comes from, which language — the three things that tell two
+  // entries apart. The quality tier is normally a file-name detail and stays
+  // out, but when the same voice is offered in two tiers it is the only thing
+  // that distinguishes them, and two identical rows in a picker is worse than
+  // a word most people can ignore.
+  const labelOf = v => {
+    const twin = VOICES.some(o => o !== v && o.name === v.name && o.lang === v.lang);
+    return [v.name + (twin && v.quality ? ` (${v.quality})` : ''), 'piper', v.lang]
+      .join(' \u00b7 ');
+  };
   const voiceById = id => VOICES.find(v => v.id === id);
+  // The catalogue plus whatever Azure is currently offering. Kept async and
+  // separate because the cloud half needs a network call and most callers do
+  // not need it.
+  const anyVoice = async id => {
+    const local = voiceById(id);
+    if (local || !id.startsWith('azure:')) return local || null;
+    return (await listVoices()).find(v => v.id === id) || null;
+  };
 
   // Output settings. The container keeps these in config.json; here they are
   // fixed, because there is no file to edit and mp3 at 44.1 kHz mono is what
@@ -166,8 +183,14 @@
   const ENGINE_VERSION = 'vits-web@1.0.3 stimmquelle@0ff9af2';
 
   async function fingerprint(text, voiceId) {
-    const payload = JSON.stringify([text, 'piper', modelOf(voiceId),
-                                    ENGINE_VERSION, OUT]);
+    // Azure renders on somebody else's machine, so which engine is vendored
+    // here says nothing about how those recordings came out. Naming it would
+    // re-record every cloud-spoken sentence on an upgrade that cannot have
+    // changed them. Same rule the container followed.
+    const cloud = voiceId.startsWith('azure:');
+    const payload = JSON.stringify(cloud
+      ? [text, 'azure', voiceId.slice(6), OUT]
+      : [text, 'piper', modelOf(voiceId), ENGINE_VERSION, OUT]);
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
   }
@@ -226,11 +249,64 @@
   let onProgress = null;   // set while a batch is running, so the page can say so
 
   async function speak(text, voiceId) {
+    if (voiceId.startsWith('azure:')) return speakAzure(text, voiceId.slice(6));
     const t = await tts();
     return t.predict({ text, voiceId: modelOf(voiceId) }, p => {
       if (onProgress && p && p.total)
         onProgress(Math.round(p.loaded * 100 / p.total));
     });
+  }
+
+  // ------------------------------------------------------------------ Azure
+  //
+  // The key stays here. The request goes from this browser straight to
+  // Microsoft and the audio comes straight back; nothing passes through a
+  // server of ours, because there is not one. That is a stronger promise than
+  // the old container could make — it wrote the key into a file on a machine
+  // with no login and told you to put it on your home network.
+  //
+  // Kept as a second choice rather than the default on purpose: the piper
+  // voices work offline, cost nothing and cannot be switched off by anybody.
+  // A sentence recorded with Azure stops being reproducible the day the
+  // subscription lapses.
+  const AZURE_REGIONS = 'westeurope';   // only used to build the two URLs below
+  const azureHost = r => `https://${r}.tts.speech.microsoft.com/cognitiveservices/v1`;
+  const azureList = r => `https://${r}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+
+  // Which languages are worth offering. Azure publishes hundreds; a picker
+  // that long is not a choice, it is a search problem.
+  const AZURE_LANGS = ['de-', 'en-'];
+
+  async function azureVoices(key, region) {
+    const r = await fetch(azureList(region), { headers: { 'Ocp-Apim-Subscription-Key': key } });
+    if (!r.ok) throw new Error(r.status === 401 ? 'key-or-region' : `azure-${r.status}`);
+    return (await r.json())
+      .filter(v => AZURE_LANGS.some(l => v.Locale.startsWith(l)))
+      .map(v => ({ id: `azure:${v.ShortName}`, name: v.LocalName || v.DisplayName,
+                   lang: v.Locale.slice(0, 2), gender: v.Gender }));
+  }
+
+  async function speakAzure(text, shortName) {
+    const { azure } = await loadSettings();
+    if (!azure || !azure.key) throw new Error('No Azure key is set.');
+    const locale = shortName.split('-').slice(0, 2).join('-');
+    // Escaped rather than interpolated: a sentence is user text and may
+    // contain the characters SSML is made of.
+    const esc = t => t.replace(/[<>&'"]/g, c =>
+      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+    const ssml = `<speak version="1.0" xml:lang="${locale}">` +
+                 `<voice name="${shortName}"><prosody rate="-5%">${esc(text)}` +
+                 `</prosody></voice></speak>`;
+    const r = await fetch(azureHost(azure.region || AZURE_REGIONS), {
+      method: 'POST',
+      headers: { 'Ocp-Apim-Subscription-Key': azure.key,
+                 'Content-Type': 'application/ssml+xml',
+                 // 48 kHz because the levelling measures there anyway
+                 'X-Microsoft-OutputFormat': 'riff-48khz-16bit-mono-pcm' },
+      body: ssml,
+    });
+    if (!r.ok) throw new Error(`Azure said ${r.status}: ${(await r.text()).slice(0, 120)}`);
+    return r.blob();
   }
 
   // ------------------------------------------------- trim, level and encode
@@ -380,8 +456,20 @@
 
   async function listVoices() {
     const active = await activeVoice();
-    return VOICES.map(v => ({ id: v.id, label: labelOf(v), backend: 'piper',
-                              active: v.id === active }));
+    const out = VOICES.map(v => ({ id: v.id, label: labelOf(v), backend: 'piper' }));
+    const { azure } = await loadSettings();
+    if (azure && azure.key) {
+      try {
+        for (const v of await azureVoices(azure.key, azure.region))
+          out.push({ id: v.id, label: [v.name, 'azure', v.lang].join(' \u00b7 '), backend: 'azure' });
+      } catch (e) {
+        // A key that has stopped working must not empty the picker: the piper
+        // voices still speak, and a sentence already recorded with Azure keeps
+        // its name.
+        console.warn('Azure voices unavailable:', e.message);
+      }
+    }
+    return out.map(v => ({ ...v, active: v.id === active }));
   }
 
   async function phrasesWithState() {
@@ -413,8 +501,13 @@
     // No cloud services here. A key typed into a public page would be a
     // different promise than the one the container makes, so the panel stays
     // empty rather than half-true.
-    if (route === '/api/setup') return json({ cloud: [], voices: VOICES.length,
-                                              backup: true });
+    if (route === '/api/setup') {
+      const { azure } = await loadSettings();
+      return json({
+        cloud: [{ id: 'azure', label: 'Azure Speech', needs_region: true,
+                  set: !!(azure && azure.key), region: (azure && azure.region) || 'westeurope' }],
+        voices: (await listVoices()).length, backup: true });
+    }
 
     // The same file the container keeps: a plain list, so a copy made here
     // can be dropped next to mitreden.py and the other way round. Only the
@@ -471,7 +564,7 @@
     if (route === '/api/build') {
       const only = new Set(body.ids || []);
       const vid = (body.voice || '').trim() || null;
-      if (vid && !voiceById(vid)) return fail('That voice is not available here.', 404);
+      if (vid && !await anyVoice(vid)) return fail('That voice is not available here.', 404);
       let rendered = 0;
       for (const item of items) {
         if (only.size && !only.has(item.id)) continue;
@@ -515,7 +608,7 @@
     }
 
     if (route === '/api/voice') {
-      const v = voiceById((body.id || '').trim());
+      const v = await anyVoice((body.id || '').trim());
       if (!v) return fail('That voice is not available here.', 404);
       // Nothing is recorded and nothing turns stale: this only says what the
       // next recording should sound like.
@@ -637,8 +730,44 @@
       return fail('Unknown mode.', 400);
     }
 
-    if (route === '/api/setup')
-      return fail('This page has no cloud services.', 400);
+    // Emptying the whole thing. A program with no folder to delete has to
+    // offer this itself, or the only way out is the browser's own settings.
+    if (route === '/api/wipe') {
+      await savePhrases([]);
+      await saveCollections([]);
+      const d = await db();
+      await new Promise((res, rej) => {
+        const tx = d.transaction('audio', 'readwrite');
+        tx.objectStore('audio').clear();
+        tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+      });
+      urls.forEach(u => URL.revokeObjectURL(u));
+      urls = new Map();
+      return json({ ok: true });
+    }
+
+    if (route === '/api/setup') {
+      if ((body.backend || '') !== 'azure') return fail('Unknown service.', 400);
+      const key = String(body.key || '').trim();
+      const region = String(body.region || '').trim() || 'westeurope';
+      const now = await loadSettings();
+      if (!key) {                       // an empty field means: forget it
+        const next = { ...now }; delete next.azure; await saveSettings(next);
+        return json({ set: false, voices: VOICES.length });
+      }
+      // Checked before it is stored, so a typo is a sentence now rather than a
+      // failed recording later. A key is bound to one region and the wrong
+      // pairing answers 401, which is indistinguishable from a bad key.
+      let found;
+      try { found = await azureVoices(key, region); }
+      catch (e) {
+        return fail(e.message === 'key-or-region'
+          ? 'That key and region do not go together.'
+          : `Azure did not answer: ${e.message}`, 400);
+      }
+      await saveSettings({ ...now, azure: { key, region } });
+      return json({ set: true, voices: VOICES.length + found.length });
+    }
 
     return fail('Unknown route.', 404);
   }
