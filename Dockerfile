@@ -14,7 +14,11 @@ FROM python:3.12-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg curl \
  && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir piper-tts
+# Pinned, and not only for the usual reason. piper is what makes the audio,
+# so a different piper can mean a different-sounding voice — and the version
+# is part of the fingerprint in mitreden.py, which decides what still counts
+# as recorded. The two are kept in step by tests/test_piper_version.py.
+RUN pip install --no-cache-dir piper-tts==1.7.0
 
 # Two German and two English voices, one male and one female each. All four
 # are CC0 or public domain, which is why they may travel in a public image —
