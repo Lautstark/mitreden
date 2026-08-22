@@ -1,8 +1,11 @@
 name: Tests
 
 # The website is the program, so what has to hold is: it builds from its
-# source, the third-party code it serves is what was pinned, and the recording
-# chain still does what it promises.
+# source, the third-party code it serves is what was pinned, the recording
+# chain still does what it promises, and the page still opens and works in a
+# browser. What passes here is then what gets published — the site is served
+# from this workflow rather than straight from the branch, so a commit that
+# breaks the page reaches nobody.
 on:
   push:
     branches: [main]
@@ -23,6 +26,17 @@ on:
       - tests/**
       - tools/**
       - .github/workflows/tests.yml
+  # For publishing the site again without a commit to hang it on, and for
+  # asking the browser test to record for real.
+  workflow_dispatch:
+    inputs:
+      speak:
+        description: Also record for real (downloads a 63 MB voice)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   tests:
@@ -61,7 +75,67 @@ jobs:
           assert 'MITREDEN_STRINGS' in page, 'the languages were not baked in'
           print(f'{len(page)} characters')"
 
+      - name: A browser to open the page in
+        # tests/test_e2e_page.py needs one. It skips itself where playwright is
+        # missing so that a contributor without it can run everything else —
+        # but under CI it fails instead, because a gate that quietly opened no
+        # browser would let anything through.
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
       - name: Tests
         # Every tests/test_*.py, and the folder is the list. The browser half
         # is JavaScript and runs under node through tests/test_browser_audio.py.
         run: python tests/run.py
+
+  publish:
+    name: Publish
+    needs: tests
+    # Only from main, and only once everything above is green. A pull request
+    # gets the same checks and publishes nothing.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write        # to publish
+      id-token: write     # to prove to Pages that this workflow is the one
+    # Pages takes one deployment at a time. Queue rather than cancel: the
+    # cancelled one would be a commit that passed and never went out.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # The same folder the tests opened in a browser, published as it
+          # stands. There is no build step between the two.
+          path: docs
+      - id: pages
+        uses: actions/deploy-pages@v4
+
+  spoken:
+    name: Record for real
+    # The other half of the browser test: the voice is fetched from
+    # huggingface.co and a sentence is actually spoken, end to end, through
+    # the WASM decoder and the encoder that only exist in a browser. It is 63
+    # MB and somebody else's server, so it is asked for by hand and publishing
+    # never waits on it. Add a schedule here to have it watched nightly.
+    if: github.event_name == 'workflow_dispatch' && inputs.speak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install playwright
+          playwright install --with-deps chromium
+      - name: Speak a sentence
+        env:
+          MITREDEN_E2E_FULL: "1"
+        run: python tests/test_e2e_page.py

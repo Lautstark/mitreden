@@ -239,8 +239,9 @@ python3 tools/vendor.py --check    # the vendored code is what was pinned
 The third-party code in `docs/vendor/` is fetched by `tools/vendor.py` and
 pinned by hash in `tools/vendor.lock.json`. It is committed rather than
 fetched at runtime, because a page that pulls executing code from a CDN can
-have it changed underneath it — and because GitHub Pages serves `docs/`
-straight from the branch, with no build step that could fetch anything.
+have it changed underneath it — and because what gets published is `docs/`
+exactly as it stands here. The workflow uploads that folder; it does not
+build it, and there is no step in which anything could be fetched.
 
 ## Contributing
 
@@ -249,10 +250,23 @@ roadmap and no promises. If you use it for your own child, or for someone you
 support: good. Bug reports and questions are welcome, even if answers may take
 a while.
 
-If you change something: `python3 tests/run.py` runs the tests. No pip
-packages, a few seconds, and the same run happens in CI on every push. A
-single one is `python3 tests/run.py voice`. What each is for is written at the
-top of its own file.
+If you change something: `python3 tests/run.py` runs the tests. A few
+seconds, and the same run happens in CI on every push. A single one is
+`python3 tests/run.py voice`. What each is for is written at the top of its
+own file.
+
+One of them opens the page in a real browser and needs `pip install playwright
+&& playwright install chromium`. Without it that one test skips itself and the
+rest still run — but not in CI, where a skipped browser is a page nobody
+looked at. It blocks every request that would leave the machine, so it never
+waits on a voice download; `MITREDEN_E2E_FULL=1 python3
+tests/test_e2e_page.py` is the run that does fetch one and records for real.
+
+The site is published by that same workflow rather than straight from the
+branch, and only once everything is green, so a commit that breaks the page
+reaches nobody. It needs **Settings → Pages → Source: GitHub Actions**; with
+the older branch setting, `docs/` goes out the moment it is pushed, tests or
+no tests.
 
 If you are building something similar and could use advice, open an issue.
 There is little tooling for augmentative communication that you can hold in
