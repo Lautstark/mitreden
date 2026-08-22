@@ -55,9 +55,15 @@ ankreuzt und „Stimme ändern" wählst. Eine Stimme für alles bleibt der
 Normalfall — „Alle auswählen", einmal aufnehmen, fertig.
 
 **Vier Piper-Stimmen stehen zur Wahl** — Thorsten und Thorsten (emotional) auf
-Deutsch, Kristin und HFC female auf Englisch, alle vier CC0 oder gemeinfrei.
+Deutsch, Kristin und LJSpeech auf Englisch, alle vier CC0 oder gemeinfrei.
 Damit spricht mitreden sofort, ohne Konto, ohne Schlüssel, ohne dass je etwas
 dein Gerät verlässt.
+
+Über eine Stimme entscheiden zwei Fragen, und sie hängen nicht zusammen:
+Läuft sie? Und darf man sie weitergeben? Wer hier eine Audiodatei bekommt,
+bekommt die Stimme weitergereicht — eine Lizenz, die kommerzielle Nutzung
+verbietet oder Weitergabe unter gleichen Bedingungen verlangt, kann eine
+Aufnahme für das Kind eines anderen nicht tragen.
 
 Die Liste ist bewusst kurz und ausprobiert, nicht abgeschrieben: Alle `low`-
 und `x_low`-Modelle scheitern im Browser, weshalb Kerstin fehlt — es gibt sie

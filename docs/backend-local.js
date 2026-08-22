@@ -37,6 +37,10 @@
   // somebody else's child can carry. It is out, and the question is written
   // down here so that working again is not enough to bring it back.
   //
+  // en_US-ljspeech-medium took its place, checked against both questions
+  // rather than one: public domain on its card, and recorded here before
+  // it was added.
+  //
   // The two questions are independent. A voice can run and be unusable, and
   // the licence one is the easier to forget, because nothing fails when it is
   // got wrong.
@@ -44,6 +48,7 @@
     { id: 'piper:de_DE-thorsten-medium', name: 'Thorsten', lang: 'de', mb: 63 },
     { id: 'piper:de_DE-thorsten_emotional-medium', name: 'Thorsten (emotional)', lang: 'de', mb: 63 },
     { id: 'piper:en_US-kristin-medium', name: 'Kristin', lang: 'en', mb: 63 },
+    { id: 'piper:en_US-ljspeech-medium', name: 'LJSpeech', lang: 'en', mb: 63 },
   ];
   const DEFAULT_VOICE = VOICES[0].id;
   const modelOf = id => id.replace(/^piper:/, '');
