@@ -2,17 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mitreden",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "mitreden.py",
-        "ui",
-        "--port",
-        "8772"
-      ],
-      "port": 8772
-    },
-    {
       "name": "spike",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
