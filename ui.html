@@ -209,9 +209,21 @@ button.quiet:hover{color:var(--text)}
 
 <dialog id="setup" class="sheet">
   <h2 data-i18n="settings"></h2>
-  <p class="sub" data-i18n="settings_intro"></p>
-  <p class="warn" data-i18n="settings_warning"></p>
-  <div id="cloud"></div>
+  <div id="keys">
+    <p class="sub" data-i18n="settings_intro"></p>
+    <p class="warn" data-i18n="settings_warning"></p>
+    <div id="cloud"></div>
+  </div>
+  <div id="backup" hidden>
+    <h3 data-i18n="backup_title"></h3>
+    <p class="sub" data-i18n="backup_intro"></p>
+    <div class="row">
+      <button class="primary" id="export" data-i18n="backup_export"></button>
+      <button id="import" data-i18n="backup_import"></button>
+    </div>
+    <p class="hint" data-i18n="backup_hint"></p>
+    <input type="file" id="importfile" accept="application/json,.json" hidden>
+  </div>
   <div class="row"><button id="setupclose" data-i18n="close"></button></div>
 </dialog>
 <p class="sub" data-i18n="tagline"></p>
@@ -308,6 +320,10 @@ function applyLang(){
 // --- Einstellungen ----------------------------------------------------
 async function drawSetup(){
   const st=await (await api.get('/api/setup')).json();
+  // Both halves are optional. The container has services to unlock and its
+  // sentences already in a file; the static site has neither and the other.
+  $('keys').hidden=!st.cloud.length;
+  $('backup').hidden=!st.backup;
   const box=$('cloud');box.innerHTML='';
   for(const c of st.cloud){
     const d=document.createElement('div');d.className='svc';
@@ -346,6 +362,37 @@ async function saveKey(c,key,region){
 }
 
 $('gear').onclick=()=>{drawSetup();$('setup').showModal()};
+// --- Sichern und Laden ------------------------------------------------
+// Only the static site offers these: there the sentences live in the browser
+// and nothing else holds a copy. In the container phrases.json is already a
+// file you can see, back up and edit.
+$('export').onclick=async()=>{
+  const r=await api.get('/api/export');
+  if(!r.ok){say(t('failed',{error:await r.text()}));return}
+  const url=URL.createObjectURL(await r.blob());
+  const a=document.createElement('a');
+  a.href=url;a.download='phrases.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+};
+$('import').onclick=()=>$('importfile').click();
+$('importfile').onchange=async e=>{
+  const file=e.target.files&&e.target.files[0];
+  e.target.value='';                    // so the same file can be picked twice
+  if(!file)return;
+  say(t('busy_import'));
+  let items;
+  try{items=JSON.parse(await file.text())}
+  catch(err){say(t('import_failed',{error:err.message||err}));return}
+  const r=await api.post('/api/import',{items});
+  if(!r.ok){say(t('import_failed',{error:await r.text()}));return}
+  const d=await r.json();
+  if(!d.added&&!d.merged){say(t('import_empty'));return}
+  say(t('done_import',d)+(d.revoiced?t('done_import_revoiced',{n:d.revoiced}):''));
+  $('setup').close();
+  loadVoices();load();
+};
+
 $('setupclose').onclick=()=>$('setup').close();
 
 async function loadStrings(){
@@ -604,6 +651,15 @@ async function switchTo(ids,id,label){
   if(r){say(t('done_switch',{n:r.rendered,voice:label}));load()}
 }
 
+async function recordMany(ids){
+  if(!ids.length){say(t('nothing_to_record'));return}
+  say(t('busy_build',{n:ids.length}));
+  const d=await post('/api/build',{ids});   // no force: only what is missing
+  if(!d)return;
+  say(t('done_build',{n:d.rendered}));
+  load();
+}
+
 async function grabMany(ids,fmt){
   if(!ids.length){say(t('nothing_recorded'));return}
   say(t('busy_pack',{n:ids.length}));
@@ -647,6 +703,12 @@ $('bulk').onclick=e=>menuOn(e.currentTarget,(m,add)=>{
   const fertig=ALL.filter(i=>SEL.has(i.id)&&i.state!=='missing').map(i=>i.id);
   if(fertig.length)
     add(t('download_wav'),false,()=>{closeMenus();grabMany(fertig,'wav')});
+  // Sentences that were imported, or whose recording failed, have no audio.
+  // Without this there is no way back to one — every other entry here either
+  // needs a recording or replaces one.
+  const offen=ALL.filter(i=>SEL.has(i.id)&&i.state!=='ok').map(i=>i.id);
+  if(offen.length)
+    add(t('menu_record'),false,()=>{closeMenus();recordMany(offen)});
   add(t('menu_change_voice'),false,
       mm=>voiceMenu(mm,(id,label)=>switchTo(ids,id,label)));
   add(t('menu_add_group'),false,()=>{closeMenus();tagsMany(ids,'add')});

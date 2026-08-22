@@ -403,7 +403,18 @@
     // No cloud services here. A key typed into a public page would be a
     // different promise than the one the container makes, so the panel stays
     // empty rather than half-true.
-    if (route === '/api/setup') return json({ cloud: [], voices: VOICES.length });
+    if (route === '/api/setup') return json({ cloud: [], voices: VOICES.length,
+                                              backup: true });
+
+    // The same file the container keeps: a plain list, so a copy made here
+    // can be dropped next to mitreden.py and the other way round. Only the
+    // sentences — the audio can always be made again, and would turn a
+    // backup you can read into a download you cannot.
+    if (route === '/api/export') {
+      const items = await loadPhrases();
+      const text = JSON.stringify(items, null, 2) + '\n';
+      return new Response(new Blob([text], { type: 'application/json' }), { status: 200 });
+    }
     if (route === '/api/voices') return json(await listVoices());
     if (route === '/api/phrases') return json(await phrasesWithState());
     return fail('Unknown route.', 404);
@@ -518,6 +529,50 @@
       }
       if (!files.length) return fail('Nothing recorded to download.', 404);
       return new Response(zip(files), { status: 200, headers: { 'Content-Type': 'application/zip' } });
+    }
+
+    if (route === '/api/import') {
+      // A bare list is what the container writes. An object with items in it
+      // is what someone might reasonably hand over instead.
+      const incoming = Array.isArray(body.items) ? body.items
+                     : Array.isArray(body.items && body.items.items) ? body.items.items
+                     : null;
+      if (!incoming) return fail('That is not a list of sentences.', 400);
+
+      let added = 0, merged = 0, revoiced = 0;
+      for (const raw of incoming) {
+        const text = typeof raw === 'string' ? raw.trim()
+                   : (raw && typeof raw.text === 'string') ? raw.text.trim() : '';
+        if (!text) continue;
+        const tags = (Array.isArray(raw && raw.tags) ? raw.tags : []).map(normTag).filter(Boolean);
+
+        const twin = findTwin(items, text);
+        if (twin) {
+          for (const t of tags) if (!(twin.tags || []).includes(t)) (twin.tags ||= []).push(t);
+          merged++;
+          continue;
+        }
+        // Keep the incoming id wherever it is free. It is a file name, and
+        // the file it names may long since be sitting on a talker — that is
+        // the whole reason for carrying sentences between the two.
+        const wanted = typeof (raw && raw.id) === 'string' ? raw.id.trim() : '';
+        const id = wanted && !items.some(i => i.id === wanted) ? wanted : freeId(items, text);
+        const item = { id, text, tags };
+
+        // A voice this page cannot speak with would fail at the first
+        // recording. The container has voices we do not — Kerstin, Azure —
+        // so those sentences fall back to whatever is selected here.
+        if (raw && raw.voice_id && voiceById(raw.voice_id)) {
+          item.voice_id = raw.voice_id;
+          if (raw.fingerprint) item.fingerprint = raw.fingerprint;
+        } else if (raw && raw.voice_id) {
+          revoiced++;
+        }
+        items.push(item);
+        added++;
+      }
+      await savePhrases(items);
+      return json({ ok: true, added, merged, revoiced });
     }
 
     if (route === '/api/setup')
