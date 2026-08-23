@@ -16,6 +16,7 @@
   "backup_export": "Alles sichern",
   "backup_hint": "Einzelne Sammlungen sicherst du über das Menü ⋯ neben ihrem Namen.",
   "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.",
+  "backup_lead": "Sicherung.",
   "busy_add": "Wird aufgenommen …",
   "busy_delete": "Wird gelöscht …",
   "busy_import": "Lese …",

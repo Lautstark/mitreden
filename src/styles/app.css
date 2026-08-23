@@ -66,7 +66,7 @@
    namesake child starts taking rules meant for the region. */
 .sheet > .head h2{flex:1}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
-.hint{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-faint)}
+.hint{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--text-faint)}
 /* Panels do the separating in the settings now, so the card that used to box
    each block is a second border around the same content. What is left of the
    sheet's own spacing is the gap between a panel's controls. */
@@ -90,15 +90,11 @@
 .title-input:hover{border-color:var(--line)}
 .title-input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
 .workhead .count{margin-left:auto;font-size:13.5px;color:var(--text-faint)}
-.danger__title{margin:22px 0 4px;font-size:15px}
-/* bildhaft's danger button: a pill that is transparent until you reach for it,
-   then a soft red ground. Not an underlined line of text — that read as a
-   broken link, and the shared button hover was drawing a grey box behind it. */
-.linkdanger{background:transparent;border:0;color:var(--danger);font:inherit;
-  font-weight:600;font-size:13.5px;padding:5px 11px;cursor:pointer;
-  border-radius:var(--radius-pill);text-decoration:none}
-.linkdanger:hover{background:var(--danger-soft);color:var(--danger);
-  text-decoration:none}
+/* Smaller than the prose under it, and bold: bildhaft's, so the reset sits in
+   the Daten panel at the same weight in both products. */
+.danger__title{margin:24px 0 6px;font-size:13px}
+.danger__body{margin:0 0 10px}
+#export+.hint{margin-top:8px}
 
 /* The composer: one field you type into, and an arrow. bildhaft's shape, and
    right for the same reason — there is only ever one thing to do here. */
@@ -210,7 +206,7 @@ textarea::placeholder,input::placeholder{color:var(--text-faint)}
    no longer inherit it from a styled button element. */
 button,input,select,textarea{font:inherit;color:inherit}
 .btn.sm{font-size:13px;padding:6px 9px}
-.flat,.linkdanger,.icon,.dots,.linklike,.item .collection{
+.flat,.icon,.dots,.linklike,.item .collection{
   transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}

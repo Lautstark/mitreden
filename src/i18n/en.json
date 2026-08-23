@@ -16,6 +16,7 @@
   "backup_export": "Save everything",
   "backup_hint": "A single collection goes through the ⋯ menu beside its name.",
   "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.",
+  "backup_lead": "Backup.",
   "busy_add": "Recording …",
   "busy_delete": "Deleting …",
   "busy_import": "Reading …",

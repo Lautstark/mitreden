@@ -125,16 +125,19 @@
           <span class="state" id="datastate"></span>
         </summary>
         <div class="body">
-          <p class="hint" data-i18n="backup_intro"></p>
-          <div class="row">
-            <button class="btn primary" id="export" data-i18n="backup_export"></button>
-          </div>
+          <!-- bildhaft's shape, element for element: the warning as a notice with
+               a word in front of it, then the backup, then the reset under a
+               heading of its own. Two elements rather than one line of markup,
+               so the lead is a translated string like every other and nothing
+               here sets innerHTML from the language files. -->
+          <p class="notice"><b data-i18n="backup_lead"></b> <span data-i18n="backup_intro"></span></p>
+          <button class="btn primary sm" id="export" data-i18n="backup_export"></button>
           <p class="hint" data-i18n="backup_hint"></p>
           <input type="file" id="importfile" accept="application/json,.json" hidden>
 
           <h3 class="danger__title" data-i18n="danger_title"></h3>
-          <p class="hint" data-i18n="danger_body"></p>
-          <button class="linkdanger" id="wipe" data-i18n="danger_do"></button>
+          <p class="hint danger__body" data-i18n="danger_body"></p>
+          <button class="btn destructive sm" id="wipe" data-i18n="danger_do"></button>
         </div>
       </details>
     </dialog>
