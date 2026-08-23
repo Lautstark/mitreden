@@ -10,6 +10,9 @@ import '@lautstark/design/components.css';
 import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';
+import { exportEverything } from './db/backup.ts';
+import { onChanged } from './db/db.ts';
+import { Sicherung } from '@lautstark/sicherung';
 import { lang, setLang, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
@@ -28,6 +31,21 @@ function chooseLang(): void {
   document.documentElement.lang = lang();
 }
 
+/*
+ * The standing backup. `exportEverything` is what it is handed and the only
+ * thing it is ever handed — the audited artefact, which carries the sentences
+ * and the Sammlungen and drops the Azure key on the way out. A chosen folder
+ * is very likely inside Dropbox, so what goes in it leaves the machine, and a
+ * credential in that file would be posted to somebody's cloud and then to
+ * every device sharing the folder. tests/unit/backup-payload.test.ts holds
+ * this wiring in place; a failure there is a leak, not a bug.
+ */
+const backup = new Sicherung({ app: 'mitreden', produce: exportEverything });
+
+// Every write that changes what a Sicherung would contain, through the one
+// notifier in db.ts. Debounced inside Sicherung, so a burst is one file.
+onChanged(() => backup.schedule());
+
 export async function start(): Promise<void> {
   chooseLang();
   // The attribute is already set by the inline script in index.html; this is
@@ -39,7 +57,7 @@ export async function start(): Promise<void> {
   wireRail();
   wireComposer();
   wireList();
-  wireSettings();
+  wireSettings(backup);
   el('about').onclick = openAbout;
   el('impressum').onclick = openImpressum;
   el('datenschutz').onclick = openDatenschutz;
@@ -49,6 +67,10 @@ export async function start(): Promise<void> {
   await ensureCollection(lang() === 'de');
   await loadVoices();
   await load();
+  // Never prompts — there is no gesture here. A folder needing its permission
+  // re-confirmed lands in needs-permission and says so in Einstellungen →
+  // Daten, which is where the click can happen.
+  await backup.restore().catch(() => undefined);
 }
 
 void start();

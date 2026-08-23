@@ -164,6 +164,20 @@
                so the lead is a translated string like every other and nothing
                here sets innerHTML from the language files. -->
           <p class="notice"><b data-i18n="backup_lead"></b> <span data-i18n="backup_intro"></span></p>
+
+          <!-- The folder first, because it is the one that keeps working after
+               somebody stops thinking about it. Hidden outright where the
+               browser has no picker - Safari, Firefox, anything on Android -
+               so the download below is then the whole offer, unchanged.
+               The two ids are painted from ui/backupFolder.ts and carry no
+               data-i18n of their own: their text is rebuilt through t() on
+               every status change, which is also every language change. -->
+          <div id="folderbox" class="folderbox">
+            <p class="hint" data-i18n="folder_lead"></p>
+            <p class="standing" id="folderstate"></p>
+            <div class="row" id="folderactions"></div>
+          </div>
+
           <button class="btn primary sm" id="export" data-i18n="backup_export"></button>
           <p class="hint" data-i18n="backup_hint"></p>
           <input type="file" id="importfile" accept="application/json,.json" hidden>

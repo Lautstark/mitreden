@@ -405,3 +405,12 @@ button,input,select,textarea{font:inherit;color:inherit}
   .tools input[type=search]{flex:1 1 100%;min-width:0}
   .tools button{flex:1}
 }
+
+/* The standing Sicherung's block. The line and the buttons come from
+   components.css; what is left is the room around them, which is product
+   spacing and stays here. Hidden outright — not disabled — where the browser
+   has no folder picker: a control that cannot exist should not spend a
+   paragraph telling somebody their browser is wrong. */
+.folderbox{margin:14px 0 18px}
+.folderbox[hidden]{display:none}
+.folderbox .row{margin-top:10px}

@@ -7,6 +7,9 @@
  */
 
 import { loadPhrases, wipe } from '../db/db.ts';
+import { exportEverything, importBackup, isBackup } from '../db/backup.ts';
+import type { Sicherung } from '@lautstark/sicherung';
+import { wireBackupFolder } from './backupFolder.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
 import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
@@ -336,8 +339,17 @@ export async function exportCollection(collection: Collection): Promise<void> {
   download({ collection: collection.name, items }, `mitreden-${safeName(collection.name)}`);
 }
 
+/**
+ * The Sicherung: everything, in the one format that survives coming back.
+ *
+ * This used to write a bare array of sentences, which importFile then read
+ * into a single new Sammlung — so a library went out whole and came back as
+ * one heap. db/backup.ts carries the shape that keeps the Sammlungen apart,
+ * and the file it writes is the same one the standing backup puts in the
+ * chosen folder.
+ */
 async function exportAll(): Promise<void> {
-  download(await loadPhrases(), 'mitreden-alle-saetze');
+  download(await exportEverything(), 'mitreden-sicherung');
 }
 
 const safeName = (name: string): string =>
@@ -397,6 +409,22 @@ async function importFile(file: File): Promise<void> {
     say(t('import_failed', { error: file.name }));
     return;
   }
+
+  // A full Sicherung takes the path that keeps its Sammlungen; everything else
+  // — an older mitreden file, a bildhaft archive, a bare list — goes on
+  // reading exactly as it did, because a file somebody already has must keep
+  // working.
+  if (isBackup(parsed)) {
+    try {
+      const done = await importBackup(parsed);
+      say(t('done_restore', { ...done }));
+      await load();
+    } catch (error) {
+      say(t('import_failed', { error: error instanceof Error ? error.message : file.name }));
+    }
+    return;
+  }
+
   const { lines, collection } = readFile(parsed);
   if (!lines.length) {
     say(t('import_empty'));
@@ -531,7 +559,8 @@ export function openSetup(panel?: string): void {
   if (panel) openPanel(panel);
 }
 
-export function wireSettings(): void {
+export function wireSettings(backup: Sicherung): void {
+  wireBackupFolder(backup);
   el('gear').onclick = () => openSetup();
   // The composer names the voice in force; this is the way from that name to
   // the place it is decided, which is the whole of what moved.

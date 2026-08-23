@@ -26,6 +26,34 @@ interface MitredenDB extends DBSchema {
   audio: { key: string; value: Blob };
 }
 
+/* ---------------------------------------------------------------- change --- */
+
+/*
+ * Every write that changes what a Sicherung would contain says so here, and
+ * the standing backup listens.
+ *
+ * The alternative was calling schedule() from each place in the interface that
+ * edits something, and it is the wrong shape: the next one would be added by
+ * somebody who had never heard of the backup, nothing would fail, and the
+ * library would quietly stop being saved. That is this feature's entire
+ * failure mode, so the notifier sits at the writes instead.
+ *
+ * putAudio and dropAudio deliberately do NOT announce. Recordings are not in
+ * the backup — they are reproducible, and they are three orders of magnitude
+ * the size — so a build of two hundred sentences would otherwise rewrite the
+ * file two hundred times to say nothing new.
+ */
+const watchers = new Set<() => void>();
+
+export function onChanged(listener: () => void): () => void {
+  watchers.add(listener);
+  return () => watchers.delete(listener);
+}
+
+function touched(): void {
+  for (const listener of watchers) listener();
+}
+
 let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
@@ -44,6 +72,7 @@ export async function loadPhrases(): Promise<Phrase[]> {
 
 export async function savePhrases(items: Phrase[]): Promise<void> {
   await (await db()).put('meta', items, 'phrases');
+  touched();
 }
 
 /**
@@ -58,6 +87,7 @@ export async function loadCollections(): Promise<Collection[]> {
 
 export async function saveCollections(items: Collection[]): Promise<void> {
   await (await db()).put('meta', items, 'collections');
+  touched();
 }
 
 export async function loadSettings(): Promise<Settings> {
@@ -66,6 +96,7 @@ export async function loadSettings(): Promise<Settings> {
 
 export async function saveSettings(value: Settings): Promise<void> {
   await (await db()).put('meta', value, 'settings');
+  touched();
 }
 
 export const getAudio = async (id: string): Promise<Blob | undefined> =>
@@ -82,4 +113,5 @@ export async function wipe(): Promise<void> {
   const database = await db();
   await database.clear('meta');
   await database.clear('audio');
+  touched();
 }
