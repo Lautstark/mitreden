@@ -36,12 +36,12 @@ async function openVoices(page: import('@playwright/test').Page) {
  * The picker is drawn when the dialog opens, not kept in the page. It used to
  * be a <select> beside the composer, which meant a reload was enough to assert
  * against it; the voices live in the settings now, so a reload has to be
- * followed back in.
+ * followed back in. The Azure panel is folded, so it is opened too.
  */
 async function reopenVoices(page: import('@playwright/test').Page) {
   await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
   await page.click('#gear');
-  await page.click('#tabs button[data-tab="voices"]');
+  await page.click('#p-azure > summary');
 }
 
 const voice = (page: import('@playwright/test').Page, name: string) =>
@@ -104,7 +104,7 @@ test('opening the settings answers whether Azure does, and asks it only once', a
   // The save's answer lands on the still-open dialog: which key, and that
   // Azure answers it with a count.
   await expect(page.locator('#setup')).toHaveJSProperty('open', true);
-  await expect(page.locator('#cloud .state')).toContainText('Nk7q');
+  await expect(page.locator('#azurestate')).toContainText('Nk7q');
   // The field shows the held key as a placeholder, not a value: nothing to
   // reveal, nothing to resubmit, and an untouched field visibly keeps it.
   await expect(page.locator('#azurekey')).toHaveAttribute('placeholder', /Nk7q/);
@@ -161,7 +161,9 @@ test('a region name that is not one is a sentence at save time, not a silence', 
   await page.click('#cloud .save');
   await expect(page.locator('#s')).toContainText('antwortet nicht', { timeout: 10_000 });
   // And the key was not stored: a pairing that never answered is not one to keep.
-  await expect(page.locator('#cloud .state')).toBeHidden();
+  // The heading says so rather than falling silent — an empty state is exactly
+  // what a panel that carries its status must never show.
+  await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
 });
 
 test('a save that only moves the region keeps the key it already has', async ({ page }) => {
@@ -180,6 +182,6 @@ test('a save that only moves the region keeps the key it already has', async ({ 
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   await page.reload();
   await reopenVoices(page);
-  await expect(page.locator('#cloud .state')).toContainText('Nk7q');
+  await expect(page.locator('#azurestate')).toContainText('Nk7q');
   await expect(page.locator('#azureregion')).toHaveValue('northeurope');
 });

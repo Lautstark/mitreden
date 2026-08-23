@@ -13,7 +13,7 @@ import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice } from './composer.ts';
-import { load } from './state.ts';
+import { ALL, load } from './state.ts';
 import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
 
 /**
@@ -140,11 +140,6 @@ export function drawVoices(): void {
   const live = chosenVoice();
   drawFilters(voices);
 
-  const badge = el('voicecount');
-  const chosen = voices.find((voice) => voice.id === live);
-  badge.textContent = chosen?.label ?? '';
-  badge.hidden = !chosen;
-
   const box = el('voices');
   box.innerHTML = '';
   box.setAttribute('role', 'radiogroup');
@@ -188,15 +183,16 @@ export async function drawSetup(): Promise<void> {
   box.innerHTML = '';
 
   const card = document.createElement('div');
-  card.className = 'card';
   // The bare class names here are hooks for the querySelectors below, not
   // components — which is why none of them may be a name components.css owns.
   // This paragraph was `sub body` and sat inside the settings sheet, so the
   // shared `.sheet .body` region rule reached it and quietly took it from 15px
   // to 14px. v1.4.1 made those rules child combinators and handed it back; the
   // rename is so it cannot be caught again by whatever the vocabulary adds.
+  //
+  // No head and no card: the panel's summary names this and says whether Azure
+  // holds a key, which is the whole point of a heading that carries its state.
   card.innerHTML = `
-    <div class="card__head"><h3>Azure Speech</h3><span class="badge state"></span></div>
     <p class="hint probe" role="status"></p>
     <p class="sub says"></p><p class="notice bad warn"></p>
     <label for="azurekey"></label>
@@ -208,11 +204,12 @@ export async function drawSetup(): Promise<void> {
     <div class="row"><button class="btn primary save"></button><button class="btn quiet forget"></button></div>`;
 
   const azure = saved.azure;
-  const state = card.querySelector<HTMLElement>('.state')!;
   // Which key, not merely that there is one: the last four characters tell
-  // two keys apart without giving either away.
-  state.textContent = azure ? t('key_hint', { hint: azure.key.slice(-4) }) : '';
-  state.hidden = !azure;
+  // two keys apart without giving either away. It sits in the panel's heading,
+  // so the answer is there before the panel is opened.
+  el('azurestate').textContent = azure
+    ? t('key_hint', { hint: azure.key.slice(-4) })
+    : t('key_none');
 
   const probe = card.querySelector<HTMLElement>('.probe')!;
   probe.hidden = !azure;
@@ -408,29 +405,58 @@ async function wipeEverything(): Promise<void> {
 
 // ------------------------------------------------------------------ wiring
 
-function showTab(name: string): void {
-  for (const tab of document.querySelectorAll<HTMLElement>('#tabs button'))
-    tab.setAttribute('aria-pressed', String(tab.dataset.tab === name));
-  for (const pane of document.querySelectorAll<HTMLElement>('.pane'))
-    pane.hidden = pane.dataset.pane !== name;
+/**
+ * What each panel holds, said in its own heading.
+ *
+ * This is the whole reason the tabs went: a tab is a promise that something is
+ * behind it, and you have to open it to find out what. A heading that already
+ * says "Kristin · Mitgeliefert · Englisch", "Kein Schlüssel" or "42 Sätze" is
+ * usually the entire question, and opening becomes a decision rather than the
+ * only way to look.
+ */
+function drawStates(): void {
+  const voice = knownVoices().find((one) => one.id === chosenVoice());
+  el('voicestate').textContent = voice
+    ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.locale)}`
+    : t('voice_none');
+  el('langstate').textContent = LANGUAGES[lang()];
+  // ALL(), not loadPhrases(): the sentences are already in memory, and a
+  // heading that carries state has to carry it from the first frame. Reading
+  // the database here left this line blank at the moment somebody was reading
+  // it — which is the one thing this shape promises not to do.
+  const n = ALL().length;
+  el('datastate').textContent = n ? tn('count', n) : t('count_none');
 }
 
-/** The dialog, on the tab that answers whatever asked for it. */
-export function openSetup(tab = 'voices'): void {
-  showTab(tab);
+/** Opening one panel from outside — the composer's way in to the voice. */
+function openPanel(id: string): void {
+  const panel = el<HTMLDetailsElement>(id);
+  panel.open = true;
+  // Only after the dialog is on screen, or there is nothing to scroll within.
+  requestAnimationFrame(() => panel.scrollIntoView({ block: 'nearest' }));
+}
+
+/** The dialog, with the panel that answers whatever asked for it unfolded. */
+export function openSetup(panel?: string): void {
   drawVoices();
+  drawStates();
+  // The key lives in the database, so this one heading cannot be answered
+  // synchronously on a first open. It says it is fetching rather than saying
+  // nothing: a state is what this summary is for, and empty is not one. Later
+  // opens find the previous answer still written.
+  const azure = el('azurestate');
+  if (!azure.textContent) azure.textContent = t('loading');
   void drawSetup();
   el<HTMLDialogElement>('setup').showModal();
+  if (panel) openPanel(panel);
 }
 
 export function wireSettings(): void {
   el('gear').onclick = () => openSetup();
   // The composer names the voice in force; this is the way from that name to
   // the place it is decided, which is the whole of what moved.
-  el('voicepick').onclick = () => openSetup('voices');
+  el('voicepick').onclick = () => openSetup('p-voice');
   el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
-  for (const tab of document.querySelectorAll<HTMLElement>('#tabs button'))
-    tab.onclick = () => showTab(tab.dataset.tab ?? 'voices');
 
   const search = el<HTMLInputElement>('voiceq');
   search.addEventListener('input', () => {
@@ -438,8 +464,9 @@ export function wireSettings(): void {
     drawVoices();
   });
   el('voices').addEventListener('keydown', (event) => stepVoices(event as KeyboardEvent));
-  // A pick redraws the list it was made in, so the mark moves with the click.
-  onVoiceChange(drawVoices);
+  // A pick redraws the list it was made in, so the mark moves with the click —
+  // and the heading, which names the voice in force.
+  onVoiceChange(() => { drawVoices(); drawStates(); });
 
   const picker = el<HTMLSelectElement>('lang');
   picker.innerHTML = '';
@@ -454,6 +481,7 @@ export function wireSettings(): void {
     document.documentElement.lang = picker.value;
     applyLang();
     drawVoices();
+    drawStates();
     void drawSetup();
     void load();
   };

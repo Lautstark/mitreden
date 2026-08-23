@@ -62,21 +62,13 @@
    body inside a sheet. Ours has to match, or a sheet region that gains a
    namesake child starts taking rules meant for the region. */
 .sheet > .head h2{flex:1}
-/* The segmented control is components.css's, grounds settled there: a --bg
-   track with the live segment on --surface, the only pairing that reads as
-   raised in both schemes. mitreden's own attempt marked selection with
-   --surface-3, which lifts in dark and sinks in light — and spends a plane
-   §4.2 reserves for the pointer, where a selected tab is a rest state. Only
-   where the row sits is left here. */
-.segmented{margin-bottom:16px}
-.card{background:var(--surface);outline:1px solid var(--line);border:0;
-  border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
 .hint{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-faint)}
-.card__head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.card__head h3{margin:0;font-size:15px}
-.badge{margin-left:auto;font-size:12px;font-weight:600;padding:3px 9px;
-  border-radius:999px;background:var(--accent-soft);color:var(--accent-strong)}
+/* Panels do the separating in the settings now, so the card that used to box
+   each block is a second border around the same content. What is left of the
+   sheet's own spacing is the gap between a panel's controls. */
+.panel .row{margin-top:12px}
+.panel > .body > :first-child{margin-top:0}
 .notice.warn{margin:8px 0;font-size:13.5px}
 .flat{background:transparent;border:0;color:var(--text-dim);font:inherit;
   font-size:13.5px;padding:5px 11px;border-radius:var(--radius-pill);cursor:pointer}
@@ -210,7 +202,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sheet{width:calc(100% - 40px)}
 .sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
 .sheet .sub{margin:0 0 14px}
-.pane .langpick{width:100%;max-width:none;margin-top:4px}
+.panel .langpick{width:100%;max-width:none}
 .langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
   color:var(--text-dim);background:transparent;border:1px solid var(--line);
   border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
@@ -318,7 +310,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .voice__facts{grid-column:1;font-size:12px;color:var(--text-faint)}
 .voice__pick{grid-column:2;grid-row:1;align-self:center;font-size:11px;font-weight:600;
   color:var(--text-dim);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
-.pane .field{width:100%}
+.panel .field{width:100%}
 
 /* Which voice the next recording gets. A statement, not a control: the control
    is one press away and lives with the key that unlocks half the catalogue. */

@@ -69,54 +69,71 @@
         <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
       </div>
 
-      <!-- components.css's segmented control, grounds and all. Selection rides
-           aria-pressed, which is the shared selector — and the literal string,
-           never a bare boolean attribute, which matches nothing and is invalid
-           to a screen reader. -->
-      <div class="segmented" id="tabs">
-        <button data-tab="voices" aria-pressed="true" data-i18n="tab_voices"></button>
-        <button data-tab="language" aria-pressed="false" data-i18n="tab_language"></button>
-        <button data-tab="data" aria-pressed="false" data-i18n="tab_data"></button>
-      </div>
-
-      <!-- Which voice records is a setting, not something to decide again beside
-           every sentence. It lives here with the key that unlocks half of them,
-           and the composer only names the one in force — bildhaft's shape, where
-           the symbol source is chosen in settings and named where it is used. -->
-      <section class="pane" data-pane="voices">
-        <div class="card">
-          <div class="card__head">
-            <h3 data-i18n="voice_pick_title"></h3>
-            <span class="badge" id="voicecount"></span>
-          </div>
+      <!-- Five panels, not three tabs. A tab hides two thirds of the settings
+           behind a choice you have to make before you can look; a panel says
+           what it holds in its own heading — which voice, whether Azure has a
+           key, how many sentences there are — so a look is enough and opening
+           is a decision. components.css's .panel, native <details>, so the
+           browser owns the folding and the keyboard. -->
+      <details class="panel" id="p-voice" open>
+        <summary>
+          <span class="section" data-i18n="voice_pick_title"></span>
+          <span class="state" id="voicestate"></span>
+        </summary>
+        <div class="body">
           <input id="voiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
           <div class="chips" id="voicefilters"></div>
           <div class="voices" id="voices"></div>
         </div>
-        <div id="cloud"></div>
-      </section>
+      </details>
 
-      <section class="pane" data-pane="language" hidden>
-        <div class="card">
+      <details class="panel" id="p-azure">
+        <summary>
+          <span class="section">Azure Speech</span>
+          <span class="state" id="azurestate"></span>
+        </summary>
+        <div class="body" id="cloud"></div>
+      </details>
+
+      <details class="panel" id="p-lang">
+        <summary>
+          <span class="section" data-i18n="panel_language"></span>
+          <span class="state" id="langstate"></span>
+        </summary>
+        <div class="body">
           <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
           <p class="hint" data-i18n="language_hint"></p>
         </div>
-      </section>
+      </details>
 
-      <section class="pane" data-pane="data" hidden>
-        <div class="card">
-          <p class="sub"><b data-i18n="backup_title"></b> <span data-i18n="backup_intro"></span></p>
+      <details class="panel" id="p-data">
+        <summary>
+          <span class="section" data-i18n="backup_title"></span>
+          <span class="state" id="datastate"></span>
+        </summary>
+        <div class="body">
+          <p class="hint" data-i18n="backup_intro"></p>
+          <div class="row">
+            <button class="btn primary" id="export" data-i18n="backup_export"></button>
+          </div>
+          <p class="hint" data-i18n="backup_hint"></p>
+          <input type="file" id="importfile" accept="application/json,.json" hidden>
         </div>
-        <div class="row">
-          <button class="btn primary" id="export" data-i18n="backup_export"></button>
-        </div>
-        <p class="hint" data-i18n="backup_hint"></p>
-        <input type="file" id="importfile" accept="application/json,.json" hidden>
+      </details>
 
-        <h3 class="danger__title" data-i18n="danger_title"></h3>
-        <p class="sub" data-i18n="danger_body"></p>
-        <button class="linkdanger" id="wipe" data-i18n="danger_do"></button>
-      </section>
+      <!-- No state line, and not by omission: this section offers an action and
+           has nothing to report about itself. An empty .state says "there is a
+           report here and it is blank", which is the one thing a heading that
+           carries its status must not say. -->
+      <details class="panel" id="p-wipe">
+        <summary>
+          <span class="section" data-i18n="danger_title"></span>
+        </summary>
+        <div class="body">
+          <p class="hint" data-i18n="danger_body"></p>
+          <button class="linkdanger" id="wipe" data-i18n="danger_do"></button>
+        </div>
+      </details>
     </dialog>
 
       <div class="compose">
