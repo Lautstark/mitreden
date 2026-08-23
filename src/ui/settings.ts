@@ -14,7 +14,7 @@ import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
-import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
+import { applyLang, closeMenus, el, menuOn, say, sourceOf, speaks, weighs } from './dom.ts';
 
 /**
  * Azure's own region names. A datalist suggests rather than restricts, so a
@@ -415,15 +415,31 @@ async function wipeEverything(): Promise<void> {
 function drawStates(): void {
   const voice = knownVoices().find((one) => one.id === chosenVoice());
   el('voicestate').textContent = voice
-    ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.locale)}`
+    ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.lang)}`
     : t('voice_none');
   el('langstate').textContent = LANGUAGES[lang()];
+  el('lang').textContent = LANGUAGES[lang()];
   // ALL(), not loadPhrases(): the sentences are already in memory, and a
   // heading that carries state has to carry it from the first frame. Reading
   // the database here left this line blank at the moment somebody was reading
   // it — which is the one thing this shape promises not to do.
   const n = ALL().length;
   el('datastate').textContent = n ? tn('count', n) : t('count_none');
+}
+
+/**
+ * The words this page is in. The button says which; the menu offers the rest,
+ * so there is no state to mark twice.
+ */
+function chooseLang(code: Lang): void {
+  setLang(code);
+  localStorage.setItem('mitreden.lang', code);
+  document.documentElement.lang = code;
+  applyLang();
+  drawVoices();
+  drawStates();
+  void drawSetup();
+  void load();
 }
 
 /** Opening one panel from outside — the composer's way in to the voice. */
@@ -466,23 +482,10 @@ export function wireSettings(): void {
   // and the heading, which names the voice in force.
   onVoiceChange(() => { drawVoices(); drawStates(); });
 
-  const picker = el<HTMLSelectElement>('lang');
-  picker.innerHTML = '';
-  for (const [code, name] of Object.entries(LANGUAGES)) {
-    const option = new Option(name, code);
-    if (code === lang()) option.selected = true;
-    picker.appendChild(option);
-  }
-  picker.onchange = () => {
-    setLang(picker.value as Lang);
-    localStorage.setItem('mitreden.lang', picker.value);
-    document.documentElement.lang = picker.value;
-    applyLang();
-    drawVoices();
-    drawStates();
-    void drawSetup();
-    void load();
-  };
+  el('lang').onclick = () => menuOn(el('lang'), (add) => {
+    for (const [code, name] of Object.entries(LANGUAGES))
+      add(name, false, () => { closeMenus(); chooseLang(code as Lang); });
+  });
 
   el('export').onclick = () => void exportAll();
   el('import2').onclick = () => el('importfile').click();

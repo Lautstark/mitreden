@@ -3,6 +3,10 @@ dist/
 test-results/
 playwright-report/
 *.tsbuildinfo
+# Vite's dependency-optimizer cache. It is rewritten on every dev run and its
+# hashes describe one machine's node_modules, so a tracked copy is a working
+# tree that is dirty from the moment anybody starts the server.
+.vite/
 
 # Audio never belongs in here, wherever it turns up: the recordings live in
 # the browser, and anything rendered to disk is reproducible.

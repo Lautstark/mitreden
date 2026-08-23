@@ -64,7 +64,11 @@ export async function pickVoice(id: string): Promise<void> {
 function drawVoice(): void {
   const voice = voiceById(chosen);
   el('voicename').textContent = voice?.label ?? '—';
-  el('voicefrom').textContent = voice ? `${sourceOf(voice.source)} · ${speaks(voice.locale)}` : '';
+  // The language, not the locale. "Englisch (Vereinigte Staaten)" is the honest
+  // answer and it is also the one that pushed this line onto a row of its own;
+  // the region only separates two voices when both are offered, which is a
+  // question for the picker, where there is room to ask it.
+  el('voicefrom').textContent = voice ? `${sourceOf(voice.source)} · ${speaks(voice.lang)}` : '';
 }
 
 async function add(): Promise<void> {

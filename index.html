@@ -104,7 +104,13 @@
           <span class="state" id="langstate"></span>
         </summary>
         <div class="body">
-          <select id="lang" class="langpick" aria-label="Sprache / Language"></select>
+          <!-- The last native select in the program. It drew its own chevron from
+               a hex baked into a data URI, which cannot read a token — so it was
+               the one control that could not follow the theme. It is the same
+               button and the same menu as everything else now. -->
+          <span class="menu-anchor start"><button id="lang" class="btn quiet sm dropdown"
+            aria-haspopup="true" aria-expanded="false"
+            aria-label="Sprache / Language"></button></span>
           <p class="hint" data-i18n="language_hint"></p>
         </div>
       </details>

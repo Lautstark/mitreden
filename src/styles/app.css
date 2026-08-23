@@ -116,8 +116,13 @@
    which lined up with neither the box nor the words in it. The first key sits
    under the first character you type, and the voice line under the arrow. Both
    read the same variables the composer does, so they cannot drift apart. */
-.chint{display:flex;gap:12px;flex-wrap:wrap;margin:7px var(--compose-r) 0 var(--compose-l);
+.chint{display:flex;gap:12px;flex-wrap:nowrap;margin:7px var(--compose-r) 0 var(--compose-l);
   font-size:12.5px;color:var(--text-faint)}
+/* nowrap, because wrapping is decided before shrinking is: a long Azure name
+   sent the whole voice line to a row of its own however small it was willing to
+   become. The keys keep their size and the voice line absorbs the squeeze. */
+.chint>span{flex:none}
+.chint>.right{flex:0 1 auto;min-width:0}
 .chint .right{margin-left:auto}
 kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   color:var(--text-dim);border-radius:4px;padding:1px 5px}
@@ -213,15 +218,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sheet{width:calc(100% - 40px)}
 .sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
 .sheet .sub{margin:0 0 14px}
-.panel .langpick{width:100%;max-width:none}
-.langpick{margin-left:auto;align-self:center;font:inherit;font-size:13px;font-weight:600;
-  color:var(--text-dim);background:transparent;border:1px solid var(--line);
-  border-radius:999px;padding:5px 26px 5px 11px;cursor:pointer;
-  appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center}
-.langpick:hover{color:var(--text);background-color:var(--surface-3)}
-.langpick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Filters are pills — design.md §4.3, drawn by components.css. The row above
    the sentences is gone (every sentence names its own voice, so a pill reading
    "Thorsten 12" restated the list underneath it), which leaves the voice
@@ -257,8 +253,9 @@ button,input,select,textarea{font:inherit;color:inherit}
    chevron, because pressing it asks a question rather than doing the thing —
    the one difference from bildhaft's Drucken, which does. Masked rather than
    drawn as a background image, so it takes the button's own colour in both
-   schemes instead of needing a second SVG per scheme, which is the desync trap
-   .langpick's baked hex is an example of (design.md §8.1).
+   schemes instead of needing a second SVG per scheme — design.md §8.1's desync
+   trap, of which the language select's baked hex was this page's last example
+   until it became one of these buttons too.
 
    Mitreden's own, deliberately: the shared file's bar is two products that
    demonstrably duplicated something, and this is the first instance. It
@@ -322,13 +319,34 @@ button,input,select,textarea{font:inherit;color:inherit}
 .panel .field{width:100%}
 
 /* Which voice the next recording gets. A statement, not a control: the control
-   is one press away and lives with the key that unlocks half the catalogue. */
-.voicenow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+   is one press away and lives with the key that unlocks half the catalogue.
+
+   It has to stay on the caption's line at any width, so it is allowed to shrink
+   below its content: min-width:0 is what lets flexbox squeeze it instead of
+   wrapping it onto a row of its own. What gives way is where the voice comes
+   from — the name is the thing you were reading. */
+.voicenow{display:flex;align-items:center;gap:6px;min-width:0}
+.voicenow__what,.voicenow b{flex:none;white-space:nowrap}
 .voicenow__what::after{content:":"}
 .voicenow b{color:var(--text-dim);font-weight:650}
-.voicenow__from{color:var(--text-faint)}
+.voicenow__from{flex:0 1 auto;min-width:0;color:var(--text-faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The caption's two ends have to answer to the same edge. The left one is the
+   first character you type; the right one was the button's box, which sits 9px
+   wider than the word inside it because a quiet button is transparent and has
+   no edge of its own to justify that. Pull the padding back out so the word
+   ends under the arrow. */
+.voicenow .btn{flex:none;margin-right:-9px}
 
-.menu-anchor{flex:none}
+/* inline-flex, not the span's default inline: an absolutely positioned menu
+   inside an inline box measures itself against the line box rather than the
+   button, which put the language menu half outside the sheet. In the work
+   header the anchor was already a flex item and so had a box by accident. */
+.menu-anchor{display:inline-flex;flex:none}
+/* components.css hangs a menu from its trigger's right edge, which is right for
+   a trigger at the right of a row and wrong for one at the left: the panel is
+   90px wide, the menu at least 190, so it reached back past the sheet's edge. */
+.menu-anchor.start>.menu{left:0;right:auto}
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
 .dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}
@@ -354,11 +372,13 @@ button,input,select,textarea{font:inherit;color:inherit}
      stay side by side underneath rather than one of them wrapping alone. */
   .workhead .count{margin-left:0;order:3;flex:1 0 100%}
   .workhead .menu-anchor{order:4;margin-left:0}
-  /* The line naming the voice was pinned right and cut its own label off. */
-  .chint .right{margin-left:0;flex:1 0 100%}
-  /* Wrapped onto a line of its own, the quiet button's own padding was the
-     only thing indenting it — a transparent box has no edge to justify it, so
-     the word sat 9px right of everything above it. Pull it back to the column. */
+  /* On a phone there is no room for both, so the caption wraps on purpose and
+     the voice line takes the second row whole. */
+  .chint{flex-wrap:wrap}
+  .chint>.right{margin-left:0;flex:1 0 100%}
+  /* On its own row the button starts the line, so the same padding indents it
+     instead. Both sides are pulled back; only one of them has anything beside
+     it at a time. */
   .voicenow .btn{margin-left:-9px}
   /* Tighter margins on a phone, declared once: the composer's padding and the
      caption's indent both follow, so they cannot drift apart per breakpoint. */

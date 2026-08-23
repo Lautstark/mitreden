@@ -74,6 +74,46 @@ test('every setting states itself in its own heading, before it is opened', asyn
   await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
 });
 
+test('the page language is a menu like every other choice on the page', async ({ page }) => {
+  await page.click('#gear');
+  await page.click('#p-lang > summary');
+  // It was the last native <select>, drawing its own chevron from a hex baked
+  // into a data URI — the one control that could not follow the theme.
+  await expect(page.locator('#lang')).toHaveJSProperty('tagName', 'BUTTON');
+  await page.click('#lang');
+  // Hung from its own left edge: right-aligned, a 190px menu on a 90px button
+  // at the left of a panel reached back past the edge of the sheet.
+  const menu = page.locator('#p-lang .menu');
+  await expect(menu).toBeVisible();
+  const [box, sheet] = await Promise.all([menu.boundingBox(), page.locator('#setup').boundingBox()]);
+  expect(box!.x).toBeGreaterThanOrEqual(sheet!.x);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(sheet!.x + sheet!.width);
+
+  await menu.getByText('English').click();
+  await expect(page.locator('#lang')).toHaveText('English');
+  await expect(page.locator('#langstate')).toHaveText('English');
+  await expect(page.locator('#setup > .head h2')).toHaveText('Settings');
+  // Without the ?lang= these tests open with — an explicit URL outranks the
+  // stored choice, and should — the page comes back in the language it was left.
+  await page.goto('/');
+  await expect(page.locator('.chint')).toContainText('records');
+});
+
+test('the caption stays on one line, whatever the voice is called', async ({ page }) => {
+  // An Azure name is long enough to send the voice line to a row of its own,
+  // which is what wrapping looked like. What gives way is where the voice comes
+  // from; the name and the alignment hold.
+  const sameLine = await page.evaluate(() => {
+    document.getElementById('voicename')!.textContent = 'de-DE-SeraphinaMultilingualNeural';
+    document.getElementById('voicefrom')!.textContent = 'Azure · Englisch (Vereinigte Staaten)';
+    // Sharing a line, not sharing a top edge: the two are centred differently
+    // inside it, so what has to be true is that they overlap vertically.
+    const box = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+    return box('.voicenow').top < box('.chint kbd').bottom;
+  });
+  expect(sameLine).toBe(true);
+});
+
 test('the headings follow what they describe', async ({ page }) => {
   await page.fill('#t', 'Ein Satz.');
   await page.click('#add');
