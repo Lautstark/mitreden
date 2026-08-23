@@ -1,20 +1,22 @@
 import { expect, test } from '@playwright/test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
+import { basename, extname, join, resolve } from 'node:path';
 
 /*
  * mitreden speaks without asking anyone. That is the claim the privacy notice
  * makes - GitHub Pages serves the page, Hugging Face serves a voice model once,
  * and with your own key Azure hears your sentences; nothing else - and it is
- * true only because vite.config.ts rewrites the two CDNs vits-web hardcodes to
- * files served from this origin.
+ * true only because the phonemizer and onnxruntime are npm packages this build
+ * bundles, running on four wasm files vite.config.ts copies into dist/wasm/.
  *
- * A rewrite is a silent thing to lose. The build guard catches the way it
- * breaks from underneath - a constant the package moved - but not the way it
- * breaks from above: a new dependency, or an import somebody added, that
- * fetches from a host of its own. That does not fail anything. It just quietly
- * makes the privacy notice wrong, which is the one kind of wrong here that is
- * a legal defect rather than a bug.
+ * It used to rest on a rewrite instead: vits-web hardcoded two CDNs and the
+ * build edited them out. Driving piper ourselves removed the strings rather
+ * than rewriting them, which is a stronger arrangement and not a weaker one -
+ * but it does not remove the way this breaks from above, which the rewrite's
+ * own build guard never covered either: a new dependency, or an import
+ * somebody added, that fetches from a host of its own. That does not fail
+ * anything. It just quietly makes the privacy notice wrong, which is the one
+ * kind of wrong here that is a legal defect rather than a bug.
  *
  * So this reads the built bundle and asks which hosts it names at all. A host
  * that is not in the list below fails, whether or not it is ever fetched -
@@ -41,13 +43,12 @@ const ALLOWED = new Map([
   ['github.com', 'the source code and the issue tracker'],
   ['lautstark.github.io', 'the sister projects'],
   ['creativecommons.org', 'the licence the symbols carry'],
-  ['web.dev', 'a linked explanation'],
   ['www.caito.de', 'the source of a bundled word list'],
-  // Never fetched and never linked: licence headers and XML namespaces that
-  // travel inside third-party code.
-  ['www.apache.org', 'a licence header in a vendored library'],
+  // Never fetched and never linked: licence headers, XML namespaces and a
+  // documentation link that travel inside third-party code.
   ['www.mp3dev.org', 'a licence header in lamejs'],
   ['www.w3.org', 'the SVG and XML namespaces'],
+  ['web.dev', "a link in onnxruntime-web's message about cross-origin isolation"],
 ]);
 
 /**
@@ -102,14 +103,24 @@ test.describe('the built bundle', () => {
     const hosts = hostsInBuild();
     const back = PACKAGE_CDNS.filter((cdn) => hosts.has(cdn));
     expect(back, back.length
-      ? `${back.join(', ')} is named in the bundle: the rewrite in vite.config.ts did not `
-        + 'reach it, so piper would be fetched from that CDN at runtime'
+      ? `${back.join(', ')} is named in the bundle: piper's runtime would be fetched from `
+        + 'that CDN at runtime rather than from this origin'
       : '').toEqual([]);
 
-    // The other half of the same fact: the rewrite happened, rather than the
-    // string having vanished for some unrelated reason.
-    const js = builtFiles().filter((f) => f.endsWith('.js')).map((f) => readFileSync(f, 'utf8'));
-    expect(js.some((code) => code.includes('./wasm/piper_phonemize'))).toBe(true);
+    // The other half of the same fact, because a host can also be absent for a
+    // reason nobody wanted: the two modules that would otherwise come from a
+    // CDN are chunks of this build, and the directory they are pointed at for
+    // their binaries is this origin's own.
+    const js = builtFiles().filter((f) => f.endsWith('.js'));
+    for (const chunk of ['piper_phonemize', 'ort.wasm.min']) {
+      expect(js.some((f) => basename(f).startsWith(`${chunk}-`)),
+        `${chunk} is not a chunk of this build - it is being loaded from somewhere else`)
+        .toBe(true);
+    }
+    const code = js.map((f) => readFileSync(f, 'utf8'));
+    expect(code.some((text) => text.includes('"/wasm/"')),
+      'no wasmBase pointing at this origin - see usePiperRuntime in src/core/audio.ts')
+      .toBe(true);
   });
 
   test('names no host it has not been told about', () => {

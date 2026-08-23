@@ -234,6 +234,39 @@ test('the voice is named beside the composer and chosen in the settings', async 
   await expect(page.locator('#voicename')).toHaveText(name);
 });
 
+test('the picker offers a German woman and an English man', async ({ page }) => {
+  // The two slots that stood empty until this page drove piper itself, and the
+  // reason usePiperRuntime() is wired up at all. Neither voice can be reached
+  // through vits-web — it phonemises every model against one fixed symbol
+  // table, which no `low` model was trained on, and John is not in its path
+  // map at all — so both are here only because src/core/audio.ts owns the
+  // three steps and src/core/voices.ts says so with { ownsInference: true }.
+  //
+  // The list is the assertion and no sentence is recorded: proving Kerstin
+  // speaks costs 63 MB, and audio.spec.ts already pays that once for the
+  // shared path. What this catches is the claim going missing from the
+  // catalogue call, which is what empties both slots again.
+  await page.click('#voicepick');
+  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+
+  await page.fill('#voiceq', 'kerstin');
+  const kerstin = page.locator('#voices .voice').first();
+  await expect(kerstin.locator('.voice__name')).toHaveText('Kerstin');
+  // What she costs and who she is: the facts a slot is empty without.
+  await expect(kerstin.locator('.voice__facts')).toContainText('weiblich');
+  await expect(kerstin.locator('.voice__facts')).toContainText('63 MB');
+
+  await page.fill('#voiceq', 'john');
+  const john = page.locator('#voices .voice').first();
+  await expect(john.locator('.voice__name')).toHaveText('John');
+  await expect(john.locator('.voice__facts')).toContainText('männlich');
+
+  // And the licence half is untouched by the runtime claim: de_DE-mls-medium
+  // is CC-BY, this page renders no notices, so it is still not on offer.
+  await page.fill('#voiceq', 'mls');
+  await expect(page.locator('#voices')).toContainText('Keine Stimme');
+});
+
 test('the voice follows the words, until somebody has chosen one', async ({ page }) => {
   // The shipped catalogue opens with three German voices, so taking the first
   // of it read English aloud in a German man's voice and went on doing it.

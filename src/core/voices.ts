@@ -3,15 +3,36 @@
 import { azureVoices, piperVoices, type Offered } from '@lautstark/stimmquelle/browser';
 import type { Voice } from './types.ts';
 
-/** `piper:de_DE-thorsten-medium` -> `de_DE-thorsten-medium`, for vits-web. */
+/** `piper:de_DE-thorsten-medium` -> `de_DE-thorsten-medium`, the model's name. */
 export const modelOf = (id: string): string => id.replace(/^piper:/, '');
+
+/**
+ * What this page can honour, which is what decides what it may be offered.
+ *
+ * `ownsInference` is the `usePiperRuntime()` call in audio.ts: the runtime
+ * question is one this page now answers for itself, rather than one about what
+ * vits-web could speak, and claiming it is what puts `de_DE-kerstin-low` and
+ * `en_US-john-medium` in the picker at all — a German female voice and an
+ * English male one, the two slots that stood empty. It claims nothing about
+ * licences, which are asked of every voice either way.
+ *
+ * `rendersAttribution` stays unclaimed, so it stays false. That costs
+ * `de_DE-mls-medium`, which is CC-BY: the permission is conditional on the
+ * notice being shown, and this interface shows none yet. `attributionsFor()`
+ * in the catalogue is what would render them.
+ *
+ * The same claim has to be made a second time, in the `speak()` call in
+ * audio.ts — see the comment there. Listing a voice and being allowed to
+ * record it are two separate questions asked at two separate doors.
+ */
+const OFFERING = { ownsInference: true } as const;
 
 /**
  * The shipped voices: the catalogue decides which may be offered at all, so a
  * licence rule is enforced where a voice is about to be used rather than in a
  * comment. Azure joins them only once a key is set.
  */
-export const shipped = (): readonly Offered[] => piperVoices();
+export const shipped = (): readonly Offered[] => piperVoices(OFFERING);
 
 type AzureAccess = { key: string; region: string };
 
@@ -43,7 +64,7 @@ function azureCatalogue(azure: AzureAccess): Promise<readonly Offered[]> {
  * picker suddenly missing the shipped voices too.
  */
 export async function offered(azure?: AzureAccess): Promise<readonly Offered[]> {
-  const list: Offered[] = [...piperVoices()];
+  const list: Offered[] = [...piperVoices(OFFERING)];
   if (azure) {
     try {
       list.push(...(await azureCatalogue(azure)));

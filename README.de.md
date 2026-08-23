@@ -36,6 +36,13 @@ geladen, etwa 60 MB beim ersten Mal, und bleibt dann auf deinem Gerät. Danach
 entsteht jede Aufnahme im Tab, und nichts von dem, was du tippst, geht
 irgendwohin.
 
+Wenn du mitreden schon benutzt hast und eine Stimme noch einmal geladen wird,
+die du längst hattest: Das ist so gewollt und kein fehlgeschlagener Download.
+Die Seite betreibt piper jetzt selbst, statt die Arbeit einer Bibliothek zu
+überlassen — nur deshalb können Kerstin und John überhaupt sprechen — und legt
+die Modelle in einem eigenen Speicher ab. Das passiert einmal pro Stimme und
+danach nie wieder.
+
 Jeder Satz erscheint mit einem Abspieler in der Liste. Die gewünschten
 anhaken und als MP3 oder WAV herunterladen — und von dort auf den Talker, den
 Hörstift oder wohin sie sollen.

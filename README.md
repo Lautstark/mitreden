@@ -51,6 +51,12 @@ running. The voice is downloaded once — about 60 MB the first time, then it
 stays on your machine — and after that every recording happens in the tab.
 Nothing you type is ever sent anywhere.
 
+If you used mitreden before and it fetches a voice you already had, that is
+expected and not a failed download. The page now runs piper itself instead of
+handing the job to a library — which is what makes Kerstin and John speakable
+at all — and it keeps its models in a store of its own. It happens once per
+voice, and then never again.
+
 ## Getting started
 
 Type sentences into the box, one per line, and press "Add sentence". Each one

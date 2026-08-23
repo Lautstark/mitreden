@@ -9,18 +9,71 @@
  */
 
 import {
-  asBlob, encodeMp3, encodeWav, resample, speak, usePiper,
-  type Progress, type Spoken,
+  asBlob, encodeMp3, encodeWav, resample, speak, usePiperRuntime,
+  type OnnxModule, type PhonemizerFactory, type Progress, type Spoken,
 } from '@lautstark/stimmquelle/browser';
 import { OUT } from './settings.ts';
 import type { Format } from './types.ts';
 
 /**
- * Where vits-web comes from. Bundled by Vite rather than vendored by hand, and
- * behind a dynamic import so opening the page does not cost a megabyte of
- * decoder nobody has asked to use yet.
+ * One thread, said rather than discovered.
+ *
+ * onnxruntime picks a thread count off `hardwareConcurrency` and then warns
+ * that threads need a cross-origin-isolated page — which GitHub Pages sends
+ * none of the headers for. It falls back on its own, so this changes no
+ * behaviour; what it changes is that the fallback is the arrangement rather
+ * than a recovery, and that a first recording stops writing a warning nobody
+ * can act on into a console this page otherwise keeps silent. It also matches
+ * what vite.config.ts actually vendors: the two single-threaded binaries.
+ *
+ * Not in stimmquelle's `OnnxModule` because that describes only what the
+ * package itself needs of the module. This is between mitreden and its own
+ * dependency.
  */
-usePiper(() => import('@diffusionstudio/vits-web') as never);
+const singleThreaded = (onnx: OnnxModule): OnnxModule => {
+  (onnx.env.wasm as { numThreads?: number }).numThreads = 1;
+  return onnx;
+};
+/**
+ * Where piper's pieces come from — mitreden drives it itself rather than
+ * handing the whole job to vits-web's `predict()`.
+ *
+ * That is what makes `de_DE-kerstin-low` and `en_US-john-medium` speakable at
+ * all, and they are the only licence-clear candidates for the two slots the
+ * picker had nothing in: vits-web phonemises against one fixed symbol table, so
+ * every `low` model gets ids its own table has never seen, and John is simply
+ * absent from its hardcoded `PATH_MAP`. Owning the three steps — phonemise,
+ * remap the ids onto the model's own table, infer — is the only place the remap
+ * can go. A voice that already spoke comes out of this with identical phoneme
+ * ids, so nothing re-renders and no fingerprint moves.
+ *
+ * Three pieces, and each is here for its own reason:
+ *  - the phonemizer by its deep path, because `@diffusionstudio/piper-wasm`
+ *    declares a `main` that opens with a slash and resolves nowhere. The file
+ *    is Emscripten's UMD: its exports exist for a bundler and there is no
+ *    global fallback, so a browser handed the CDN URL gets an empty module and
+ *    the factory has to arrive through CJS interop, on `.default`.
+ *  - onnxruntime from node_modules rather than from a CDN, which is the whole
+ *    of what this page promises about itself: e2e/offline.spec.ts fails the
+ *    build if the bundle so much as names a package CDN. `/wasm` is the
+ *    single-backend entry — the one whose binaries are the two we serve.
+ *  - `wasmBase` is one directory answering for the phonemizer's wasm and its
+ *    espeak data and for onnxruntime's binaries together. vite.config.ts is
+ *    what fills it, in dev out of node_modules and in a build into dist/wasm/.
+ *
+ * Both imports are dynamic, so opening the page still costs nothing until
+ * somebody records.
+ */
+usePiperRuntime({
+  phonemizer: async () => ({
+    createPiperPhonemize: (await import('@diffusionstudio/piper-wasm/build/piper_phonemize.js'))
+      .default as PhonemizerFactory,
+  }),
+  onnx: async () => singleThreaded(await import('onnxruntime-web/wasm') as unknown as OnnxModule),
+  // BASE_URL is "/" in dev and "/mitreden/" on Pages; the four files sit under
+  // it either way.
+  wasmBase: `${import.meta.env.BASE_URL}wasm/`,
+});
 
 let onProgress: ((percent: number) => void) | null = null;
 
@@ -37,6 +90,15 @@ export async function record(
   const spoken = await speak(text, voiceId, {
     azure,
     rate: OUT.sampleRate,
+    // The same claim voices.ts lists with, and it has to be made twice: the
+    // licence gate in speak() takes it from these options and deliberately
+    // does not infer it from the usePiperRuntime() call above. Without it
+    // Kerstin is refused at the door the picker just offered her through —
+    // and nothing red points here, because every voice that spoke before
+    // passes the gate unclaimed. It stays out of the fingerprint in ids.ts
+    // for the reason the Azure key does: it says who may ask, not how a
+    // sentence sounds.
+    ownsInference: true,
     onProgress: (p: Progress) => onProgress?.(Math.round(p.share * 100)),
   });
   const mp3 = await encodeMp3(spoken.samples, spoken.rate, OUT.bitrate);
