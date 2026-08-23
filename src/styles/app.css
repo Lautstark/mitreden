@@ -169,7 +169,12 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   /* Bar-sized, like the rail's. .logo's clamp is written for the heading a
      page opens with, and beside a 19px title it read as a mistake. */
   .topbar .logo{width:28px;height:28px}
-  .rail__brand{display:none}
+  /* The brand row stays, because the drawer covers the bar it would repeat:
+     while the rail is open the ☰ and the wordmark are behind it, so this is
+     the only head on screen — and it is what carries the ✕. Hiding the row
+     took the ✕ with it and left a layer with no way out but the scrim. The ‹
+     goes instead: it collapses a column, and here there is no column. */
+  #railhide{display:none}
   /* Here the rail is a layer over the work: there is nothing to collapse, only
      something to dismiss, and the topbar's ☰ is already the way back. The
      collapsed state does not apply, and must not: it is remembered across
