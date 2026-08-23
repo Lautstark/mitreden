@@ -12,8 +12,6 @@
   /* The composer's inner margins. The caption under it reads these too. */
   --compose-l:20px;
   --compose-r:16px;
-  /* Drawn, not typed: U+2304 sits on the baseline and reads as a typo. */
-  --chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 *{box-sizing:border-box}
@@ -229,7 +227,10 @@ button,input,select,textarea{font:inherit;color:inherit}
   transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
-.status[hidden]{display:none}
+/* Empty it keeps its place in the accessibility tree and gives up its space:
+   a block with no content draws no line box, so the margin is the only part
+   that would still show. display:none here would undo the whole point. */
+.status:empty{margin:0}
 .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .bar .count{font-weight:650;font-size:15px}
@@ -266,34 +267,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Only visible when something really is missing — a recording that failed,
    or a format that changed under the existing files. Each phrase keeps its
    own voice here; this repairs, it does not repaint. */
-/* A button that opens a menu.
-   There were two native selects here — the voice and the download format — and
-   they drew themselves differently from each other, differently from the ⋯
-   beside them, and differently again in every theme and browser, because the
-   open list belongs to the platform and takes no part in a design language.
-   Both are menus now.
-
-   The shape is components.css's .btn.quiet.sm, unchanged. All this adds is the
-   chevron, because pressing it asks a question rather than doing the thing —
-   the one difference from bildhaft's Drucken, which does. Masked rather than
-   drawn as a background image, so it takes the button's own colour in both
-   schemes instead of needing a second SVG per scheme — design.md §8.1's desync
-   trap, of which the language select's baked hex was this page's last example
-   until it became one of these buttons too.
-
-   Mitreden's own, deliberately: the shared file's bar is two products that
-   demonstrably duplicated something, and this is the first instance. It
-   becomes shared the day bildhaft's Drucken needs the same trigger.
-
-   And it must not restate the button's shape. An earlier version of this rule
-   also set border-radius and padding, which silently outranked .btn: this
-   button drew itself at 999px while + Neue Sammlung, three inches away and
-   wearing the same classes, drew itself at 9px. A trigger adds an affordance
-   to a button; it does not redraw one. */
-.dropdown::after{content:"";width:10px;height:7px;flex:none;background:currentColor;
-  -webkit-mask:var(--chevron) no-repeat center/10px 7px;
-  mask:var(--chevron) no-repeat center/10px 7px}
-.dropdown[aria-expanded=true]{background:var(--surface-2);color:var(--text)}
+/* .dropdown moved into components.css at v1.7.0, on the terms this comment
+   used to set out: it became shared the day a second product needed the same
+   trigger, and vorlaut's language and rendering pickers were that day. The
+   masking argument and the "a trigger must not restate the button's shape"
+   warning went with it. --chevron went too; it was a :root name that one rule
+   read. */
 /* The lamp sits with the words it belongs to instead of starting the row —
    one marker at the left edge (the checkbox) is enough. */
 .item .st{display:inline-flex;align-items:center;gap:6px}
@@ -367,15 +346,10 @@ button,input,select,textarea{font:inherit;color:inherit}
    the caption ends 9px short of where it looks like it should. */
 .voicenow .btn{flex:none;margin-right:-9px}
 
-/* inline-flex, not the span's default inline: an absolutely positioned menu
-   inside an inline box measures itself against the line box rather than the
-   button, which put the language menu half outside the sheet. In the work
-   header the anchor was already a flex item and so had a box by accident. */
-.menu-anchor{display:inline-flex;flex:none}
-/* components.css hangs a menu from its trigger's right edge, which is right for
-   a trigger at the right of a row and wrong for one at the left: the panel is
-   90px wide, the menu at least 190, so it reached back past the sheet's edge. */
-.menu-anchor.start>.menu{left:0;right:auto}
+/* .menu-anchor's box and its .start variant were both here and are now
+   components.css's, at v1.7.1: vorlaut's settings pickers became the second
+   product to need them, which is the bar this page's own .dropdown comment set
+   for promoting a rule. The reasoning travelled with them. */
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
 .dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}

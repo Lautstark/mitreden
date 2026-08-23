@@ -192,7 +192,12 @@
           <button id="voicepick" class="btn quiet sm" data-i18n="voice_change"></button>
         </span>
       </p>
-      <p class="status" id="s" hidden></p>
+      <!-- role="status" is aria-live="polite", and the element is never hidden
+           and never removed: a live region has to be in the accessibility tree
+           already when the text lands, or the reader has nothing to notice a
+           change in. That is why this is not toggled with [hidden] any more —
+           empty, it is a block with no content, so it takes no room either. -->
+      <p class="status" id="s" role="status"></p>
 
 
     <!-- The Sammlung you are in: its name, how much is in it, and what you can do

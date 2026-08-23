@@ -14,11 +14,18 @@ export function el<T extends HTMLElement = HTMLElement>(id: string): T {
   return node as T;
 }
 
-/** What just happened, in words, where a screen reader will read it. */
+/**
+ * What just happened, in words, where a screen reader will read it.
+ *
+ * It did not, until now. The line carried no role and was toggled with
+ * [hidden], so it was out of the accessibility tree at the moment every message
+ * arrived and back in it a beat later — which is the one arrangement a live
+ * region cannot work under. "42 Sätze hinzugefügt", a saved key and every error
+ * this page reports were all silent. Setting the text is the whole of it now;
+ * #s is a live region in the markup and stays one.
+ */
 export function say(message: string): void {
-  const line = el('s');
-  line.textContent = message;
-  line.hidden = !message;
+  el('s').textContent = message;
 }
 
 /** Applies the words to the markup. Redrawing the data is somebody else's job. */
