@@ -6,7 +6,7 @@
  * first click is worse than finding out on load.
  */
 
-import { t, type Key, type Vars } from '../i18n/index.ts';
+import { lang, t, type Key, type Vars } from '../i18n/index.ts';
 
 export function el<T extends HTMLElement = HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -32,6 +32,34 @@ export function applyLang(): void {
   for (const node of document.querySelectorAll<HTMLElement>('[data-i18n-aria]'))
     if (node.dataset.i18nAria) node.setAttribute('aria-label', t(node.dataset.i18nAria as Key));
 }
+
+// ------------------------------------------------------------------ voices
+
+/**
+ * Where a voice comes from. stimmquelle's word for it is the backend, which is
+ * the wrong half of the answer to give somebody choosing one: what they are
+ * deciding is whether it is already here or has to be fetched from a company.
+ */
+export const sourceOf = (source: string): string =>
+  t(source === 'azure' ? 'source_azure' : source === 'system' ? 'source_system' : 'source_piper');
+
+/**
+ * What a voice speaks, named in the language of whoever is reading. `de_DE` is
+ * piper's spelling and `de-DE` is Azure's; only the second is a language tag,
+ * so the first is made into one rather than shown raw.
+ */
+export function speaks(locale: string): string {
+  const tag = locale.replaceAll('_', '-');
+  try {
+    return new Intl.DisplayNames([lang()], { type: 'language' }).of(tag) ?? tag;
+  } catch {
+    return tag;
+  }
+}
+
+/** What this voice costs to have before it will speak. */
+export const weighs = (bytes: number): string =>
+  `${Math.round(bytes / 1e6)} MB`;
 
 // ------------------------------------------------------------------- menus
 

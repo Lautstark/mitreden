@@ -4,7 +4,11 @@
 
    --sidebar-w is the exception, because it is this page's layout rather than a
    value any other product shares. */
-:root{ --sidebar-w:268px; }
+:root{
+  --sidebar-w:268px;
+  /* Drawn, not typed: U+2304 sits on the baseline and reads as a typo. */
+  --chevron:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
 
 *{box-sizing:border-box}
 /* The shell: a rail beside the work.
@@ -52,17 +56,19 @@
    set back to 'false', so every line ever edited kept an accent border. */
 .item .line:focus{border-color:transparent;background:var(--surface);
   box-shadow:0 0 0 2px var(--accent);outline:none;cursor:text}
-/* .head/.foot and the sheet's silhouette come from components.css. */
-.sheet .head h2{flex:1}
-/* One row of tabs, the shape bildhaft uses: a track with the live one lifted
-   out of it rather than underlined. */
-.tabs{display:flex;gap:2px;background:var(--surface-2);border-radius:var(--radius-pill);
-  padding:3px;margin-bottom:16px}
-.tab{flex:1;border:0;background:none;color:var(--text-dim);font:inherit;
-  font-size:14px;padding:7px 10px;border-radius:var(--radius-pill);cursor:pointer}
-.tab:hover{color:var(--text)}
-.tab.on{background:var(--surface);color:var(--text);font-weight:600;
-  box-shadow:var(--shadow-sm,0 1px 2px rgba(0,0,0,.12))}
+/* .head/.foot and the sheet's silhouette come from components.css, and its
+   region rules are child combinators as of v1.4.1 — a descendant `.sheet .body`
+   reached any nested thing sharing the name, which silently restyled a panel's
+   body inside a sheet. Ours has to match, or a sheet region that gains a
+   namesake child starts taking rules meant for the region. */
+.sheet > .head h2{flex:1}
+/* The segmented control is components.css's, grounds settled there: a --bg
+   track with the live segment on --surface, the only pairing that reads as
+   raised in both schemes. mitreden's own attempt marked selection with
+   --surface-3, which lifts in dark and sinks in light — and spends a plane
+   §4.2 reserves for the pointer, where a selected tab is a rest state. Only
+   where the row sits is left here. */
+.segmented{margin-bottom:16px}
 .card{background:var(--surface);outline:1px solid var(--line);border:0;
   border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
@@ -121,6 +127,16 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   cursor:pointer;padding:4px 6px;border-radius:8px}
 .icon:hover{background:var(--surface-2);color:var(--text)}
 
+/* Put away, and the way back.
+   The rail keeps its width in a variable and the page's left padding is written
+   against that variable, so collapsing is one number in two places rather than
+   a second layout. It slides rather than vanishing, because a column that
+   disappears between two frames reads as a repaint bug. */
+.rail{transition:transform .18s ease}
+.reveal{position:fixed;top:14px;left:14px;z-index:21;display:flex;align-items:center;gap:8px}
+.reveal__logo{width:22px;height:22px}
+.reveal[hidden]{display:none}
+
 .topbar{display:none;position:sticky;top:0;z-index:15;align-items:center;gap:10px;
   padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
 .topbar h1{font-size:19px;margin:0;display:flex;align-items:center;gap:8px;
@@ -128,11 +144,16 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
 .scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.45)}
 
 @media (max-width:820px){
-  .rail{transform:translateX(-100%);transition:transform .18s ease;
-    box-shadow:var(--shadow);width:min(280px,84vw)}
-  .rail.open{transform:none}
+  .rail{transform:translateX(-100%);box-shadow:var(--shadow);width:min(280px,84vw)}
+  .rail.open{transform:none;visibility:visible}
   .topbar{display:flex}
   .rail__brand{display:none}
+  /* Here the rail is a layer over the work: there is nothing to collapse, only
+     something to dismiss, and the topbar's ☰ is already the way back. The
+     collapsed state does not apply, and must not: it is remembered across
+     visits, so a rail put away on a laptop would otherwise arrive on the phone
+     as a drawer that will not open. */
+  .reveal{display:none}
 }
 @media (min-width:821px){
   /* Nothing to close when the rail is simply part of the page. */
@@ -149,7 +170,11 @@ main{max-width:720px;margin:0 auto;padding-left:0;width:100%;
 @media (min-width:821px){
   /* The rail's width plus the padding the page would have had anyway, so the
      work keeps the same breathing room it had before there was a rail. */
-  body{padding-left:calc(var(--sidebar-w) + clamp(20px,5vw,64px))}
+  body{padding-left:calc(var(--sidebar-w) + clamp(20px,5vw,64px));
+    transition:padding-left .18s ease}
+  /* Collapsed, the work gets the rail's 268px back and re-centres into it. */
+  body.railed{padding-left:clamp(20px,5vw,64px)}
+  body.railed .rail{transform:translateX(-100%);visibility:hidden}
 }
 h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
   display:flex;align-items:center;gap:12px}
@@ -168,7 +193,7 @@ textarea::placeholder,input::placeholder{color:var(--text-faint)}
    no longer inherit it from a styled button element. */
 button,input,select,textarea{font:inherit;color:inherit}
 .btn.sm{font-size:13px;padding:6px 9px}
-.flat,.linkdanger,.icon,.dots,.tab,.linklike,.item .collection{
+.flat,.linkdanger,.icon,.dots,.linklike,.item .collection{
   transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
@@ -194,19 +219,20 @@ button,input,select,textarea{font:inherit;color:inherit}
   background-repeat:no-repeat;background-position:right 10px center}
 .langpick:hover{color:var(--text);background-color:var(--surface-3)}
 .langpick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* Shaped like the collection chips, so the header reads as one row of controls
-   instead of one control and one browser default. */
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin:16px 2px 0}
-/* Chips are components.css's .chip, selected on aria-pressed. The fold —
-   "+ n more" — is dashed because it widens the list rather than filtering it. */
-.chip.fold{border-color:var(--line);border-style:dashed}
+/* Filters are pills — design.md §4.3, drawn by components.css. The row above
+   the sentences is gone (every sentence names its own voice, so a pill reading
+   "Thorsten 12" restated the list underneath it), which leaves the voice
+   picker's language filters as mitreden's only filter row. */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
 /* The box belongs to the phrase, so it sits with the phrase — not in the
    middle of a row that a second line of collections can make twice as tall, where
    it ends up next to the small print instead. */
 /* Each sentence is a card, as bildhaft's rows are — not a divided list. */
 #list{display:flex;flex-direction:column;gap:10px}
-.item{display:flex;gap:14px;align-items:flex-start;padding:12px 16px;
+.item{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:flex-start;padding:12px 16px;
   border-radius:var(--radius);background:var(--surface);outline:1px solid var(--line)}
+.item .txt{order:1}
+.item .menu-anchor{order:2}
 /* After the shared rule above, not before it — that one resets the margin. */
 .item input[type=checkbox]{margin-top:6px}
 /* margin-bottom comes from the label rule for the form above; here it would
@@ -217,37 +243,33 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Only visible when something really is missing — a recording that failed,
    or a format that changed under the existing files. Each phrase keeps its
    own voice here; this repairs, it does not repaint. */
-/* Filters are pills, actions are boxes — the two zones must never be mistaken
-   for each other. The labels say which axis a row narrows. */
-.filters{margin:14px 2px 0}
-.frow{display:flex;align-items:baseline;gap:10px;margin-top:10px}
-/* display:flex beats the browser's own rule for [hidden], so both of these
-   would stay on screen while claiming to be hidden. */
-.frow[hidden],.split[hidden]{display:none}
-.flabel{color:var(--text-dim);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
-  flex:none;width:64px;padding-top:6px}
-.frow .chips{margin:0}
+/* A button that opens a menu.
+   There were two native selects here — the voice and the download format — and
+   they drew themselves differently from each other, differently from the ⋯
+   beside them, and differently again in every theme and browser, because the
+   open list belongs to the platform and takes no part in a design language.
+   Both are menus now.
 
-/* The same drawn chevron as the selects use. The character U+2304 sits on the
-   baseline and reads as a typo next to the text. */
-/* The everyday action is a button you press, not an entry you go looking for.
-   Everything rarer sits behind the chevron next to it. */
-/* Download is a select, so it has the voice picker's shape and the browser
-   draws the open list. Nothing left here to get wrong per theme. */
-#dlall{border-radius:var(--radius-pill);padding-top:8px;padding-bottom:8px;
-  font-size:13.5px;font-weight:600}
-/* The two pairs travel together: wrapping them apart would put a lone voice
-   picker under the selection and read as if it belonged to it. */
-/* Same box as the button beside it: same font, same vertical padding, so the
-   two do not sit at different heights. */
-.asbutton{padding:11px 34px 11px 16px !important;font-size:16px !important}
-.asbutton,.acts select{font:inherit;font-size:14px;font-weight:600;color:var(--text);
-  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
-  padding:11px 30px 11px 13px;cursor:pointer;appearance:none;-webkit-appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c8496' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 11px center;max-width:min(340px,100%)}
-.asbutton:hover,.acts select:hover{background-color:var(--surface-3)}
-.asbutton:focus-visible,.acts select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+   The shape is components.css's .btn.quiet.sm, unchanged. All this adds is the
+   chevron, because pressing it asks a question rather than doing the thing —
+   the one difference from bildhaft's Drucken, which does. Masked rather than
+   drawn as a background image, so it takes the button's own colour in both
+   schemes instead of needing a second SVG per scheme, which is the desync trap
+   .langpick's baked hex is an example of (design.md §8.1).
+
+   Mitreden's own, deliberately: the shared file's bar is two products that
+   demonstrably duplicated something, and this is the first instance. It
+   becomes shared the day bildhaft's Drucken needs the same trigger.
+
+   And it must not restate the button's shape. An earlier version of this rule
+   also set border-radius and padding, which silently outranked .btn: this
+   button drew itself at 999px while + Neue Sammlung, three inches away and
+   wearing the same classes, drew itself at 9px. A trigger adds an affordance
+   to a button; it does not redraw one. */
+.dropdown::after{content:"";width:10px;height:7px;flex:none;background:currentColor;
+  -webkit-mask:var(--chevron) no-repeat center/10px 7px;
+  mask:var(--chevron) no-repeat center/10px 7px}
+.dropdown[aria-expanded=true]{background:var(--surface-2);color:var(--text)}
 /* The lamp sits with the words it belongs to instead of starting the row —
    one marker at the left edge (the checkbox) is enough. */
 .item .st{display:inline-flex;align-items:center;gap:6px}
@@ -263,24 +285,58 @@ button,input,select,textarea{font:inherit;color:inherit}
   background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
   padding:2px 10px;cursor:pointer}
 .item .collection:hover{background:var(--surface-3);color:var(--text)}
-.item audio{height:32px;flex:0 1 auto;width:clamp(170px,30%,280px);min-width:0;
-  opacity:.85}
+/* Its own line, at every width.
+   It used to sit beside the sentence at clamp(170px,30%,280px), which in a
+   720px column is 206px — and below about 340px Chrome runs out of room for
+   its own controls: the seek bar collapses to a stub and the volume slider,
+   which expands under the pointer, walks straight out of the player's own
+   rounded edge. There is no width that both fits those controls and leaves a
+   sentence room to be read, so the player stops competing for the line. It
+   also gets a seek bar you can actually aim at, which is the point of a
+   preview. */
+.item audio{order:3;flex:1 1 100%;width:100%;height:34px;opacity:.85}
 @media (prefers-color-scheme:dark){
   /* Chrome draws its player light. On a dark row that is a slab of white, so
      it gets turned over — but only here: in light it is already right. */
   .item audio{filter:invert(.92) hue-rotate(180deg)}
 }
+/* The picker: a list you can narrow, not a select you scroll.
+   Forty shipped voices and, with a key, several hundred Azure ones — a native
+   select of bare names was unusable at that size and said nothing about what
+   separates two of them. */
+.voices{display:flex;flex-direction:column;gap:2px;margin-top:10px;
+  max-height:min(46vh,340px);overflow:auto;padding:2px}
+.voice{display:grid;grid-template-columns:1fr auto;gap:0 10px;width:100%;
+  text-align:left;border:1px solid transparent;background:none;color:var(--text);
+  font:inherit;cursor:pointer;padding:8px 11px;border-radius:var(--radius-item)}
+.voice:hover{background:var(--surface-2)}
+.voice[aria-checked=true]{background:var(--accent-soft);border-color:transparent}
+.voice[aria-checked=true] .voice__name{color:var(--accent-strong);font-weight:650}
+.voice__name{font-size:14.5px}
+/* Where it comes from, what it speaks, whose voice it is, and what it costs —
+   the four facts the old picker withheld, on the line under the name. */
+.voice__facts{grid-column:1;font-size:12px;color:var(--text-faint)}
+.voice__pick{grid-column:2;grid-row:1;align-self:center;font-size:11px;font-weight:600;
+  color:var(--text-dim);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.pane .field{width:100%}
+
+/* Which voice the next recording gets. A statement, not a control: the control
+   is one press away and lives with the key that unlocks half the catalogue. */
+.voicenow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.voicenow__what::after{content:":"}
+.voicenow b{color:var(--text-dim);font-weight:650}
+.voicenow__from{color:var(--text-faint)}
+
 .menu-anchor{flex:none}
 .dots{background:transparent;border:1px solid transparent;border-radius:9px;
   padding:6px 10px;font-size:18px;line-height:1.2;color:var(--text-dim);cursor:pointer}
 .dots:hover,.dots[aria-expanded=true]{background:var(--surface-3);color:var(--text)}
-.foot{margin:38px 0 0;margin-top:auto;padding:14px 0 20px;
-  display:flex;gap:4px 14px;flex-wrap:wrap;font-size:11.5px;line-height:1.5;
-  color:var(--text-faint)}
-/* bildhaft's linklike: footer entries that open dialogs look like links. */
-.linklike{padding:0;border:0;background:none;font:inherit;color:var(--text-dim);
-  text-decoration:underline;cursor:pointer;border-radius:0}
-.linklike:hover{background:none;color:var(--text)}
+/* components.css draws the footer and centres it; what is left here is where
+   it sits — pinned to the bottom of a page whose main is a flex column — and
+   the fact that its links are a row, which text-align cannot centre on its own.
+   `.foot` would have collided with the sheet's own foot region, which is why
+   the shared component is `.footer`. */
+.footer{margin-top:auto;display:flex;justify-content:center;gap:4px 14px;flex-wrap:wrap}
 /* The menu is components.css's, panel and items alike. */
 
 .more{width:100%;margin-top:18px;color:var(--text-dim);font-size:14px}
@@ -296,19 +352,11 @@ button,input,select,textarea{font:inherit;color:inherit}
   /* The count reads as a sentence, so it gets its own line; the two controls
      stay side by side underneath rather than one of them wrapping alone. */
   .workhead .count{margin-left:0;order:3;flex:1 0 100%}
-  .workhead .split{order:4}
-  .workhead .menu-anchor{order:5;margin-left:0}
-  /* The picker was pinned right and cut its own label off. */
+  .workhead .menu-anchor{order:4;margin-left:0}
+  /* The line naming the voice was pinned right and cut its own label off. */
   .chint .right{margin-left:0;flex:1 0 100%}
-  .asbutton{width:100%;max-width:none}
   .compose{padding:14px 14px 14px 16px}
   .compose textarea{font-size:19px}
-}
-@media (max-width:720px){
-  .item{flex-wrap:wrap;gap:10px}
-  .item .txt{order:2}          /* keeps flex:1;min-width:0 so it can shrink */
-  .menu-anchor{order:3}
-  .item audio{order:4;flex:1 1 100%;width:100%}
 }
 @media (max-width:560px){
   .hero{padding:16px 16px 12px}

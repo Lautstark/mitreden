@@ -17,9 +17,23 @@
     </div>
     <div id="scrim" class="scrim" hidden></div>
 
+    <!-- What brings the rail back once it is put away. It floats over the work in
+         the corner the rail vacated, which is where bildhaft puts it and where
+         the eye is already looking for it. -->
+    <div class="reveal" id="reveal" hidden>
+      <button id="railshow" class="icon" data-i18n-aria="collections_show"
+        data-i18n-title="collections_show">☰</button>
+      <img class="reveal__logo" src="icon.svg" alt="" width="22" height="22">
+    </div>
+
     <aside id="rail" class="rail">
       <div class="rail__brand">
         <h1><img class="logo" src="icon.svg" alt="" width="34" height="34">mitreden</h1>
+        <!-- Two controls, because they answer two different questions: on a phone
+             the rail is a layer over the work and ✕ dismisses it; on a desktop it
+             is a column of the page and this puts the column away for good. -->
+        <button id="railhide" class="icon" data-i18n-aria="collections_hide"
+          data-i18n-title="collections_hide">«</button>
         <button id="railclose" class="icon" data-i18n-aria="collections_hide">✕</button>
       </div>
 
@@ -55,13 +69,30 @@
         <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
       </div>
 
-      <div class="tabs" id="tabs">
-        <button class="tab on" data-tab="voices" data-i18n="tab_voices"></button>
-        <button class="tab" data-tab="language" data-i18n="tab_language"></button>
-        <button class="tab" data-tab="data" data-i18n="tab_data"></button>
+      <!-- components.css's segmented control, grounds and all. Selection rides
+           aria-pressed, which is the shared selector — and the literal string,
+           never a bare boolean attribute, which matches nothing and is invalid
+           to a screen reader. -->
+      <div class="segmented" id="tabs">
+        <button data-tab="voices" aria-pressed="true" data-i18n="tab_voices"></button>
+        <button data-tab="language" aria-pressed="false" data-i18n="tab_language"></button>
+        <button data-tab="data" aria-pressed="false" data-i18n="tab_data"></button>
       </div>
 
+      <!-- Which voice records is a setting, not something to decide again beside
+           every sentence. It lives here with the key that unlocks half of them,
+           and the composer only names the one in force — bildhaft's shape, where
+           the symbol source is chosen in settings and named where it is used. -->
       <section class="pane" data-pane="voices">
+        <div class="card">
+          <div class="card__head">
+            <h3 data-i18n="voice_pick_title"></h3>
+            <span class="badge" id="voicecount"></span>
+          </div>
+          <input id="voiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
+          <div class="chips" id="voicefilters"></div>
+          <div class="voices" id="voices"></div>
+        </div>
         <div id="cloud"></div>
       </section>
 
@@ -96,8 +127,14 @@
       <p class="chint">
         <span><kbd>Enter</kbd> <span id="chint1" data-i18n="compose_records"></span> ·
           <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2" data-i18n="compose_newline"></span></span>
-        <span class="right"><select id="voice" class="asbutton"
-          data-i18n-aria="voice_label" data-i18n-title="voice_title"></select></span>
+        <!-- Not a control: a statement of which voice the next recording gets,
+             and a way through to where that is changed. -->
+        <span class="right voicenow">
+          <span class="voicenow__what" data-i18n="voice_label"></span>
+          <b id="voicename"></b>
+          <span class="voicenow__from" id="voicefrom"></span>
+          <button id="voicepick" class="btn quiet sm" data-i18n="voice_change"></button>
+        </span>
       </p>
       <p class="status" id="s" hidden></p>
 
@@ -109,20 +146,18 @@
       <input id="colname" class="title-input" data-i18n-ph="collection_name_hint"
         data-i18n-aria="collection_name_hint" autocomplete="off">
       <span class="count" id="count"></span>
-      <!-- One native control, the same one the voice picker uses. A button with a
-           second button glued to its side was two things to get right in every
-           theme and browser, and it kept being wrong in one of them. -->
-      <select id="dlall" class="asbutton" data-i18n-aria="download_all"
-        data-i18n-title="download_all"></select>
+      <!-- bildhaft's Drucken is one button because printing asks nothing further.
+           This one has to ask which format, so it keeps the button's shape and
+           opens the same menu the ⋯ opens. It was a native select, whose written
+           case was that the browser draws the open list and so nothing is left
+           to get wrong per theme — true, and beside the point: what the browser
+           draws belongs to no design language, and it sat next to a ⋯ that does. -->
+      <span class="menu-anchor"><button id="dlall" class="btn quiet sm dropdown"
+        aria-haspopup="true" aria-expanded="false" data-i18n="download_all"></button></span>
       <span class="menu-anchor"><button id="colmore" class="icon" aria-haspopup="true"
         aria-expanded="false" data-i18n-title="more_actions"
         data-i18n-aria="more_actions">⋯</button></span>
     </div>
-
-    <div class="filters">
-      <div class="frow" id="vrow" hidden><span class="flabel" data-i18n="filter_voices"></span><span class="chips" id="vchips"></span></div>
-    </div>
-
 
     <div id="list"></div>
 
@@ -133,14 +168,13 @@
          summary is gone from here on purpose — a footer has no room to say
          what does leave, and a claim without its exception reads as broader
          than it is. The about dialog has the room. -->
-    <footer class="foot">
+    <footer class="footer">
       <button class="linklike" id="about" data-i18n="about_link"></button>
       <button class="linklike" id="impressum">Impressum</button>
       <button class="linklike" id="datenschutz">Datenschutz</button>
     </footer>
     </main>
 
-    </html>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

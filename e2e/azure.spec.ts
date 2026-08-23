@@ -29,10 +29,23 @@ const VOICE_LIST = /tts\.speech\.microsoft\.com\/cognitiveservices\/voices\/list
 
 async function openVoices(page: import('@playwright/test').Page) {
   await page.goto('/?lang=de');
+  await reopenVoices(page);
+}
+
+/**
+ * The picker is drawn when the dialog opens, not kept in the page. It used to
+ * be a <select> beside the composer, which meant a reload was enough to assert
+ * against it; the voices live in the settings now, so a reload has to be
+ * followed back in.
+ */
+async function reopenVoices(page: import('@playwright/test').Page) {
   await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
   await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await page.click('#tabs button[data-tab="voices"]');
 }
+
+const voice = (page: import('@playwright/test').Page, name: string) =>
+  page.locator('#voices .voice__name', { hasText: name });
 
 test('a key Azure refuses says which of the two things is wrong', async ({ page }) => {
   await page.route(VOICE_LIST, (route) =>
@@ -69,10 +82,14 @@ test('a key Azure accepts is kept, and its voices join the picker', async ({ pag
   await page.fill('#azureregion', 'westeurope');
   await page.click('#cloud .save');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
-  await expect(page.locator('#voice option', { hasText: 'Katja' })).toHaveCount(1);
+  await expect(voice(page, 'Katja')).toHaveCount(1);
+  // The picker says where each voice comes from, which is the difference
+  // between a voice on this machine and a request to Microsoft per sentence.
+  await expect(page.locator('#voices .voice', { hasText: 'Katja' })).toContainText('Azure');
   // And it is still there after a reload, or it was never really saved.
   await page.reload();
-  await expect(page.locator('#voice option', { hasText: 'Katja' })).toHaveCount(1);
+  await reopenVoices(page);
+  await expect(voice(page, 'Katja')).toHaveCount(1);
 });
 
 test('opening the settings answers whether Azure does, and asks it only once', async ({ page }) => {
@@ -97,9 +114,7 @@ test('opening the settings answers whether Azure does, and asks it only once', a
   // A fresh visit probes on open — and still asks once, although the voice
   // picker wants the same catalogue.
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
-  await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await reopenVoices(page);
   await expect(page.locator('#cloud .probe')).toHaveText('2 Stimmen verfügbar');
   expect(asks).toBe(2);
 });
@@ -116,13 +131,11 @@ test('a stored key whose region stops answering says so, and the shipped voices 
   await page.unroute(VOICE_LIST);
   await page.route(VOICE_LIST, (route) => route.abort('namenotresolved'));
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
-  await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await reopenVoices(page);
   await expect(page.locator('#cloud .probe')).toContainText('antwortet nicht');
   // Broken Azure costs its own rows alone: the shipped voices are still there.
-  await expect(page.locator('#voice option[value^="piper:"]')).not.toHaveCount(0);
-  await expect(page.locator('#voice option', { hasText: 'Katja' })).toHaveCount(0);
+  await expect(page.locator('#voices .voice[data-id^="piper:"]')).not.toHaveCount(0);
+  await expect(voice(page, 'Katja')).toHaveCount(0);
 });
 
 test('a stored key Azure has stopped taking gets its words on the card', async ({ page }) => {
@@ -136,9 +149,7 @@ test('a stored key Azure has stopped taking gets its words on the card', async (
   await page.unroute(VOICE_LIST);
   await page.route(VOICE_LIST, (route) => route.fulfill({ status: 401, body: '' }));
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
-  await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await reopenVoices(page);
   await expect(page.locator('#cloud .probe')).toContainText('lehnt den Schlüssel ab');
 });
 
@@ -168,9 +179,7 @@ test('a save that only moves the region keeps the key it already has', async ({ 
   await page.click('#cloud .save');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
-  await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await reopenVoices(page);
   await expect(page.locator('#cloud .state')).toContainText('Nk7q');
   await expect(page.locator('#azureregion')).toHaveValue('northeurope');
 });

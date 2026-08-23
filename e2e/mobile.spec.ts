@@ -32,3 +32,15 @@ test('nothing overflows the screen', async ({ page }) => {
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow, 'horizontal overflow in px').toBe(0);
 });
+
+test('a rail put away on a laptop still opens as a drawer here', async ({ page }) => {
+  // The choice is remembered, and it is a desktop choice: there is no control
+  // on this width to undo it, so it must not follow the user onto the phone.
+  await page.evaluate(() => localStorage.setItem('mitreden.rail', 'closed'));
+  await page.reload();
+  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  const rail = page.locator('#rail');
+  await expect(rail).not.toBeInViewport();
+  await page.click('#railopen');
+  await expect(rail).toBeInViewport();
+});

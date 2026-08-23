@@ -30,9 +30,26 @@ export interface CollectionWithCount extends Collection {
 
 export type Format = 'mp3' | 'wav';
 
+/**
+ * A voice as the page needs it: stimmquelle's `Offered` with the one thing it
+ * cannot know — what to call this voice in a list where two of them share a
+ * name. Everything else is carried through rather than re-derived, because the
+ * picker has to say where a voice comes from and what it speaks, and both are
+ * answers stimmquelle already holds.
+ */
 export interface Voice {
   id: string;
   label: string;
-  backend: 'piper' | 'azure';
-  active?: boolean;
+  /** The plain name, without the quality tier a twin forces into `label`. */
+  name: string;
+  source: 'piper' | 'azure' | 'system';
+  /** Two letters: `de`. */
+  lang: string;
+  /** `de_DE` for piper, `de-DE` for Azure — each as its own backend writes it. */
+  locale: string;
+  gender: string;
+  /** Fetched before this voice first speaks. 0 for a cloud backend. */
+  downloadBytes: number;
+  needsKey: boolean;
+  recommended: boolean;
 }

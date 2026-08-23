@@ -10,12 +10,6 @@ import { t } from '../i18n/index.ts';
 import type { CollectionWithCount, PhraseWithState } from '../core/types.ts';
 import { el } from './dom.ts';
 
-/** Not recorded at all — the same question as "which voice?", answered "none". */
-export const NO_VOICE = '∅';
-
-/** One Sammlung per picture book adds up fast; the rest is one click away. */
-export const CHIP_CAP = 12;
-
 /**
  * Rendering thousands of rows makes the page crawl and nobody reads that far.
  * Counts and downloads always cover everything that matches, not just what is
@@ -29,9 +23,8 @@ let declared: CollectionWithCount[] = [];
 export const ALL = (): readonly PhraseWithState[] => all;
 export const DECLARED = (): readonly CollectionWithCount[] => declared;
 
-/** Which Sammlungen are open, and which voices the chips are filtering to. */
+/** Which Sammlungen are open. */
 export const OPEN = new Set<string>();
-export const VOICE_FILTER = new Set<string>();
 
 const watchers: (() => void)[] = [];
 export const subscribe = (fn: () => void): void => { watchers.push(fn); };
@@ -60,15 +53,16 @@ export function found(): readonly PhraseWithState[] {
   });
 }
 
-export const voiceOf = (item: PhraseWithState): string =>
-  item.state === 'missing' ? NO_VOICE : item.voice ?? NO_VOICE;
-
-/** Search first, then the Sammlung, then the voice. Every axis narrows. */
+/**
+ * Search first, then the Sammlung. There was a third axis — a row of pills
+ * narrowing to one voice — and it was answering a question nobody had: every
+ * row already names its own voice, and a Sammlung is small enough to read.
+ */
 export function shown(): readonly PhraseWithState[] {
-  let list = found();
-  if (OPEN.size) list = list.filter((item) => item.collections.some((key) => OPEN.has(key)));
-  if (VOICE_FILTER.size) list = list.filter((item) => VOICE_FILTER.has(voiceOf(item)));
-  return list;
+  const list = found();
+  return OPEN.size
+    ? list.filter((item) => item.collections.some((key) => OPEN.has(key)))
+    : list;
 }
 
 /**

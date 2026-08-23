@@ -57,11 +57,34 @@ export function drawRail(): void {
 export const here = () => DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
 
 function closeRail(): void {
-  if (matchMedia('(max-width:820px)').matches) {
+  if (narrow()) {
     el('rail').classList.remove('open');
     el('scrim').hidden = true;
   }
 }
+
+/** Below this the rail is a layer over the work, not a column beside it. */
+const narrow = (): boolean => matchMedia('(max-width:820px)').matches;
+
+/**
+ * Whether the rail is a column of this page at all — bildhaft's, and kept for
+ * the same reason: on a laptop the sentences are the work and 268px of
+ * Sammlungen is a permanent tax on the width they get. Remembered, because a
+ * choice about the shape of the window is not one to make every visit.
+ *
+ * Only a desktop question. Narrow screens have no rail to collapse; they have
+ * one to dismiss, which is what ✕ and the scrim already do.
+ */
+const RAIL_KEY = 'mitreden.rail';
+
+export function showRail(open: boolean): void {
+  document.body.classList.toggle('railed', !open);
+  el('reveal').hidden = open;
+  localStorage.setItem(RAIL_KEY, open ? 'open' : 'closed');
+}
+
+export const restoreRail = (): void =>
+  showRail(localStorage.getItem(RAIL_KEY) !== 'closed');
 
 /** Renaming is typing in the title: saved a beat after you stop, and on exit. */
 let renameTimer: ReturnType<typeof setTimeout> | undefined;
@@ -118,4 +141,7 @@ export function wireRail(): void {
   };
   el('railclose').onclick = closeRail;
   el('scrim').onclick = closeRail;
+  el('railhide').onclick = () => showRail(false);
+  el('railshow').onclick = () => showRail(true);
+  restoreRail();
 }

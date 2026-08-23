@@ -93,5 +93,12 @@ export function labelOf(voice: Offered, among: readonly Offered[]): string {
 export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   id: voice.id,
   label: labelOf(voice, among),
-  backend: voice.id.startsWith('azure:') ? 'azure' : 'piper',
+  name: voice.name,
+  source: voice.source,
+  lang: voice.lang,
+  locale: voice.locale,
+  gender: voice.gender,
+  downloadBytes: voice.downloadBytes,
+  needsKey: voice.needsKey,
+  recommended: voice.recommended,
 });

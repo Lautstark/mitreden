@@ -47,11 +47,17 @@ test('the settings dialog opens on every tab', async ({ page }) => {
   await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
   for (const [tab, marker] of [['voices', '#azurekey'], ['language', '#lang'], ['data', '#export']] as const) {
-    await page.click(`#tabs .tab[data-tab="${tab}"]`);
+    await page.click(`#tabs button[data-tab="${tab}"]`);
     await expect(page.locator(marker)).toBeVisible();
   }
+  // Selection has to be visible, and it rides aria-pressed. A helper that
+  // writes a boolean as a bare attribute yields aria-pressed="", which the
+  // shared selector never matches — a segmented control that silently never
+  // shows which segment is live. It has happened twice in this family.
+  await page.click('#tabs button[data-tab="language"]');
+  await expect(page.locator('#tabs button[data-tab="language"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#tabs button[data-tab="voices"]')).toHaveAttribute('aria-pressed', 'false');
   // The one the compiler could not check: a sentence saying what the picker does.
-  await page.click('#tabs .tab[data-tab="language"]');
   await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
 });
 
@@ -66,6 +72,74 @@ test('the footer answers what this is, and the two German legal questions', asyn
     await expect(page.locator('#infotitle')).toHaveText(title);
     await page.click('#infoclose');
   }
+});
+
+test('the rail can be put away, and stays away', async ({ page }) => {
+  const rail = page.locator('#rail');
+  await expect(rail).toBeInViewport();
+  await page.click('#railhide');
+  await expect(rail).not.toBeInViewport();
+  // Something has to bring it back, or putting it away is a trap.
+  await expect(page.locator('#railshow')).toBeVisible();
+  // The choice is about the shape of the window, so it is not re-made per visit.
+  await page.reload();
+  await expect(rail).not.toBeInViewport();
+  await page.click('#railshow');
+  await expect(rail).toBeInViewport();
+  await page.reload();
+  await expect(rail).toBeInViewport();
+});
+
+test('the voice is named beside the composer and chosen in the settings', async ({ page }) => {
+  // Which voice records is a fact the page states, not a control beside every
+  // sentence — and it says where the voice comes from and what it speaks.
+  await expect(page.locator('#voicename')).not.toBeEmpty();
+  await expect(page.locator('#voicefrom')).toContainText('Deutsch');
+
+  await page.click('#voicepick');
+  await expect(page.locator('#setup')).toBeVisible();
+  const rows = page.locator('#voices .voice');
+  await expect(rows.first()).toBeVisible();
+  const many = await rows.count();
+
+  // Narrowing is the whole reason it is a list rather than a select: shipped
+  // voices alone run to dozens, and an Azure key adds hundreds.
+  await page.fill('#voiceq', 'thorsten');
+  await expect(rows).not.toHaveCount(many);
+  await expect(page.locator('#voices .voice__name').first()).toContainText('Thorsten');
+  await page.fill('#voiceq', 'gibtsnicht');
+  await expect(page.locator('#voices')).toContainText('Keine Stimme');
+  await page.fill('#voiceq', '');
+
+  // Picking marks the row it was made on and renames the line outside. It is a
+  // radio group: one choice with several answers, not a row of toggles that
+  // happen to agree, and a bare `aria-checked=""` would match neither the CSS
+  // nor a screen reader.
+  const second = rows.nth(1);
+  const name = await second.locator('.voice__name').innerText();
+  await second.click();
+  await expect(second).toHaveAttribute('aria-checked', 'true');
+  await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('#voices')).toHaveAttribute('role', 'radiogroup');
+  // A list this long has to be walkable without seventeen presses of Tab.
+  await second.press('ArrowDown');
+  await expect(rows.nth(2)).toHaveAttribute('aria-checked', 'true');
+  await rows.nth(2).press('ArrowUp');
+  await expect(second).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#voicename')).toHaveText(name);
+  await page.reload();
+  await expect(page.locator('#voicename')).toHaveText(name);
+});
+
+test('the two menus in the head are one shape', async ({ page }) => {
+  // Herunterladen was a native select and the ⋯ beside it was not, so the two
+  // drew themselves differently in every theme. Both open the same menu now.
+  await page.click('#dlall');
+  await expect(page.locator('.menu button', { hasText: 'MP3' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.menu')).toHaveCount(0);
+  await page.click('#colmore');
+  await expect(page.locator('.menu button.danger')).toBeVisible();
 });
 
 test('the page reaches no host but Hugging Face', async ({ page }) => {

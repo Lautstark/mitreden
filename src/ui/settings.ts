@@ -11,10 +11,10 @@ import { collections, createCollection, saveAzure, settings } from '../db/repo.t
 import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
-import type { Collection, Phrase } from '../core/types.ts';
-import { loadVoices } from './composer.ts';
+import type { Collection, Phrase, Voice } from '../core/types.ts';
+import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice } from './composer.ts';
 import { load } from './state.ts';
-import { applyLang, el, say } from './dom.ts';
+import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
 
 /**
  * Azure's own region names. A datalist suggests rather than restricts, so a
@@ -29,6 +29,159 @@ const AZURE_REGIONS = [
   'japanwest', 'koreacentral', 'centralindia', 'southafricanorth', 'uaenorth',
 ];
 
+/**
+ * Which voice records, chosen where it is decided rather than beside every
+ * sentence. A shipped catalogue is forty-odd voices and an Azure key is
+ * hundreds, so the list narrows three ways — the same three stimmquelle's own
+ * `ListOptions` narrows by, because a picker and a catalogue want the same
+ * questions asked of a voice.
+ */
+let query = '';
+let onlyLang: string | null = null;
+let onlyPicks = false;
+
+/**
+ * stimmquelle publishes three, and a corpus of several speakers is `mixed`
+ * rather than a guess. Anything it adds later is shown as it came, which is
+ * honest, rather than as the name of a missing translation.
+ */
+const genderOf = (gender: string): string =>
+  gender === 'female' || gender === 'male' || gender === 'mixed'
+    ? t(`gender_${gender}`) : gender;
+
+/** stimmquelle's rule: `de_DE`, `de-DE` and `de` all compare equal. */
+const language = (code: string): string =>
+  code.toLowerCase().replaceAll('_', '-').split('-')[0]!;
+
+const matches = (voice: Voice): boolean => {
+  if (onlyLang && language(voice.locale) !== onlyLang) return false;
+  if (onlyPicks && !voice.recommended) return false;
+  if (!query) return true;
+  const hay = `${voice.label} ${voice.locale} ${sourceOf(voice.source)} ${speaks(voice.locale)}`;
+  return hay.toLowerCase().includes(query);
+};
+
+/**
+ * What a voice is, in the facts that decide between two of them: who renders
+ * it, what it speaks, whose voice it is, and what it costs to have. The list
+ * used to be a native select of bare names, where "Thorsten" and "Katja" were
+ * indistinguishable in every way that matters — one is on this machine, the
+ * other is a request to Microsoft per sentence.
+ */
+function voiceRow(voice: Voice, live: boolean): HTMLElement {
+  const row = document.createElement('button');
+  row.className = 'voice';
+  row.type = 'button';
+  row.dataset.id = voice.id;
+  // A radio, not a pressed button. aria-pressed on a set where exactly one is
+  // ever on describes toggles that happen to agree; this is one choice with
+  // several answers, and a screen reader should say "3 of 17" rather than
+  // leaving the reader to infer the exclusivity from the drawing.
+  row.setAttribute('role', 'radio');
+  row.setAttribute('aria-checked', String(live));
+  // Roving tabindex: the list runs to hundreds with an Azure key, and tabbing
+  // through it to reach the settings underneath is not a way out.
+  row.tabIndex = live ? 0 : -1;
+
+  const name = document.createElement('span');
+  name.className = 'voice__name';
+  name.textContent = voice.label;
+
+  const facts = document.createElement('span');
+  facts.className = 'voice__facts';
+  // The download is the shipped voices' one real cost and the cloud ones'
+  // is the key, so each says the one that applies to it and neither says both.
+  facts.textContent = [
+    sourceOf(voice.source),
+    speaks(voice.locale),
+    genderOf(voice.gender),
+    voice.needsKey ? t('voice_needs_key') : voice.downloadBytes ? weighs(voice.downloadBytes) : '',
+  ].filter(Boolean).join(' · ');
+
+  row.append(name, facts);
+  if (voice.recommended) {
+    const pick = document.createElement('span');
+    pick.className = 'voice__pick';
+    pick.textContent = t('voice_recommended');
+    row.appendChild(pick);
+  }
+  row.onclick = () => void pickVoice(voice.id);
+  return row;
+}
+
+/** One pill per language the catalogue actually offers, plus the way back. */
+function drawFilters(voices: readonly Voice[]): void {
+  const box = el('voicefilters');
+  box.innerHTML = '';
+  const codes = [...new Set(voices.map((voice) => language(voice.locale)))]
+    .sort((a, b) => speaks(a).localeCompare(speaks(b), lang()));
+
+  const pill = (label: string, on: boolean, run: () => void): void => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.type = 'button';
+    chip.textContent = label;
+    chip.setAttribute('aria-pressed', String(on));
+    chip.onclick = () => { run(); drawVoices(); };
+    box.appendChild(chip);
+  };
+
+  pill(t('filter_any_language'), onlyLang === null, () => { onlyLang = null; });
+  for (const code of codes)
+    pill(speaks(code), onlyLang === code, () => { onlyLang = onlyLang === code ? null : code; });
+  // Editorial, and stimmquelle says so: one voice per language-and-gender slot,
+  // which is the whole list somebody who does not want to audition forty needs.
+  if (voices.some((voice) => voice.recommended))
+    pill(t('filter_recommended'), onlyPicks, () => { onlyPicks = !onlyPicks; });
+}
+
+export function drawVoices(): void {
+  const voices = knownVoices();
+  const live = chosenVoice();
+  drawFilters(voices);
+
+  const badge = el('voicecount');
+  const chosen = voices.find((voice) => voice.id === live);
+  badge.textContent = chosen?.label ?? '';
+  badge.hidden = !chosen;
+
+  const box = el('voices');
+  box.innerHTML = '';
+  box.setAttribute('role', 'radiogroup');
+  box.setAttribute('aria-label', t('voice_pick_title'));
+  const hits = voices.filter(matches);
+  if (!hits.length) {
+    const none = document.createElement('p');
+    none.className = 'hint';
+    none.textContent = t('voice_no_match');
+    box.appendChild(none);
+    return;
+  }
+  for (const voice of hits) box.appendChild(voiceRow(voice, voice.id === live));
+  // Filtering can hide the chosen one, and a group where nothing is reachable
+  // by Tab is a group the keyboard cannot enter at all.
+  if (!box.querySelector('.voice[tabindex="0"]'))
+    box.querySelector<HTMLElement>('.voice')?.setAttribute('tabindex', '0');
+}
+
+/** Arrow keys move the choice, as they do in any radio group. */
+function stepVoices(event: KeyboardEvent): void {
+  const keys = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'];
+  if (!keys.includes(event.key)) return;
+  const rows = [...el('voices').querySelectorAll<HTMLElement>('.voice')];
+  const at = rows.indexOf(document.activeElement as HTMLElement);
+  if (at < 0 || !rows.length) return;
+  event.preventDefault();
+  const to = event.key === 'Home' ? 0
+    : event.key === 'End' ? rows.length - 1
+      : event.key === 'ArrowDown' || event.key === 'ArrowRight'
+        ? (at + 1) % rows.length
+        : (at - 1 + rows.length) % rows.length;
+  const next = rows[to]!;
+  next.focus();
+  void pickVoice(next.dataset.id ?? '');
+}
+
 export async function drawSetup(): Promise<void> {
   const saved = await settings();
   const box = el('cloud');
@@ -36,10 +189,16 @@ export async function drawSetup(): Promise<void> {
 
   const card = document.createElement('div');
   card.className = 'card';
+  // The bare class names here are hooks for the querySelectors below, not
+  // components — which is why none of them may be a name components.css owns.
+  // This paragraph was `sub body` and sat inside the settings sheet, so the
+  // shared `.sheet .body` region rule reached it and quietly took it from 15px
+  // to 14px. v1.4.1 made those rules child combinators and handed it back; the
+  // rename is so it cannot be caught again by whatever the vocabulary adds.
   card.innerHTML = `
     <div class="card__head"><h3>Azure Speech</h3><span class="badge state"></span></div>
     <p class="hint probe" role="status"></p>
-    <p class="sub body"></p><p class="notice bad warn"></p>
+    <p class="sub says"></p><p class="notice bad warn"></p>
     <label for="azurekey"></label>
     <input id="azurekey" class="field" type="password" autocomplete="off">
     <label class="region" for="azureregion"></label>
@@ -69,7 +228,7 @@ export async function drawSetup(): Promise<void> {
           : answer.code === 'refused' ? 'azure_refused' : 'azure_failed');
     });
   }
-  card.querySelector<HTMLElement>('.body')!.textContent = t('azure_body');
+  card.querySelector<HTMLElement>('.says')!.textContent = t('azure_body');
   card.querySelector<HTMLElement>('.warn')!.textContent = t('azure_warn');
   card.querySelector<HTMLElement>('label[for=azurekey]')!.textContent = t('key_field');
   card.querySelector<HTMLElement>('label.region')!.textContent = t('region_field');
@@ -132,7 +291,9 @@ async function saveKey(typed: string, region: string, button: HTMLButtonElement)
     // The card and the picker are what this save feeds. The dialog stays
     // open, so the state line and the new voices land on the screen the key
     // was typed into; the probe is already answered, so neither asks again.
-    await Promise.all([drawSetup(), loadVoices()]);
+    await loadVoices();
+    drawVoices();
+    await drawSetup();
   } catch (error) {
     say(t('key_failed', { error: error instanceof Error ? error.message : String(error) }));
   } finally {
@@ -144,7 +305,9 @@ async function saveKey(typed: string, region: string, button: HTMLButtonElement)
 async function forgetKey(): Promise<void> {
   await saveAzure(undefined);
   say(t('key_removed', { label: 'Azure Speech' }));
-  await Promise.all([drawSetup(), loadVoices()]);
+  await loadVoices();
+  drawVoices();
+  await drawSetup();
 }
 
 // ------------------------------------------------------------------- data
@@ -246,20 +409,37 @@ async function wipeEverything(): Promise<void> {
 // ------------------------------------------------------------------ wiring
 
 function showTab(name: string): void {
-  for (const tab of document.querySelectorAll<HTMLElement>('#tabs .tab'))
-    tab.classList.toggle('on', tab.dataset.tab === name);
+  for (const tab of document.querySelectorAll<HTMLElement>('#tabs button'))
+    tab.setAttribute('aria-pressed', String(tab.dataset.tab === name));
   for (const pane of document.querySelectorAll<HTMLElement>('.pane'))
     pane.hidden = pane.dataset.pane !== name;
 }
 
+/** The dialog, on the tab that answers whatever asked for it. */
+export function openSetup(tab = 'voices'): void {
+  showTab(tab);
+  drawVoices();
+  void drawSetup();
+  el<HTMLDialogElement>('setup').showModal();
+}
+
 export function wireSettings(): void {
-  el('gear').onclick = () => {
-    void drawSetup();
-    el<HTMLDialogElement>('setup').showModal();
-  };
+  el('gear').onclick = () => openSetup();
+  // The composer names the voice in force; this is the way from that name to
+  // the place it is decided, which is the whole of what moved.
+  el('voicepick').onclick = () => openSetup('voices');
   el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
-  for (const tab of document.querySelectorAll<HTMLElement>('#tabs .tab'))
+  for (const tab of document.querySelectorAll<HTMLElement>('#tabs button'))
     tab.onclick = () => showTab(tab.dataset.tab ?? 'voices');
+
+  const search = el<HTMLInputElement>('voiceq');
+  search.addEventListener('input', () => {
+    query = search.value.trim().toLowerCase();
+    drawVoices();
+  });
+  el('voices').addEventListener('keydown', (event) => stepVoices(event as KeyboardEvent));
+  // A pick redraws the list it was made in, so the mark moves with the click.
+  onVoiceChange(drawVoices);
 
   const picker = el<HTMLSelectElement>('lang');
   picker.innerHTML = '';
@@ -273,6 +453,7 @@ export function wireSettings(): void {
     localStorage.setItem('mitreden.lang', picker.value);
     document.documentElement.lang = picker.value;
     applyLang();
+    drawVoices();
     void drawSetup();
     void load();
   };

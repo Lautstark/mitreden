@@ -15,66 +15,30 @@ import type { Format, PhraseWithState } from '../core/types.ts';
 import { chosenVoice } from './composer.ts';
 import { deleteCollection, here } from './rail.ts';
 import { exportCollection } from './settings.ts';
-import { ALL, CAP, CHIP_CAP, NO_VOICE, VOICE_FILTER, found, load, shown, stateText, voiceOf } from './state.ts';
+import { ALL, CAP, load, shown, stateText } from './state.ts';
 import { closeMenus, el, menuOn, say } from './dom.ts';
 
 let showAll = false;
-let allVoices = false;
 
 /** Blob URLs are handed to <audio> elements, so they outlive the draw. */
 const playing = new Map<string, string>();
 
-function drawVoiceChips(hits: readonly PhraseWithState[]): void {
-  const counts = new Map<string, number>();
-  for (const item of hits) {
-    const voice = voiceOf(item);
-    counts.set(voice, (counts.get(voice) ?? 0) + 1);
-  }
-  const row = el('vrow');
-  const box = el('vchips');
-  box.innerHTML = '';
-  // One voice is not a filter, it is a fact about the list.
-  row.hidden = counts.size < 2;
-  if (row.hidden) return;
-  const names = [...counts.keys()].sort((a, b) =>
-    a === NO_VOICE ? 1 : b === NO_VOICE ? -1 : a.localeCompare(b, 'de'));
-  const visible = allVoices ? names : names.slice(0, CHIP_CAP);
-  for (const name of visible) {
-    const chip = document.createElement('button');
-    chip.className = 'chip';
-    chip.setAttribute('aria-pressed', String(VOICE_FILTER.has(name)));
-    chip.textContent = `${name === NO_VOICE ? t('chip_not_recorded') : name} ${counts.get(name)}`;
-    chip.onclick = () => {
-      if (VOICE_FILTER.has(name)) VOICE_FILTER.delete(name);
-      else VOICE_FILTER.add(name);
-      draw();
-    };
-    box.appendChild(chip);
-  }
-  if (!allVoices && names.length > CHIP_CAP) {
-    const more = document.createElement('button');
-    more.className = 'chip fold';
-    more.textContent = t('show_all', { n: names.length });
-    more.onclick = () => { allVoices = true; draw(); };
-    box.appendChild(more);
-  }
-}
-
-/** Its labels are words, so they follow the language. */
-function drawDownload(): void {
-  const select = el<HTMLSelectElement>('dlall');
-  select.innerHTML = '';
-  select.appendChild(new Option(t('download_all'), ''));
-  select.appendChild(new Option(t('download_mp3'), 'mp3'));
-  select.appendChild(new Option(t('download_wav'), 'wav'));
-  select.value = '';
+/**
+ * Which format, asked the way every other question on this page is asked. It
+ * was a native select, and the case written for it was that the browser draws
+ * the open list, so nothing was left to get wrong per theme. True — and beside
+ * the point: what the browser draws belongs to no design language, and this sat
+ * next to a ⋯ that opens the shared menu.
+ */
+function openDownload(button: HTMLElement): void {
+  menuOn(button, (add) => {
+    add(t('download_mp3'), false, () => { closeMenus(); void packAll('mp3'); });
+    add(t('download_wav'), false, () => { closeMenus(); void packAll('wav'); });
+  });
 }
 
 export function draw(): void {
-  drawDownload();
-  const hits = found();
   const items = [...shown()].reverse();          // newest first
-  drawVoiceChips(hits);
 
   const pending = items.filter((item) => item.state !== 'ok').length;
   const searching = el<HTMLInputElement>('q').value.trim().length > 0;
@@ -96,7 +60,7 @@ export function draw(): void {
     line.className = 'empty';
     // "Nothing matches" is only true when something is narrowing the list. An
     // empty Sammlung is not a failed search.
-    if (searching || VOICE_FILTER.size) line.textContent = t('empty_no_match');
+    if (searching) line.textContent = t('empty_no_match');
     else {
       const [before, after] = t('empty_start').split('{key}');
       const key = document.createElement('kbd');
@@ -284,12 +248,7 @@ async function packAll(format: Format): Promise<void> {
 
 export function wireList(): void {
   el('q').addEventListener('input', draw);
-  el('dlall').addEventListener('change', (event) => {
-    const select = event.target as HTMLSelectElement;
-    const format = select.value as Format | '';
-    select.value = '';
-    if (format) void packAll(format);
-  });
+  el('dlall').onclick = () => openDownload(el('dlall'));
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
