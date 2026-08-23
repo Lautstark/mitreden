@@ -10,30 +10,12 @@
 
 import {
   asBlob, encodeMp3, encodeWav, resample, speak, usePiperRuntime,
-  type OnnxModule, type PhonemizerFactory, type Progress, type Spoken,
+  type OnnxModule, type Progress, type Spoken,
 } from '@lautstark/stimmquelle/browser';
+import { piperRuntime } from '@lautstark/stimmquelle/runtime';
 import { OUT } from './settings.ts';
 import type { Format } from './types.ts';
 
-/**
- * One thread, said rather than discovered.
- *
- * onnxruntime picks a thread count off `hardwareConcurrency` and then warns
- * that threads need a cross-origin-isolated page — which GitHub Pages sends
- * none of the headers for. It falls back on its own, so this changes no
- * behaviour; what it changes is that the fallback is the arrangement rather
- * than a recovery, and that a first recording stops writing a warning nobody
- * can act on into a console this page otherwise keeps silent. It also matches
- * what vite.config.ts actually vendors: the two single-threaded binaries.
- *
- * Not in stimmquelle's `OnnxModule` because that describes only what the
- * package itself needs of the module. This is between mitreden and its own
- * dependency.
- */
-const singleThreaded = (onnx: OnnxModule): OnnxModule => {
-  (onnx.env.wasm as { numThreads?: number }).numThreads = 1;
-  return onnx;
-};
 /**
  * Where piper's pieces come from — mitreden drives it itself rather than
  * handing the whole job to vits-web's `predict()`.
@@ -47,33 +29,42 @@ const singleThreaded = (onnx: OnnxModule): OnnxModule => {
  * can go. A voice that already spoke comes out of this with identical phoneme
  * ids, so nothing re-renders and no fingerprint moves.
  *
- * Three pieces, and each is here for its own reason:
- *  - the phonemizer by its deep path, because `@diffusionstudio/piper-wasm`
- *    declares a `main` that opens with a slash and resolves nowhere. The file
- *    is Emscripten's UMD: its exports exist for a bundler and there is no
- *    global fallback, so a browser handed the CDN URL gets an empty module and
- *    the factory has to arrive through CJS interop, on `.default`.
- *  - onnxruntime from node_modules rather than from a CDN, which is the whole
- *    of what this page promises about itself: e2e/offline.spec.ts fails the
- *    build if the bundle so much as names a package CDN. `/wasm` is the
- *    single-backend entry — the one whose binaries are the two we serve.
- *  - `wasmBase` is one directory answering for the phonemizer's wasm and its
- *    espeak data and for onnxruntime's binaries together. vite.config.ts is
- *    what fills it, in dev out of node_modules and in a build into dist/wasm/.
+ * `piperRuntime()` answers the two questions that had the same answer here as
+ * anywhere: the phonemizer's deep import — `@diffusionstudio/piper-wasm`
+ * declares a `main` that opens with a slash and resolves nowhere — and the
+ * single thread, which used to be a `singleThreaded` wrapper in this file and
+ * is now the package's default. Neither was ever a decision about mitreden.
  *
- * Both imports are dynamic, so opening the page still costs nothing until
+ * The three that are stay here:
+ *  - `onnx` from node_modules rather than from a CDN, which is the whole of
+ *    what this page promises about itself: e2e/offline.spec.ts fails the build
+ *    if the bundle so much as names a package CDN. vorlaut passes a pinned CDN
+ *    URL in this same slot and is right to, which is why the package asks
+ *    rather than defaults. `/wasm` is the single-backend entry — the one whose
+ *    binaries are the two `piperVendor()` copies.
+ *  - `dir` is `wasm` rather than the package's `vendor`, because that is the
+ *    directory this page has served them from since before there was a package
+ *    to ask. It is the same string vite.config.ts hands `piperVendor()`; they
+ *    are two ends of one URL.
+ *  - `base`, which the package would rather default. Its default reads
+ *    `import.meta.env.BASE_URL` through a local alias, and vite only
+ *    substitutes that name where it is written out in full — so in a build the
+ *    expression survives into the bundle, `import.meta.env` is undefined in a
+ *    browser module, and the base silently falls back to `/`. That is right in
+ *    dev and wrong on Pages, where it would send every one of the four files
+ *    to `/wasm/` instead of `/mitreden/wasm/` and fail the first recording.
+ *    Written here, vite replaces it at build time, which is the whole point of
+ *    not having the repository name in the source. Worth pushing back into the
+ *    package, and harmless there once it is.
+ *
+ * The import is dynamic, so opening the page still costs nothing until
  * somebody records.
  */
-usePiperRuntime({
-  phonemizer: async () => ({
-    createPiperPhonemize: (await import('@diffusionstudio/piper-wasm/build/piper_phonemize.js'))
-      .default as PhonemizerFactory,
-  }),
-  onnx: async () => singleThreaded(await import('onnxruntime-web/wasm') as unknown as OnnxModule),
-  // BASE_URL is "/" in dev and "/mitreden/" on Pages; the four files sit under
-  // it either way.
-  wasmBase: `${import.meta.env.BASE_URL}wasm/`,
-});
+usePiperRuntime(piperRuntime({
+  onnx: () => import('onnxruntime-web/wasm') as unknown as Promise<OnnxModule>,
+  dir: 'wasm',
+  base: import.meta.env.BASE_URL,
+}));
 
 let onProgress: ((percent: number) => void) | null = null;
 

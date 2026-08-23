@@ -7,7 +7,8 @@ import { basename, extname, join, resolve } from 'node:path';
  * makes - GitHub Pages serves the page, Hugging Face serves a voice model once,
  * and with your own key Azure hears your sentences; nothing else - and it is
  * true only because the phonemizer and onnxruntime are npm packages this build
- * bundles, running on four wasm files vite.config.ts copies into dist/wasm/.
+ * bundles, running on four wasm files the vendoring in vite.config.ts puts
+ * into dist/wasm/.
  *
  * It used to rest on a rewrite instead: vits-web hardcoded two CDNs and the
  * build edited them out. Driving piper ourselves removed the strings rather
@@ -60,6 +61,18 @@ const ALLOWED = new Map([
 const PACKAGE_CDNS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com', 'esm.sh', 'cdn.skypack.dev'];
 
 const HOST = /https?:\/\/([a-zA-Z0-9.-]+)/g;
+
+/**
+ * The directory piper's runtime is pointed at, as the bundle carries it.
+ *
+ * There is no `"/wasm/"` in the built code to look for. `piperRuntime()` joins
+ * the base and the directory itself, at runtime, so what survives minification
+ * is the pair that was passed in - and the pair is the fact worth checking:
+ * `base` is a path on this origin rather than a URL on a host, and `dir` is
+ * the same `wasm` that `piperVendor()` was told to fill. Either order, because
+ * which one is written first is not something this test has an opinion about.
+ */
+const POINTED_AT = /dir:"wasm",\s*base:"\/[^"]*"|base:"\/[^"]*",\s*dir:"wasm"/;
 
 /** Every text file under dist/, however deep. */
 function builtFiles(dir = DIST): string[] {
@@ -118,7 +131,7 @@ test.describe('the built bundle', () => {
         .toBe(true);
     }
     const code = js.map((f) => readFileSync(f, 'utf8'));
-    expect(code.some((text) => text.includes('"/wasm/"')),
+    expect(code.some((text) => POINTED_AT.test(text)),
       'no wasmBase pointing at this origin - see usePiperRuntime in src/core/audio.ts')
       .toBe(true);
   });
