@@ -17,6 +17,8 @@
   "backup_hint": "Einzelne Sammlungen sicherst du über das Menü ⋯ neben ihrem Namen.",
   "backup_intro": "Die Sätze liegen in diesem Browser. Wer seine Daten löscht, löscht sie mit — also halte eine Kopie bereit. Sie sind das Einzige hier, was sich nicht wiederherstellen lässt; die Audiodateien schon, jederzeit.",
   "backup_lead": "Sicherung.",
+  "backup_notice": "Diese Datei enthält alle Sätze und Sammlungen, aber keine Aufnahmen — die werden beim Wiederherstellen neu erzeugt. Ein Azure-Schlüssel ist ebenfalls nicht enthalten und muss neu eingetragen werden.",
+  "backup_too_new": "Diese Datei stammt aus einer neueren Version von mitreden.",
   "busy_add": "Wird aufgenommen …",
   "busy_delete": "Wird gelöscht …",
   "busy_import": "Lese …",

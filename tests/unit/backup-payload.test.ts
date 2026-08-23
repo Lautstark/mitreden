@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  BACKUP_FORMAT, exportEverything, importBackup, isBackup, stripSecrets,
+  BACKUP_FORMAT, exportEverything, importBackup, isBackup, stripSecrets, TOO_NEW,
 } from '../../src/db/backup.ts';
+import de from '../../src/i18n/de.json';
+import en from '../../src/i18n/en.json';
 import {
   loadCollections, loadPhrases, saveCollections, savePhrases, saveSettings, wipe,
 } from '../../src/db/db.ts';
@@ -15,6 +17,10 @@ import {
  * this file is about two things: that the credential never makes the trip, and
  * that a library which does make it comes back whole.
  */
+/** Stands in for whatever sentence the page passes. The real ones live in the
+ *  language tables and are checked against those, below. */
+const NOTICE = 'what this file does and does not contain';
+
 describe('the Azure key', () => {
   beforeEach(() => wipe());
 
@@ -27,17 +33,21 @@ describe('the Azure key', () => {
    */
   it('is constructed with exportEverything and nothing else', () => {
     const source = readFileSync(new URL('../../src/main.ts', import.meta.url), 'utf8');
-    const calls = [...source.matchAll(/new Sicherung\(([^)]*)\)/g)].map((m) => m[1]);
+    expect(source.match(/new Sicherung\(/g) ?? [],
+      'expected exactly one standing backup in this app').toHaveLength(1);
+    expect(source).toContain("app: 'mitreden'");
 
-    expect(calls, 'expected exactly one standing backup in this app').toHaveLength(1);
-    expect(calls[0].replace(/\s+/g, ' ').trim())
-      .toBe("{ app: 'mitreden', produce: exportEverything }");
+    // The whole of what produce is, matched exactly rather than loosely:
+    // swapping in a database read — or adding an argument — fails here rather
+    // than quietly uploading something new.
+    expect(source.match(/^\s*produce: (.+)$/m)?.[1])
+      .toBe("() => exportEverything(t('backup_notice')),");
   });
 
   it('never appears in a backup, however the settings are shaped', async () => {
     await saveSettings({ voice: 'de_DE-thorsten', azure: { key: 'sk-geheim-123', region: 'westeurope' } });
 
-    const json = JSON.stringify(await exportEverything());
+    const json = JSON.stringify(await exportEverything(NOTICE));
 
     expect(json).not.toContain('sk-geheim-123');
     expect(json).not.toContain('westeurope');
@@ -46,7 +56,7 @@ describe('the Azure key', () => {
 
   it('the voice choice does travel, because it is a preference and not a secret', async () => {
     await saveSettings({ voice: 'de_DE-thorsten', azure: { key: 'sk-geheim-123', region: 'we' } });
-    expect((await exportEverything()).settings.voice).toBe('de_DE-thorsten');
+    expect((await exportEverything(NOTICE)).settings.voice).toBe('de_DE-thorsten');
   });
 
   /*
@@ -85,7 +95,7 @@ describe('the round trip', () => {
    */
   it('keeps the Sammlungen apart instead of collapsing them into one', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     await wipe();
 
     const done = await importBackup(backup);
@@ -98,7 +108,7 @@ describe('the round trip', () => {
 
   it('keeps which sentence belonged where, including the one in two places', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     await wipe();
     await importBackup(backup);
 
@@ -109,7 +119,7 @@ describe('the round trip', () => {
 
   it('adds rather than overwrites, so restoring cannot destroy existing work', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     // Not a wipe: somebody restoring onto a library that already has something.
     await savePhrases([{ id: 'own', text: 'Mein eigener Satz', collections: ['kueche'] }]);
 
@@ -122,7 +132,7 @@ describe('the round trip', () => {
 
   it('renames a colliding Sammlung rather than merging into it', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     // The keys are all still taken — a restore on top of the same library.
     const done = await importBackup(backup);
 
@@ -134,7 +144,7 @@ describe('the round trip', () => {
 
   it('merges a sentence that is already here instead of duplicating it', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     const done = await importBackup(backup);
 
     expect(done.merged).toBe(3);
@@ -143,24 +153,38 @@ describe('the round trip', () => {
   });
 
   it('refuses a file from a newer mitreden rather than reading it wrong', async () => {
-    await expect(importBackup({ ...(await exportEverything()), version: 99 }))
-      .rejects.toThrow(/neueren Version/);
+    await expect(importBackup({ ...(await exportEverything(NOTICE)), version: 99 }))
+      .rejects.toThrow(TOO_NEW);
   });
 
   it('recognises its own files and not other shapes', async () => {
-    expect(isBackup(await exportEverything())).toBe(true);
+    expect(isBackup(await exportEverything(NOTICE))).toBe(true);
     expect(isBackup([{ text: 'bare list' }])).toBe(false);
     expect(isBackup({ format: 'bildhaft-backup' })).toBe(false);
     expect(isBackup(null)).toBe(false);
   });
 
-  it('carries no recordings, and says so in the file', async () => {
+  it('carries no recordings, and the notice it was handed', async () => {
     await seed();
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
 
     expect(JSON.stringify(backup)).not.toContain('base64');
-    expect(backup.notice).toContain('keine Aufnahmen');
+    expect(backup.notice).toBe(NOTICE);
     expect(backup.format).toBe(BACKUP_FORMAT);
+  });
+
+  /* And the sentence the page actually hands it, in both languages. Somebody
+   * who receives one of these files has to be able to tell what is in it, and
+   * mitreden ships in two languages — a German-only notice would hand an
+   * English reader an explanation they cannot use. */
+  it('says in every language that recordings and the key are absent', () => {
+    for (const [name, table] of [['de', de], ['en', en]] as const) {
+      const notice = (table as Record<string, string>).backup_notice;
+      expect(notice, `${name} has no notice`).toBeTruthy();
+      expect(notice, `${name} notice omits the key`).toContain('Azure');
+    }
+    expect(de.backup_notice).toContain('keine Aufnahmen');
+    expect(en.backup_notice).toContain('no recordings');
   });
 
   it('keeps a voice and its fingerprint together or drops both', async () => {
@@ -171,7 +195,7 @@ describe('the round trip', () => {
       { id: 'a', text: 'Mit Stimme', collections: ['k'], voice: 'v1', fingerprint: 'f1' },
       { id: 'b', text: 'Ohne Stimme', collections: ['k'], fingerprint: 'verwaist' },
     ]);
-    const backup = await exportEverything();
+    const backup = await exportEverything(NOTICE);
     await wipe();
     await importBackup(backup);
 

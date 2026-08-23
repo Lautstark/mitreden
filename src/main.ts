@@ -13,7 +13,7 @@ import { ensureCollection } from './db/repo.ts';
 import { exportEverything } from './db/backup.ts';
 import { onChanged } from './db/db.ts';
 import { Sicherung } from '@lautstark/sicherung';
-import { lang, setLang, type Lang } from './i18n/index.ts';
+import { lang, setLang, t, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
 import { draw as drawList, wireList } from './ui/list.ts';
@@ -40,7 +40,12 @@ function chooseLang(): void {
  * every device sharing the folder. tests/unit/backup-payload.test.ts holds
  * this wiring in place; a failure there is a leak, not a bug.
  */
-const backup = new Sicherung({ app: 'mitreden', produce: exportEverything });
+const backup = new Sicherung({
+  app: 'mitreden',
+  // The notice is written in the language the page is in — it travels inside
+  // the file, and this app ships in two.
+  produce: () => exportEverything(t('backup_notice')),
+});
 
 // Every write that changes what a Sicherung would contain, through the one
 // notifier in db.ts. Debounced inside Sicherung, so a burst is one file.

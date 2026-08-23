@@ -7,7 +7,7 @@
  */
 
 import { loadPhrases, wipe } from '../db/db.ts';
-import { exportEverything, importBackup, isBackup } from '../db/backup.ts';
+import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
 import { wireBackupFolder } from './backupFolder.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
@@ -349,7 +349,9 @@ export async function exportCollection(collection: Collection): Promise<void> {
  * chosen folder.
  */
 async function exportAll(): Promise<void> {
-  download(await exportEverything(), 'mitreden-sicherung');
+  // The notice travels inside the file, so it is written in the language the
+  // page is in rather than in whichever one the db layer happened to hold.
+  download(await exportEverything(t('backup_notice')), 'mitreden-sicherung');
 }
 
 const safeName = (name: string): string =>
@@ -420,7 +422,11 @@ async function importFile(file: File): Promise<void> {
       say(t('done_restore', { ...done }));
       await load();
     } catch (error) {
-      say(t('import_failed', { error: error instanceof Error ? error.message : file.name }));
+      // The db layer has no language and answers with a code; this is where
+      // the code becomes a sentence.
+      say(error instanceof Error && error.message === TOO_NEW
+        ? t('backup_too_new')
+        : t('import_failed', { error: file.name }));
     }
     return;
   }

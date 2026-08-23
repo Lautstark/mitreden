@@ -17,6 +17,8 @@
   "backup_hint": "A single collection goes through the ⋯ menu beside its name.",
   "backup_intro": "The sentences live in this browser. Clearing its data takes them with it, so keep a copy — it is the only thing here that cannot be made again. The audio files can, at any time.",
   "backup_lead": "Backup.",
+  "backup_notice": "This file holds every sentence and collection, but no recordings — those are made again when you restore. An Azure key is not in it either, and must be entered again.",
+  "backup_too_new": "This file comes from a newer version of mitreden.",
   "busy_add": "Recording …",
   "busy_delete": "Deleting …",
   "busy_import": "Reading …",

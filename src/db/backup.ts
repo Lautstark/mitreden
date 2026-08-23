@@ -56,10 +56,9 @@ export interface SafeSettings {
   voice?: string;
 }
 
-const NOTICE =
-  'Diese Datei enthält alle Sätze und Sammlungen, aber keine Aufnahmen — die '
-  + 'werden beim Wiederherstellen neu erzeugt. Ein Azure-Schlüssel ist '
-  + 'ebenfalls nicht enthalten und muss neu eingetragen werden.';
+/** Thrown when the file is from a later mitreden. A code rather than a
+ *  sentence: this layer has no language, and the caller has the table. */
+export const TOO_NEW = 'backup:too-new';
 
 /**
  * Copies across exactly the fields named, and nothing else.
@@ -75,7 +74,16 @@ export function stripSecrets(settings: Settings): SafeSettings {
   return safe;
 }
 
-export async function exportEverything(): Promise<Backup> {
+/**
+ * The notice is passed in rather than written here.
+ *
+ * mitreden ships in German and English, and this sentence travels *inside* the
+ * file — so a hard-coded German one would hand an English user a German
+ * explanation of what they are allowed to do with their own backup. The db
+ * layer holds no strings for the same reason the rest of it holds none: the
+ * page knows which language it is in, and this does not.
+ */
+export async function exportEverything(notice: string): Promise<Backup> {
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -83,7 +91,7 @@ export async function exportEverything(): Promise<Backup> {
     collections: await loadCollections(),
     phrases: await loadPhrases(),
     settings: stripSecrets(await loadSettings()),
-    notice: NOTICE,
+    notice,
   };
 }
 
@@ -108,7 +116,7 @@ export const isBackup = (data: unknown): data is Backup =>
  */
 export async function importBackup(backup: Backup): Promise<Restored> {
   if (typeof backup.version !== 'number' || backup.version > BACKUP_VERSION) {
-    throw new Error('Diese Datei stammt aus einer neueren Version von mitreden.');
+    throw new Error(TOO_NEW);
   }
 
   const declared = await loadCollections();
