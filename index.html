@@ -6,6 +6,19 @@
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <title>mitreden</title>
     <meta name="description" content="Sätze werden zu Audiodateien, damit jedes Gerät mit derselben Stimme spricht." />
+    <!-- Empty on purpose: main.ts fills it from the resolved --bg, so it is right
+         in either scheme and stays right when the accent moves. mitreden had no
+         theme-color at all, which left the address bar the browser's own grey
+         above a page that is neither. -->
+    <meta name="theme-color" />
+    <!-- Before the stylesheet, and inline rather than in the bundle: a module is
+         deferred, so a scheme read there lands after the first paint and the page
+         flashes the OS's answer before correcting itself. bootSnippet() from
+         @lautstark/design/theme, copied in because there is nothing earlier than
+         this to import it from. It touches one attribute and nothing else. -->
+    <script>
+      try{var t=localStorage.getItem("mitreden.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}
+    </script>
   </head>
   <body>
     <!-- Narrow screens get a bar instead of a rail: the rail slides over the work
@@ -112,6 +125,26 @@
             aria-haspopup="true" aria-expanded="false"
             aria-label="Sprache / Language"></button></span>
           <p class="hint" data-i18n="language_hint"></p>
+        </div>
+      </details>
+
+      <!-- Beside the language, because both are what this page is rather than
+           what is in it. The three answers are one control: "follows the OS" is
+           an answer too, and the default one — a two-state switch has to open in
+           light or dark and so has to guess, which is how a tablet that dims
+           itself at dusk ends up pinned bright. -->
+      <details class="panel" id="p-theme">
+        <summary>
+          <span class="section" data-i18n="panel_theme"></span>
+          <span class="state" id="themestate"></span>
+        </summary>
+        <div class="body">
+          <!-- role=group, not radiogroup: components.css marks the choice with
+               aria-pressed, which is what bildhaft's print dialog already uses,
+               and a radiogroup whose children are not radios reads worse than a
+               labelled group of buttons. -->
+          <div class="segmented" id="theme" role="group" data-i18n-aria="panel_theme"></div>
+          <p class="hint" data-i18n="theme_hint"></p>
         </div>
       </details>
 

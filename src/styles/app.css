@@ -319,11 +319,18 @@ button,input,select,textarea{font:inherit;color:inherit}
    also gets a seek bar you can actually aim at, which is the point of a
    preview. */
 .item audio{order:3;flex:1 1 100%;width:100%;height:34px;opacity:.85}
+/* Chrome draws its player light. On a dark row that is a slab of white, so it
+   gets turned over — but only there: in light it is already right.
+   Three rules rather than one, for the same reason the token file has three.
+   The media query is what "following the OS" means; the two attribute rules are
+   what a choice in Einstellungen means, and the light one has to say `none`
+   out loud — it is beating the media query above rather than replacing it, so
+   on a dark OS with the page set light there is a filter to turn off. */
 @media (prefers-color-scheme:dark){
-  /* Chrome draws its player light. On a dark row that is a slab of white, so
-     it gets turned over — but only here: in light it is already right. */
   .item audio{filter:invert(.92) hue-rotate(180deg)}
 }
+:root[data-theme=light] .item audio{filter:none}
+:root[data-theme=dark] .item audio{filter:invert(.92) hue-rotate(180deg)}
 /* The picker: a list you can narrow, not a select you scroll.
    Forty shipped voices and, with a key, several hundred Azure ones — a native
    select of bare names was unusable at that size and said nothing about what

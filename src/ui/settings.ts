@@ -9,12 +9,13 @@
 import { loadPhrases, wipe } from '../db/db.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
 import { offered, probeAzure } from '../core/voices.ts';
-import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
+import { LANGUAGES, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, closeMenus, el, menuOn, say, sourceOf, speaks, weighs } from './dom.ts';
+import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
 /**
  * Azure's own region names. A datalist suggests rather than restricts, so a
@@ -403,6 +404,42 @@ async function wipeEverything(): Promise<void> {
 
 // ------------------------------------------------------------------ wiring
 
+/*
+ * The scheme, and where it is kept.
+ *
+ * localStorage like the language above it, and for a sharper reason: the scheme
+ * has to be readable before the first paint or the page flashes the OS's answer
+ * and then corrects itself. That rules out the database the sentences live in,
+ * which is asynchronous. @lautstark/design/theme carries the reasoning; the
+ * inline script in index.html is the half that runs before this module exists.
+ */
+const THEME_KEY = 'mitreden.theme';
+
+const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
+
+/** The three answers, with the one in force pressed. */
+function drawTheme(): void {
+  const current = readTheme(THEME_KEY);
+  const box = el('theme');
+  box.innerHTML = '';
+  for (const theme of THEMES) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = themeLabel(theme);
+    button.setAttribute('aria-pressed', String(theme === current));
+    button.onclick = () => {
+      saveTheme(THEME_KEY, theme);
+      applyTheme(theme);
+      // Redraw this control and its heading only. Nothing else on the page
+      // depends on the scheme — the tokens do that work, which is the point of
+      // there being tokens.
+      drawTheme();
+      drawStates();
+    };
+    box.appendChild(button);
+  }
+}
+
 /**
  * What each panel holds, said in its own heading.
  *
@@ -425,6 +462,7 @@ function drawStates(): void {
   // it — which is the one thing this shape promises not to do.
   const n = ALL().length;
   el('datastate').textContent = n ? tn('count', n) : t('count_none');
+  el('themestate').textContent = themeLabel(readTheme(THEME_KEY));
 }
 
 /**
@@ -439,6 +477,9 @@ function chooseLang(code: Lang): void {
   // Before the picker redraws, so it marks the voice this page now starts in.
   relangVoice();
   drawVoices();
+  // The three scheme labels are words like any other, and they are drawn from
+  // TS rather than carried by data-i18n, so applyLang() above cannot reach them.
+  drawTheme();
   drawStates();
   void drawSetup();
   void load();
@@ -455,6 +496,7 @@ function openPanel(id: string): void {
 /** The dialog, with the panel that answers whatever asked for it unfolded. */
 export function openSetup(panel?: string): void {
   drawVoices();
+  drawTheme();
   drawStates();
   // The key lives in the database, so this one heading cannot be answered
   // synchronously on a first open. It says it is fetching rather than saying

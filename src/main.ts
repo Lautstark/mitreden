@@ -11,6 +11,7 @@ import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';
 import { lang, setLang, type Lang } from './i18n/index.ts';
+import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
 import { draw as drawList, wireList } from './ui/list.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
@@ -29,6 +30,11 @@ function chooseLang(): void {
 
 export async function start(): Promise<void> {
   chooseLang();
+  // The attribute is already set by the inline script in index.html; this is
+  // the address bar, which needs the tokens imported above to read a --bg from,
+  // and the listener that keeps it right when the OS turns over under a page
+  // that is following it.
+  initTheme('mitreden.theme');
   applyLang();
   wireRail();
   wireComposer();
