@@ -12,7 +12,7 @@ import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
-import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice } from './composer.ts';
+import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, closeMenus, el, menuOn, say, sourceOf, speaks, weighs } from './dom.ts';
 
@@ -436,6 +436,8 @@ function chooseLang(code: Lang): void {
   localStorage.setItem('mitreden.lang', code);
   document.documentElement.lang = code;
   applyLang();
+  // Before the picker redraws, so it marks the voice this page now starts in.
+  relangVoice();
   drawVoices();
   drawStates();
   void drawSetup();

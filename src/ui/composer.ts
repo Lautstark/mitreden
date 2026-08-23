@@ -11,15 +11,29 @@
  */
 
 import { addPhrases, build, settings, saveVoice } from '../db/repo.ts';
-import { asVoice, offered } from '../core/voices.ts';
+import { asVoice, defaultVoice, offered } from '../core/voices.ts';
 import { setProgress } from '../core/audio.ts';
-import { t, tn } from '../i18n/index.ts';
+import { LANGUAGES, lang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
 import { OPEN, load } from './state.ts';
 import { el, say, sourceOf, speaks } from './dom.ts';
 
 let voices: Voice[] = [];
 let chosen = '';
+
+/**
+ * Whether the voice in force is somebody's answer or the page's guess. Only a
+ * guess may be revisited: the language changing says something about what to
+ * read aloud, but it says nothing about a voice that was chosen on purpose.
+ */
+let deliberate = false;
+
+/**
+ * Where each language starts, worked out when the catalogue is. Changing the
+ * words must not cost an Azure request, and Azure's answer would be the same
+ * one anyway.
+ */
+let starts: Partial<Record<Lang, string>> = {};
 
 export const chosenVoice = (): string => chosen;
 export const knownVoices = (): readonly Voice[] => voices;
@@ -39,15 +53,37 @@ export async function loadVoices(): Promise<void> {
   const saved = await settings();
   const list = await offered(saved.azure);
   voices = list.map((voice) => asVoice(voice, list));
-  const wanted = chosen || saved.voice || '';
-  chosen = voices.some((voice) => voice.id === wanted) ? wanted : voices[0]?.id ?? '';
+  starts = {};
+  for (const code of Object.keys(LANGUAGES) as Lang[]) starts[code] = defaultVoice(list, code);
+  // A voice somebody chose wins; then a stored one, which is how a choice
+  // survives the key it needed going away and coming back; then whatever this
+  // page had guessed until now.
+  const wanted = (deliberate ? chosen : '') || saved.voice || chosen || '';
+  const kept = voices.some((voice) => voice.id === wanted);
+  chosen = kept ? wanted : starts[lang()] ?? '';
+  deliberate = kept && (deliberate || wanted === saved.voice);
   drawVoice();
+}
+
+/**
+ * The words changed, so the guess about which language to read aloud in has
+ * too. A chosen voice is not a guess and does not move — including a chosen
+ * German voice on an English page, which is somebody's arrangement and not a
+ * mistake to correct.
+ */
+export function relangVoice(): void {
+  const start = starts[lang()];
+  if (deliberate || !start || start === chosen) return;
+  chosen = start;
+  drawVoice();
+  for (const fn of watchers) fn();
 }
 
 /** Picking a voice records nothing: it is the voice the next recording gets. */
 export async function pickVoice(id: string): Promise<void> {
   if (!id || id === chosen) return;
   chosen = id;
+  deliberate = true;
   await saveVoice(id);
   drawVoice();
   for (const fn of watchers) fn();

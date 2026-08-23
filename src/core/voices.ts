@@ -54,6 +54,24 @@ export async function offered(azure?: AzureAccess): Promise<readonly Offered[]> 
   return list;
 }
 
+/**
+ * Which voice a page that has not been told starts in. The words on screen are
+ * the only evidence there is about what somebody wants read aloud, and the
+ * catalogue's own order is not evidence: it opens with three German voices, so
+ * an English page was starting in a German man's and staying there.
+ *
+ * `recommended` is stimmquelle's pick for a language-and-gender slot, and this
+ * is the one use left for a flag that stopped being shown. It is what keeps
+ * the choice off array order — of the three Thorstens the shipped catalogue
+ * offers, order alone would hand a first German page whichever one happens to
+ * be listed first, and one of them is 114 MB. Nothing in the picker says it,
+ * and no voice wears it: a starting point is not a verdict.
+ */
+export function defaultVoice(list: readonly Offered[], speaking: string): string {
+  const speaks = list.filter((voice) => voice.lang === speaking);
+  return (speaks.find((voice) => voice.recommended) ?? speaks[0] ?? list[0])?.id ?? '';
+}
+
 /** How Azure answered, for the settings card to put into words. */
 export type AzureAnswer =
   | { ok: true; count: number }

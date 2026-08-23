@@ -234,6 +234,38 @@ test('the voice is named beside the composer and chosen in the settings', async 
   await expect(page.locator('#voicename')).toHaveText(name);
 });
 
+test('the voice follows the words, until somebody has chosen one', async ({ page }) => {
+  // The shipped catalogue opens with three German voices, so taking the first
+  // of it read English aloud in a German man's voice and went on doing it.
+  await expect(page.locator('#voicename')).toHaveText('Thorsten (medium)');
+  await expect(page.locator('#voicefrom')).toContainText('Deutsch');
+
+  await page.click('#gear');
+  await page.click('#p-lang > summary');
+  await page.click('#lang');
+  await page.locator('#p-lang .menu').getByText('English').click();
+  // Nobody had said which voice, so the German one was this page's guess about
+  // what it would be asked to read — and the guess has just been answered.
+  await expect(page.locator('#voicename')).toHaveText('Kristin');
+  await expect(page.locator('#voicefrom')).toContainText('English');
+
+  // Without the ?lang= these tests open with, so the stored English stands.
+  await page.goto('/');
+  await expect(page.locator('#voicename')).toHaveText('Kristin');
+
+  // A chosen voice is nobody's guess. It stays through a change of words, in
+  // either direction: a German voice on an English page is an arrangement
+  // somebody made, not a mistake to be corrected on their behalf.
+  await page.click('#voicepick');
+  await page.fill('#voiceq', 'Thorsten (emotional)');
+  await page.locator('#voices .voice').first().click();
+  await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
+  await page.click('#p-lang > summary');
+  await page.click('#lang');
+  await page.locator('#p-lang .menu').getByText('Deutsch').click();
+  await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
+});
+
 test('the two menus in the head are one shape', async ({ page }) => {
   // Herunterladen was a native select and the ⋯ beside it was not, so the two
   // drew themselves differently in every theme. Both open the same menu now.
