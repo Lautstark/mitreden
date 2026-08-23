@@ -69,6 +69,12 @@ const matches = (voice: Voice): boolean => {
  * used to be a native select of bare names, where "Thorsten" and "Katja" were
  * indistinguishable in every way that matters — one is on this machine, the
  * other is a request to Microsoft per sentence.
+ *
+ * Four facts, and no verdict. stimmquelle's `recommended` used to be a badge
+ * here, and it could not say what it meant: the flag is always false for a
+ * cloud backend, so with an Azure key two rows carried it and hundreds did
+ * not — and "we have no opinion" and "not as good" look identical from the
+ * outside. The facts let somebody choose; the badge only looked like help.
  */
 function voiceRow(voice: Voice, live: boolean): HTMLElement {
   const row = document.createElement('button');
@@ -101,12 +107,6 @@ function voiceRow(voice: Voice, live: boolean): HTMLElement {
   ].filter(Boolean).join(' · ');
 
   row.append(name, facts);
-  if (voice.recommended) {
-    const pick = document.createElement('span');
-    pick.className = 'voice__pick';
-    pick.textContent = t('voice_recommended');
-    row.appendChild(pick);
-  }
   row.onclick = () => void pickVoice(voice.id);
   return row;
 }

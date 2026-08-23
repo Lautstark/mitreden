@@ -51,5 +51,4 @@ export interface Voice {
   /** Fetched before this voice first speaks. 0 for a cloud backend. */
   downloadBytes: number;
   needsKey: boolean;
-  recommended: boolean;
 }

@@ -100,5 +100,4 @@ export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   gender: voice.gender,
   downloadBytes: voice.downloadBytes,
   needsKey: voice.needsKey,
-  recommended: voice.recommended,
 });

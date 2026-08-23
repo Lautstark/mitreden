@@ -25,7 +25,7 @@ async function openData(page: Page) {
   await page.goto('/?lang=de');
   await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
   await page.click('#gear');
-  await page.click('#tabs .tab[data-tab="data"]');
+  await page.click('#p-data > summary');
 }
 
 /** The file input is hidden behind a button; Playwright fills it directly. */
@@ -88,12 +88,11 @@ test('the same file keeps its Azure voice on a browser that has the key', async 
   await page.route(VOICE_LIST, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openData(page);
-  await page.click('#tabs .tab[data-tab="voices"]');
+  await page.click('#p-azure > summary');
   await page.fill('#azurekey', '0'.repeat(32));
   await page.click('#cloud .save');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
 
-  await page.click('#tabs .tab[data-tab="data"]');
   await importJson(page, 'mitreden-alle-saetze-2026-08-23.json', [
     { id: 'ich-habe-hunger', text: 'Ich habe Hunger.', collections: [], voice: 'azure:de-DE-KatjaNeural' },
   ]);
