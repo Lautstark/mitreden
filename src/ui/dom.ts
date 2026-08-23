@@ -70,29 +70,93 @@ export const weighs = (bytes: number): string =>
 
 // ------------------------------------------------------------------- menus
 
-export type AddItem = (label: string, danger: boolean, run: () => void) => void;
+/**
+ * What an item is besides its label. All three optional, because the common
+ * item is a plain command and should read as one at the callsite.
+ *
+ * `checked` is deliberately a tri-state: left off, the item is a command and
+ * gets role="menuitem"; set either way, the menu is a set of alternatives and
+ * the item gets role="menuitemradio". That distinction used to be carried by a
+ * positional boolean, and it drifted — the same third argument meant "this is
+ * destructive" here and "this one is in force" in vorlaut, which is how two
+ * copies of one function ended up announcing opposite things. Naming the field
+ * is what stops that recurring.
+ */
+export type ItemOpts = { danger?: boolean; checked?: boolean; disabled?: boolean };
+
+export type AddItem = (label: string, run: () => void, opts?: ItemOpts) => void;
+
+/** The trigger the open menu belongs to, so focus has somewhere to go back to. */
+let opener: HTMLElement | null = null;
+
+/** The items worth landing on. A disabled one is skipped, not stepped through. */
+const rows = (menu: Element): HTMLElement[] =>
+  [...menu.querySelectorAll<HTMLElement>('button:not(:disabled)')];
 
 export function closeMenus(): void {
-  for (const menu of document.querySelectorAll('.menu')) menu.remove();
+  for (const menu of document.querySelectorAll('.menu')) {
+    // Focus returns to the trigger only when it was inside the menu to begin
+    // with. Escape and an activated item both arrive here with focus in the
+    // list, and both want it back on the button that opened it; a click
+    // somewhere else on the page arrives here too, and pulling focus back
+    // would yank it out of whatever that click just gave it to.
+    if (menu.contains(document.activeElement)) opener?.focus();
+    menu.remove();
+  }
+  opener = null;
   for (const button of document.querySelectorAll('[aria-expanded="true"]'))
     button.setAttribute('aria-expanded', 'false');
+}
+
+/** Home/End and the arrows, the shape stepVoices() uses on the voice list. */
+function stepMenu(event: KeyboardEvent): void {
+  const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+  if (!keys.includes(event.key)) return;
+  const menu = event.currentTarget as HTMLElement;
+  const list = rows(menu);
+  const at = list.indexOf(document.activeElement as HTMLElement);
+  if (at < 0 || !list.length) return;
+  event.preventDefault();
+  const to = event.key === 'Home' ? 0
+    : event.key === 'End' ? list.length - 1
+      : event.key === 'ArrowDown'
+        ? (at + 1) % list.length
+        : (at - 1 + list.length) % list.length;
+  list[to]!.focus();
 }
 
 export function menuOn(button: HTMLElement, build: (add: AddItem) => void): void {
   const open = button.getAttribute('aria-expanded') === 'true';
   closeMenus();
-  if (open) return;
+  if (open) return;                       // a second press is a dismissal
   button.setAttribute('aria-expanded', 'true');
+  // "menu" rather than "true": both open a menu as far as the ARIA spec goes,
+  // but the first says which kind, and the markup that spells it out is in
+  // index.html on some of these triggers and not others.
+  button.setAttribute('aria-haspopup', 'menu');
   const menu = document.createElement('div');
   menu.className = 'menu';
-  build((label, danger, run) => {
+  menu.setAttribute('role', 'menu');
+  build((label, run, opts = {}) => {
     const item = document.createElement('button');
+    // Explicit, because a <button> inside a <form> submits it by default and
+    // these are drawn into whatever the page happens to be.
+    item.type = 'button';
     item.textContent = label;
-    if (danger) item.className = 'danger';
+    item.setAttribute('role', opts.checked === undefined ? 'menuitem' : 'menuitemradio');
+    if (opts.checked !== undefined) item.setAttribute('aria-checked', String(opts.checked));
+    if (opts.danger) item.className = 'danger';
+    if (opts.disabled) item.disabled = true;
     item.onclick = (event) => { event.stopPropagation(); run(); };
     menu.appendChild(item);
   });
+  menu.addEventListener('keydown', stepMenu);
   button.parentNode?.appendChild(menu);
+  opener = button;
+  // Focus goes in, or the menu is only open in the drawing: a reader left on
+  // the trigger is told the list expanded and then has nothing to read, and a
+  // keyboard has no way into it at all. This was the whole of the defect.
+  rows(menu)[0]?.focus();
 }
 
 addEventListener('click', (event) => {

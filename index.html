@@ -65,7 +65,6 @@
 
       <div class="rail__foot">
         <button id="gear" class="flat" data-i18n="settings"></button>
-        <button id="import2" class="flat" data-i18n="import_label"></button>
       </div>
     </aside>
 
@@ -122,7 +121,7 @@
                the one control that could not follow the theme. It is the same
                button and the same menu as everything else now. -->
           <span class="menu-anchor start"><button id="lang" class="btn quiet sm dropdown"
-            aria-haspopup="true" aria-expanded="false"
+            aria-haspopup="menu" aria-expanded="false"
             aria-label="Sprache / Language"></button></span>
           <p class="hint" data-i18n="language_hint"></p>
         </div>
@@ -178,7 +177,16 @@
             <div class="row" id="folderactions"></div>
           </div>
 
-          <button class="btn primary sm" id="export" data-i18n="backup_export"></button>
+          <!-- The two halves of the same subject, side by side. „Sicherung
+               einlesen" used to be „Importieren" in the rail, a screen away
+               from the button that makes the file it reads - history rather
+               than intent, since that button predates there being a backup
+               format and quietly gained a second job when one arrived. It
+               still does both: importFile routes on the file's own shape. -->
+          <div class="row">
+            <button class="btn primary sm" id="export" data-i18n="backup_export"></button>
+            <button class="btn sm" id="import2" data-i18n="backup_import"></button>
+          </div>
           <p class="hint" data-i18n="backup_hint"></p>
           <input type="file" id="importfile" accept="application/json,.json" hidden>
 
@@ -228,8 +236,8 @@
            to get wrong per theme — true, and beside the point: what the browser
            draws belongs to no design language, and it sat next to a ⋯ that does. -->
       <span class="menu-anchor"><button id="dlall" class="btn quiet sm dropdown"
-        aria-haspopup="true" aria-expanded="false" data-i18n="download_all"></button></span>
-      <span class="menu-anchor"><button id="colmore" class="icon" aria-haspopup="true"
+        aria-haspopup="menu" aria-expanded="false" data-i18n="download_all"></button></span>
+      <span class="menu-anchor"><button id="colmore" class="icon" aria-haspopup="menu"
         aria-expanded="false" data-i18n-title="more_actions"
         data-i18n-aria="more_actions">⋯</button></span>
     </div>

@@ -32,8 +32,8 @@ const playing = new Map<string, string>();
  */
 function openDownload(button: HTMLElement): void {
   menuOn(button, (add) => {
-    add(t('download_mp3'), false, () => { closeMenus(); void packAll('mp3'); });
-    add(t('download_wav'), false, () => { closeMenus(); void packAll('wav'); });
+    add(t('download_mp3'), () => { closeMenus(); void packAll('mp3'); });
+    add(t('download_wav'), () => { closeMenus(); void packAll('wav'); });
   });
 }
 
@@ -122,7 +122,7 @@ function row(item: PhraseWithState): HTMLElement {
   wrap.className = 'menu-anchor';
   const dots = document.createElement('button');
   dots.className = 'dots';
-  dots.setAttribute('aria-haspopup', 'true');
+  dots.setAttribute('aria-haspopup', 'menu');
   dots.setAttribute('aria-expanded', 'false');
   dots.title = t('more_actions');
   dots.setAttribute('aria-label', t('more_actions'));
@@ -136,14 +136,14 @@ function row(item: PhraseWithState): HTMLElement {
 function openMenu(button: HTMLElement, item: PhraseWithState): void {
   menuOn(button, (add) => {
     if (item.state !== 'missing') {
-      add(t('download_mp3'), false, () => { closeMenus(); void grab(item, 'mp3'); });
-      add(t('download_wav'), false, () => { closeMenus(); void grab(item, 'wav'); });
+      add(t('download_mp3'), () => { closeMenus(); void grab(item, 'mp3'); });
+      add(t('download_wav'), () => { closeMenus(); void grab(item, 'wav'); });
     } else {
       // A recording that failed was otherwise stuck: the only way back was to
       // retype the sentence.
-      add(t('menu_record'), false, () => { closeMenus(); void again(item); });
+      add(t('menu_record'), () => { closeMenus(); void again(item); });
     }
-    add(t('menu_delete_one'), true, () => { closeMenus(); void remove(item); });
+    add(t('menu_delete_one'), () => { closeMenus(); void remove(item); }, { danger: true });
   });
 }
 
@@ -252,10 +252,10 @@ export function wireList(): void {
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
-    add(t('collection_export'), false, () => { closeMenus(); void exportCollection(current); });
-    add(t('collection_delete'), true, () => {
+    add(t('collection_export'), () => { closeMenus(); void exportCollection(current); });
+    add(t('collection_delete'), () => {
       closeMenus();
       void deleteCollection(current.key, current.name, current.count);
-    });
+    }, { danger: true });
   });
 }

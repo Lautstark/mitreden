@@ -584,8 +584,13 @@ export function wireSettings(backup: Sicherung): void {
   onVoiceChange(() => { drawVoices(); drawStates(); });
 
   el('lang').onclick = () => menuOn(el('lang'), (add) => {
+    // The one menu on this page that is a choice rather than a list of things
+    // to do, so its items are menuitemradio and one of them is checked. It
+    // read as five equal commands before, leaving the language in force to be
+    // inferred from the button behind the open list.
     for (const [code, name] of Object.entries(LANGUAGES))
-      add(name, false, () => { closeMenus(); chooseLang(code as Lang); });
+      add(name, () => { closeMenus(); chooseLang(code as Lang); },
+        { checked: code === lang() });
   });
 
   el('export').onclick = () => void exportAll();
