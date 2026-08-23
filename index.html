@@ -115,9 +115,13 @@
         </div>
       </details>
 
+      <!-- One panel, as bildhaft's Daten is: a backup and a reset are the same
+           subject — what happens to everything you have — and reading about the
+           one is how you find the other. The reset keeps its own heading inside,
+           because a destructive action still has to announce itself. -->
       <details class="panel" id="p-data">
         <summary>
-          <span class="section" data-i18n="backup_title"></span>
+          <span class="section" data-i18n="panel_data"></span>
           <span class="state" id="datastate"></span>
         </summary>
         <div class="body">
@@ -127,18 +131,8 @@
           </div>
           <p class="hint" data-i18n="backup_hint"></p>
           <input type="file" id="importfile" accept="application/json,.json" hidden>
-        </div>
-      </details>
 
-      <!-- No state line, and not by omission: this section offers an action and
-           has nothing to report about itself. An empty .state says "there is a
-           report here and it is blank", which is the one thing a heading that
-           carries its status must not say. -->
-      <details class="panel" id="p-wipe">
-        <summary>
-          <span class="section" data-i18n="danger_title"></span>
-        </summary>
-        <div class="body">
+          <h3 class="danger__title" data-i18n="danger_title"></h3>
           <p class="hint" data-i18n="danger_body"></p>
           <button class="linkdanger" id="wipe" data-i18n="danger_do"></button>
         </div>
