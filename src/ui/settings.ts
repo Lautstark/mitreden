@@ -32,13 +32,16 @@ const AZURE_REGIONS = [
 /**
  * Which voice records, chosen where it is decided rather than beside every
  * sentence. A shipped catalogue is forty-odd voices and an Azure key is
- * hundreds, so the list narrows three ways — the same three stimmquelle's own
- * `ListOptions` narrows by, because a picker and a catalogue want the same
- * questions asked of a voice.
+ * hundreds, so the list narrows by what you type and by what a voice speaks.
+ *
+ * It does not narrow by stimmquelle's `recommended`. That flag is editorial and
+ * — as its own documentation says — always false for a cloud backend, which
+ * publishes hundreds and about which the package has no opinion. So the moment
+ * an Azure key is in, "only recommended" hides every Azure voice: a filter that
+ * reads as though the key had stopped working.
  */
 let query = '';
 let onlyLang: string | null = null;
-let onlyPicks = false;
 
 /**
  * stimmquelle publishes three, and a corpus of several speakers is `mixed`
@@ -55,7 +58,6 @@ const language = (code: string): string =>
 
 const matches = (voice: Voice): boolean => {
   if (onlyLang && language(voice.locale) !== onlyLang) return false;
-  if (onlyPicks && !voice.recommended) return false;
   if (!query) return true;
   const hay = `${voice.label} ${voice.locale} ${sourceOf(voice.source)} ${speaks(voice.locale)}`;
   return hay.toLowerCase().includes(query);
@@ -129,10 +131,6 @@ function drawFilters(voices: readonly Voice[]): void {
   pill(t('filter_any_language'), onlyLang === null, () => { onlyLang = null; });
   for (const code of codes)
     pill(speaks(code), onlyLang === code, () => { onlyLang = onlyLang === code ? null : code; });
-  // Editorial, and stimmquelle says so: one voice per language-and-gender slot,
-  // which is the whole list somebody who does not want to audition forty needs.
-  if (voices.some((voice) => voice.recommended))
-    pill(t('filter_recommended'), onlyPicks, () => { onlyPicks = !onlyPicks; });
 }
 
 export function drawVoices(): void {
