@@ -6,6 +6,9 @@
    value any other product shares. */
 :root{
   --sidebar-w:268px;
+  /* The page's own margin. The topbar has to reach past it, so it cannot be
+     written out twice and hoped to match. */
+  --page-pad:clamp(20px,5vw,64px);
   /* The composer's inner margins. The caption under it reads these too. */
   --compose-l:20px;
   --compose-r:16px;
@@ -157,9 +160,15 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
 @media (max-width:820px){
   .rail{transform:translateX(-100%);box-shadow:var(--shadow);width:min(280px,84vw)}
   .rail.open{transform:none;visibility:visible}
-  /* The bar is the page's top edge here, and the composer was sitting flush
-     against it — the one place in the layout with no air at all. */
-  .topbar{display:flex;margin-bottom:16px}
+  /* The bar is the page's top edge here, so it has to reach all three of them.
+     It sat inside the page's margin instead: a card with a rule that stopped
+     short of the screen on both sides and a band of background above it. The
+     margin is pulled back on all three, and only the air below it stays. */
+  .topbar{display:flex;
+    margin:calc(var(--page-pad) * -1) calc(var(--page-pad) * -1) 16px}
+  /* Bar-sized, like the rail's. .logo's clamp is written for the heading a
+     page opens with, and beside a 19px title it read as a mistake. */
+  .topbar .logo{width:28px;height:28px}
   .rail__brand{display:none}
   /* Here the rail is a layer over the work: there is nothing to collapse, only
      something to dismiss, and the topbar's ☰ is already the way back. The
@@ -175,7 +184,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
 
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:var(--font);font-size:15px;line-height:1.55;
-  padding:clamp(20px,5vw,64px);padding-bottom:0;-webkit-font-smoothing:antialiased}
+  padding:var(--page-pad);padding-bottom:0;-webkit-font-smoothing:antialiased}
 /* The work sits to the right of the rail and keeps its comfortable measure. */
 body{min-height:100vh;display:flex;flex-direction:column}
 main{max-width:720px;margin:0 auto;padding-left:0;width:100%;
@@ -183,10 +192,10 @@ main{max-width:720px;margin:0 auto;padding-left:0;width:100%;
 @media (min-width:821px){
   /* The rail's width plus the padding the page would have had anyway, so the
      work keeps the same breathing room it had before there was a rail. */
-  body{padding-left:calc(var(--sidebar-w) + clamp(20px,5vw,64px));
+  body{padding-left:calc(var(--sidebar-w) + var(--page-pad));
     transition:padding-left .18s ease}
   /* Collapsed, the work gets the rail's 268px back and re-centres into it. */
-  body.railed{padding-left:clamp(20px,5vw,64px)}
+  body.railed{padding-left:var(--page-pad)}
   body.railed .rail{transform:translateX(-100%);visibility:hidden}
 }
 h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
