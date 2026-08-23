@@ -15,8 +15,8 @@ import { asVoice, defaultVoice, offered } from '../core/voices.ts';
 import { setProgress } from '../core/audio.ts';
 import { LANGUAGES, lang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
-import { OPEN, load } from './state.ts';
-import { el, say, sourceOf, speaks } from './dom.ts';
+import { OPEN, endWork, load, queueWork, stepWork } from './state.ts';
+import { busy, el, say, sourceOf, speaks } from './dom.ts';
 
 let voices: Voice[] = [];
 let chosen = '';
@@ -118,16 +118,21 @@ async function add(): Promise<void> {
   // you opened one, you typed, it belongs there. With several open it goes in
   // uncollected — guessing which of two you meant would be worse than asking.
   const into = OPEN.size === 1 ? [...OPEN] : [];
-  say(t('busy_add'));
+  busy('busy_add');
   const { added, merged, ids } = await addPhrases(lines, into);
   box.value = '';
   // Show them before recording them. Waiting for the voice to exist before
   // drawing the row is how the list stays empty through a model download.
+  // They are marked as being worked on before the draw, or every one of them
+  // appears saying "noch nicht aufgenommen" — true, and the opposite of what
+  // is happening to it.
+  queueWork(ids);
   await load();
-  if (!ids.length) return;
-  setProgress((percent) => say(t('busy_model', { percent })));
-  const { recorded, failed } = await build(ids, chosenVoice());
+  if (!ids.length) { endWork(); return; }
+  setProgress((percent) => busy('busy_model', { percent }));
+  const { recorded, failed } = await build(ids, chosenVoice(), false, stepWork);
   setProgress(null);
+  endWork();
   say(t('done_add', { added, rendered: recorded })
     + (merged ? t('done_add_twins', { n: merged }) : '') + '.'
     + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));

@@ -81,6 +81,12 @@
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
   .rail{transition:none}
+  /* The blanket rule above does not stop these, it makes them frantic — a ring
+     spinning a full turn every hundredth of a millisecond is the worst version
+     of what somebody asked not to see. Both markers say what they say without
+     moving at all: the ring is a broken circle in the accent, the dot is lit
+     in it, and the words beside each are the actual answer. */
+  .status.working::before,.item.recording .dot{animation:none !important}
 }
 .workhead{display:flex;align-items:center;gap:14px;margin:26px 0 10px}
 /* The name is the control. Renaming a Sammlung is typing in its title, which
@@ -227,6 +233,16 @@ button,input,select,textarea{font:inherit;color:inherit}
   transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
+/* A job that has started, not one that has finished. Both used to arrive in
+   the same grey, so "Wird aufgenommen …" and "3 hinzugefügt" looked alike and
+   the page appeared to be resting through a 60 MB download. A pseudo-element,
+   so the live region's text is still exactly the sentence a reader hears. */
+.status.working{color:var(--text)}
+.status.working::before{content:'';display:inline-block;width:11px;height:11px;
+  margin-right:8px;vertical-align:-1px;border-radius:50%;
+  border:2px solid var(--accent);border-right-color:transparent;
+  animation:turning .8s linear infinite}
+@keyframes turning{to{transform:rotate(1turn)}}
 /* Empty it keeps its place in the accessibility tree and gives up its space:
    a block with no content draws no line box, so the margin is the only part
    that would still show. display:none here would undo the whole point. */
@@ -279,6 +295,21 @@ button,input,select,textarea{font:inherit;color:inherit}
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
 .item.ok .dot{background:var(--ok)}
 .item.stale .dot{background:var(--warn)}
+/* Being recorded is not a fourth kind of recording, so it does not get a
+   fourth colour to learn: it is the accent, the one thing on this page that
+   already means "here, now". The row keeps its real state underneath and goes
+   back to showing it the moment the file lands. */
+.item.busy .dot{background:var(--accent)}
+.item.recording .dot{animation:breathing 1.2s ease-in-out infinite}
+/* Waiting is not working. Half-lit and still, so a batch of forty reads as one
+   sentence being recorded and the rest queued behind it — which is what is
+   happening — rather than forty things going at once. */
+.item.queued .dot{opacity:.45}
+.item.busy .state{color:var(--accent-strong)}
+/* Only the sentence actually being spoken gets the border. Faint on purpose:
+   in a batch this travels down the list, and anything stronger flickers. */
+.item.recording{outline-color:var(--accent)}
+@keyframes breathing{50%{transform:scale(.55);opacity:.4}}
 .item .txt{flex:1;min-width:0}
 .item .line{font-size:18px;letter-spacing:-.01em}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
