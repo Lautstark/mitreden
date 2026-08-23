@@ -113,13 +113,19 @@
   cursor:pointer;display:flex;align-items:center;justify-content:center}
 .send:hover{background:var(--accent-hover)}
 /* The caption spans the composer exactly: the key's box starts on its left
-   edge and the last word ends on its right.
+   edge and the last word ends on its right, and its two halves sit on one
+   baseline.
+
+   Baseline, not centre: the right half ends in a button, so it is 30px tall
+   against the left half's 15, and a flex row left to stretch put one at the top
+   of the line and centred the other 7px lower. Aligning the text itself holds
+   whatever is put in either half.
 
    It followed the composer's own padding before, which is 20px left and 16px
    right — asymmetric on purpose, because a round send button needs less inset
    than a line of text does. A caption has no such reason, and inheriting the
    asymmetry made it start 4px further in than it ended. One edge, both ends. */
-.chint{display:flex;gap:12px;flex-wrap:nowrap;margin:7px 0 0;
+.chint{display:flex;align-items:baseline;gap:12px;flex-wrap:nowrap;margin:7px 0 0;
   font-size:12.5px;color:var(--text-faint)}
 /* nowrap, because wrapping is decided before shrinking is: a long Azure name
    sent the whole voice line to a row of its own however small it was willing to

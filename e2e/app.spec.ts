@@ -114,6 +114,22 @@ test('the caption spans the composer, both ends on the same edge', async ({ page
   });
   expect(ends.left).toBe(0);
   expect(ends.right).toBe(0);
+
+  // And one baseline. The right half ends in a padded button, so it is twice
+  // the height of the left; a flex row left to stretch put one at the top of
+  // the line and centred the other 7px below it. Measured on the text itself,
+  // by range — an element box includes padding and would hide the difference.
+  const drift = await page.evaluate(() => {
+    const baseline = (node: Node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect().top;
+    };
+    const keys = document.querySelector('.chint > span')!;
+    const words = [...keys.childNodes].find((n) => n.nodeType === 3 && n.textContent!.trim())!;
+    return Math.abs(baseline(words) - baseline(document.querySelector('.voicenow__what')!));
+  });
+  expect(drift).toBeLessThan(1);
 });
 
 test('the caption stays on one line, whatever the voice is called', async ({ page }) => {
