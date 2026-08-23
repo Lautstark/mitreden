@@ -139,4 +139,9 @@ export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   gender: voice.gender,
   downloadBytes: voice.downloadBytes,
   needsKey: voice.needsKey,
+  // Spread rather than assigned, so "absent" survives the trip as absent. The
+  // catalogue sets this only on the voices it is true of, and a row asks
+  // whether it is there at all; copying an `undefined` into every other voice
+  // would say the question had been asked and answered no.
+  ...(voice.rushesFragments ? { rushesFragments: true } : {}),
 });

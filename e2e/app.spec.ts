@@ -267,6 +267,42 @@ test('the picker offers a German woman and an English man', async ({ page }) => 
   await expect(page.locator('#voices')).toContainText('Keine Stimme');
 });
 
+test('a voice that rushes single words says so on its own row', async ({ page }) => {
+  // The case a talker is mostly made of: one word on one key. The voice the
+  // catalogue flags renders a word with no terminal punctuation at a near-fixed
+  // span whatever the word is, so "Nein" gets the same slot as "Ja" — which is
+  // invisible in every test sentence, because a sentence is fine.
+  //
+  // Nothing is recorded here. Proving the timing costs a 63 MB model, and the
+  // measurement is stimmquelle's to hold; what this covers is the flag reaching
+  // the screen, which is the failure mode a note has — being rendered nowhere,
+  // or being rendered on every row, and both look like working software.
+  await page.click('#voicepick');
+  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+
+  await page.fill('#voiceq', 'kerstin');
+  const kerstin = page.locator('#voices .voice').first();
+  const note = kerstin.locator('.voice__hint');
+  // Visible, not merely present: an invisible note is the same as no note, and
+  // this one wraps to a second line inside a button that does not wrap by
+  // default. Its own words rather than the flag's, which carries none.
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('Satzzeichen');
+
+  // And on that row alone. The catalogue decides who carries the trait, so a
+  // page that showed it everywhere would be as wrong as one that showed it
+  // nowhere — and would pass every assertion above.
+  await page.fill('#voiceq', 'thorsten');
+  await expect(page.locator('#voices .voice').first().locator('.voice__name'))
+    .toContainText('Thorsten');
+  await expect(page.locator('#voices .voice__hint')).toHaveCount(0);
+
+  // And exactly once across the unfiltered catalogue, which is the assertion
+  // that would fail if the flag were being read off something every row has.
+  await page.fill('#voiceq', '');
+  await expect(page.locator('#voices .voice__hint')).toHaveCount(1);
+});
+
 test('the voice follows the words, until somebody has chosen one', async ({ page }) => {
   // The shipped catalogue opens with three German voices, so taking the first
   // of it read English aloud in a German man's voice and went on doing it.

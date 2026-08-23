@@ -326,6 +326,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* Where it comes from, what it speaks, whose voice it is, and what it costs —
    the four facts the old picker withheld, on the line under the name. */
 .voice__facts{display:block;font-size:12px;color:var(--text-faint)}
+/* A trait the catalogue reports about one model, on the row that has it. The
+   same muted line as the facts: it is another thing worth knowing before
+   choosing, not a warning about having chosen. Unlike the facts it is a
+   sentence and has to wrap — a button does not do that on its own. */
+.voice__hint{display:block;margin-top:3px;font-size:12px;color:var(--text-faint);
+  white-space:normal;text-wrap:pretty}
 .panel .field{width:100%}
 
 /* Which voice the next recording gets. A statement, not a control: the control

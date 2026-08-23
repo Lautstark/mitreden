@@ -111,5 +111,6 @@
   "voice_none": "No voice",
   "voice_now": "New recordings get {voice}.",
   "voice_pick_title": "Voice",
+  "voice_rushes_fragments": "Speaks single words very briefly. With a punctuation mark at the end — Hello! — the voice takes its time.",
   "voice_search_hint": "Search voices…"
 }

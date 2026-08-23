@@ -51,4 +51,15 @@ export interface Voice {
   /** Fetched before this voice first speaks. 0 for a cloud backend. */
   downloadBytes: number;
   needsKey: boolean;
+  /**
+   * True when this voice crams a word carrying no terminal punctuation into a
+   * near-fixed span, so single words arrive as mush while sentences are fine.
+   *
+   * Optional and absent rather than false, exactly as the catalogue states it.
+   * The fact belongs to a model, so stimmquelle owns which voices carry it and
+   * this page owns the words: a second voice gaining the trait is a catalogue
+   * release and no edit here. That is also why nothing in this repository may
+   * name the voice it is currently true of.
+   */
+  rushesFragments?: boolean;
 }

@@ -76,6 +76,15 @@ const matches = (voice: Voice): boolean => {
  * cloud backend, so with an Azure key two rows carried it and hundreds did
  * not — and "we have no opinion" and "not as good" look identical from the
  * outside. The facts let somebody choose; the badge only looked like help.
+ *
+ * A row can carry one more line, and only when the catalogue puts it there.
+ * `rushesFragments` is a trait of a model — one voice crams a word with no
+ * terminal punctuation into a near-fixed span — and it is worth a sentence
+ * here because this page is used on single words far more than on sentences.
+ * The flag arrives wordless on purpose: stimmquelle states the fact, this page
+ * says it in its own language and its own register, and neither has to know
+ * about the other's. Which voices carry it is not this file's business, so no
+ * voice is named in the code or in the words.
  */
 function voiceRow(voice: Voice, live: boolean): HTMLElement {
   const row = document.createElement('button');
@@ -108,6 +117,19 @@ function voiceRow(voice: Voice, live: boolean): HTMLElement {
   ].filter(Boolean).join(' · ');
 
   row.append(name, facts);
+
+  // A note, not a warning: the voice is fine for the sentences it was measured
+  // on and cramped only on bare words, and it stays the right choice for
+  // somebody who wants it. So it reads like the facts above it rather than
+  // like an objection to the row it sits on — and it says what to do about it,
+  // because typing "Hallo!" is a fix the person recording can actually apply.
+  if (voice.rushesFragments) {
+    const note = document.createElement('span');
+    note.className = 'voice__hint';
+    note.textContent = t('voice_rushes_fragments');
+    row.append(note);
+  }
+
   row.onclick = () => void pickVoice(voice.id);
   return row;
 }

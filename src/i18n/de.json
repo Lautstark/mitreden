@@ -111,5 +111,6 @@
   "voice_none": "Keine Stimme",
   "voice_now": "Neue Aufnahmen bekommen {voice}.",
   "voice_pick_title": "Stimme",
+  "voice_rushes_fragments": "Spricht einzelne Wörter sehr kurz. Mit einem Satzzeichen am Ende — Hallo! — nimmt sie sich Zeit.",
   "voice_search_hint": "Stimme suchen …"
 }
