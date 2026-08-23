@@ -17,28 +17,27 @@
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
+import { actionsFor, ago as relative } from '@lautstark/sicherung/ui';
 import { lang, t } from '../i18n/index.ts';
 import { el, say } from './dom.ts';
 
 /**
- * "vor 3 Minuten" / "3 minutes ago", in whichever language the page is in.
- * Built per call rather than once: the language can change while the dialog is
- * open, and a formatter captured at module load would keep answering in the
- * old one.
+ * "vor 3 Minuten" / "3 minutes ago", in whichever language the page is in
+ * *right now*.
+ *
+ * lang() is read on every call and must stay that way. This page changes
+ * language without reloading, so a locale captured once — in a const here, or
+ * in a formatter inside the package — would go on answering in the language
+ * the reader has just left, while still returning a perfectly well-formed
+ * relative time. The package builds its formatter per call for this reason and
+ * says so; this is the other half of that arrangement, and the reason it is a
+ * function rather than a value. tests/unit/backup-language.test.ts holds it.
+ *
+ * Exported for that test alone. The page-local one-argument shape is also what
+ * this file exported before the arithmetic moved into the package, so the seam
+ * is where it always was.
  */
-const STEPS: [limit: number, unit: Intl.RelativeTimeFormatUnit, per: number][] = [
-  [60_000, 'second', 1000],
-  [3_600_000, 'minute', 60_000],
-  [86_400_000, 'hour', 3_600_000],
-  [Infinity, 'day', 86_400_000],
-];
-
-export function ago(at: number, now = Date.now()): string {
-  const gap = Math.max(0, now - at);
-  const [, unit, per] = STEPS.find(([limit]) => gap < limit)!;
-  return new Intl.RelativeTimeFormat(lang(), { numeric: 'auto' })
-    .format(-Math.round(gap / per), unit);
-}
+export const ago = (at: number): string => relative(at, lang());
 
 /** The age of the last real copy, or the admission that there has never been one. */
 const lastCopy = (at: number | null): string =>
@@ -110,38 +109,29 @@ export function wireBackupFolder(backup: Sicherung): void {
     words.textContent = sentence(status);
     line.append(dot, words);
 
-    const forget = button('folder_forget', 'quiet', async () => {
-      await backup.forget();
-      say(t('folder_forgotten'));
-    });
-
+    // Which buttons belong to this state is the package's answer now. It was
+    // the same six-branch switch in all three products — one contract with
+    // three copies and nothing checking they agreed, which is the arrangement
+    // where one of them quietly stops offering a way out of `failed`. What
+    // stays here is the drawing and the words: the ids the table returns are
+    // exactly the i18n keys, so `folder_${id}` is a lookup and not a mapping
+    // table that could disagree with it.
+    //
+    // Two of that table's decisions were argued in this margin and are worth
+    // keeping findable. `idle` offers no "save now": the folder is written on
+    // every change already, so the button sat directly above „Sicherung als
+    // Datei" differing from it by a word naming the wrong axis — timing rather
+    // than destination. `saving` offers nothing rather than disabled buttons,
+    // which would flicker greyed on every debounce.
     actions.innerHTML = '';
-    switch (status.kind) {
-      case 'off':
-        actions.append(button('folder_choose', 'primary', () => backup.choose()));
-        break;
-      case 'needs-permission':
-        actions.append(button('folder_confirm', 'primary', () => backup.confirm()), forget);
-        break;
-      case 'failed':
-        actions.append(button('folder_retry', 'primary', () => backup.save()), forget);
-        break;
-      case 'idle':
-        // No "save now". The folder is written on every change already, so a
-        // button offering to do it again sat directly above „Sicherung als
-        // Datei" and differed from it by a word naming the wrong axis — timing
-        // rather than destination. „Erneut versuchen" below is not the same
-        // button: after a failure there is nothing happening to be redundant
-        // with.
-        actions.append(forget);
-        break;
-      case 'saving':
-        // Nothing while it writes. Two greyed buttons flickering on every
-        // debounce is worse than a moment with none.
-        break;
-      case 'unsupported':
-        break;
-    }
+    for (const action of actionsFor(backup, status))
+      actions.append(button(`folder_${action.id}`, action.primary ? 'primary' : 'quiet',
+        async () => {
+          await action.run();
+          // The only one that says anything out loud: the rest are reported by
+          // the status line repainting underneath.
+          if (action.id === 'forget') say(t('folder_forgotten'));
+        }));
   }
 
   paint(backup.status);
