@@ -105,7 +105,12 @@
   padding:16px var(--compose-r) 16px var(--compose-l);
   border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-sm);
   outline:1px solid var(--line)}
-.compose textarea{flex:1;min-height:34px;max-height:190px;padding:0;border:0;
+/* Three lines tall, because the hint is three sentences — it is there to say
+   that several go in at once. Two rows was shorter than the thing it was
+   showing, so an empty composer sat there scrolling its own placeholder. In em
+   against a 1.4 line-height, so it follows the font down a breakpoint rather
+   than being written out again. */
+.compose textarea{flex:1;min-height:calc(3 * 1.4em);max-height:190px;padding:0;border:0;
   background:transparent;outline:none;resize:none;font-size:22px;line-height:1.4}
 .send{flex:none;width:44px;height:44px;border-radius:var(--radius-pill);
   border:0;background:var(--accent);color:var(--accent-ink);font-size:19px;
