@@ -99,6 +99,23 @@ test('the page language is a menu like every other choice on the page', async ({
   await expect(page.locator('.chint')).toContainText('records');
 });
 
+test('the caption spans the composer, both ends on the same edge', async ({ page }) => {
+  // It followed the composer's own padding, which is 20px left and 16px right —
+  // asymmetric because a round send button needs less inset than text does. A
+  // caption has no such reason, and it read as starting further in than it
+  // ended. What is measured is what the eye reads: the key's background on the
+  // left, and on the right the word rather than the transparent box round it.
+  const ends = await page.evaluate(() => {
+    const box = document.querySelector('.compose')!.getBoundingClientRect();
+    const kbd = document.querySelector('.chint kbd')!.getBoundingClientRect();
+    const btn = document.getElementById('voicepick')!.getBoundingClientRect();
+    const pad = parseFloat(getComputedStyle(document.getElementById('voicepick')!).paddingRight);
+    return { left: Math.round(kbd.left - box.left), right: Math.round(box.right - (btn.right - pad)) };
+  });
+  expect(ends.left).toBe(0);
+  expect(ends.right).toBe(0);
+});
+
 test('the caption stays on one line, whatever the voice is called', async ({ page }) => {
   // An Azure name is long enough to send the voice line to a row of its own,
   // which is what wrapping looked like. What gives way is where the voice comes
