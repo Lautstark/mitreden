@@ -57,9 +57,18 @@ export async function collections(): Promise<CollectionWithCount[]> {
   return declared.map((c) => ({ ...c, count: counts.get(c.key) ?? 0 }));
 }
 
+/**
+ * A sentence on its way in: the text alone, or the text with the voice it was
+ * recorded in. Only a file carries the second — somebody typing cannot know a
+ * voice yet, and picks one afterwards.
+ */
+export type Line = string | { text: string; voice?: string };
+
 export interface Added {
   added: number;
   merged: number;
+  /** Of the added, how many named a voice this browser cannot reach. */
+  revoiced: number;
   ids: string[];
 }
 
@@ -68,26 +77,43 @@ export interface Added {
  * the list can show them while the voice is still being made — on a first run
  * that is a 60 MB model download, and a list that stays empty for a minute
  * looks like the typing was thrown away.
+ *
+ * `reachable` is the voices this page can actually speak in, and only an import
+ * has one: it decides whether a voice arriving with a sentence is kept.
  */
-export async function addPhrases(lines: string[], into: string[]): Promise<Added> {
+export async function addPhrases(
+  lines: readonly Line[], into: string[], reachable?: ReadonlySet<string>,
+): Promise<Added> {
   const items = await loadPhrases();
   const fresh: Phrase[] = [];
   let merged = 0;
+  let revoiced = 0;
   for (const line of lines) {
-    const text = line.trim();
+    const named = typeof line === 'string' ? undefined : line.voice;
+    const text = (typeof line === 'string' ? line : line.text).trim();
     if (!text) continue;
     const twin = findTwin(items, text);
     if (twin) {
+      // A twin keeps its own voice: it may already have the recording, and the
+      // file's voice is about a copy of the sentence that did not survive.
       for (const key of into) if (!twin.collections.includes(key)) twin.collections.push(key);
       merged += 1;
       continue;
     }
     const item: Phrase = { id: freeId(items, text), text, collections: [...into] };
+    // A sentence that arrives naming its voice keeps it, so the same file on a
+    // second device records the way it did on the first — that is the whole
+    // point of the program. A voice this page cannot reach is the exception:
+    // build() prefers the sentence's own voice over the picked one, so keeping
+    // an Azure voice here without a key would fail the recording rather than
+    // fall back to a voice that works.
+    if (named && (!reachable || reachable.has(named))) item.voice = named;
+    else if (named) revoiced += 1;
     items.push(item);
     fresh.push(item);
   }
   await savePhrases(items);
-  return { added: fresh.length, merged, ids: fresh.map((i) => i.id) };
+  return { added: fresh.length, merged, revoiced, ids: fresh.map((i) => i.id) };
 }
 
 export interface Built {

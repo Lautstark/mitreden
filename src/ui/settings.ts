@@ -8,8 +8,9 @@
 
 import { loadPhrases, wipe } from '../db/db.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
-import { probeAzure } from '../core/voices.ts';
+import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Lang } from '../i18n/index.ts';
+import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 import { loadVoices } from './composer.ts';
 import { load } from './state.ts';
@@ -178,8 +179,12 @@ function download(data: unknown, stem: string): void {
  * What a file may contain: our own export, a bare list, or a bildhaft archive,
  * which carries sentences under a different name. Reading one is worth doing —
  * the two products are used on the same sentences.
+ *
+ * Only our own export names a voice per sentence. bildhaft draws pictograms and
+ * has no voices at all, and a bare list is bare — so most files arrive without
+ * one, and that is not a gap to report.
  */
-function readFile(data: unknown): { texts: string[]; collection: string | null } {
+function readFile(data: unknown): { lines: Line[]; collection: string | null } {
   const asRecord = (value: unknown): Record<string, unknown> | null =>
     typeof value === 'object' && value !== null ? value as Record<string, unknown> : null;
   const root = asRecord(data);
@@ -187,17 +192,19 @@ function readFile(data: unknown): { texts: string[]; collection: string | null }
     : Array.isArray(root?.items) ? root.items
       : Array.isArray(root?.sentences) ? root.sentences
         : [];
-  const texts: string[] = [];
+  const lines: Line[] = [];
   for (const row of rows) {
     const record = asRecord(row);
     const text = typeof row === 'string' ? row
       : typeof record?.text === 'string' ? record.text
         : typeof record?.rawInput === 'string' ? record.rawInput
           : null;
-    if (text?.trim()) texts.push(text.trim());
+    if (!text?.trim()) continue;
+    const voice = typeof record?.voice === 'string' ? record.voice : undefined;
+    lines.push({ text: text.trim(), voice });
   }
   const name = typeof root?.collection === 'string' ? root.collection : null;
-  return { texts, collection: name };
+  return { lines, collection: name };
 }
 
 async function importFile(file: File): Promise<void> {
@@ -209,15 +216,23 @@ async function importFile(file: File): Promise<void> {
     say(t('import_failed', { error: file.name }));
     return;
   }
-  const { texts, collection } = readFile(parsed);
-  if (!texts.length) {
+  const { lines, collection } = readFile(parsed);
+  if (!lines.length) {
     say(t('import_empty'));
     return;
   }
   const into = await createCollection(collection ?? file.name.replace(/\.json$/i, ''), lang() === 'de');
   const { addPhrases } = await import('../db/repo.ts');
-  const { added, merged } = await addPhrases(texts, [into.key]);
-  say(t('done_import', { added, merged }));
+  // Which voices this page can speak in, so a sentence arriving in one it
+  // cannot — an Azure voice on a browser with no key — loses it here rather
+  // than failing at recording time. Azure's catalogue is memoised, and the
+  // dialog this import runs from has already asked for it.
+  const here = new Set((await offered((await settings()).azure)).map((voice) => voice.id));
+  const { added, merged, revoiced } = await addPhrases(lines, [into.key], here);
+  // The count, and then what became of the voices that did not survive the
+  // journey. Silence there is what made the picker look like it was ignored.
+  say(t('done_import', { added, merged })
+    + (revoiced ? t('done_import_revoiced', { n: revoiced }) : ''));
   await load();
 }
 
