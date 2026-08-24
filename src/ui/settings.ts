@@ -19,6 +19,7 @@ import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangV
 import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks, weighs } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
+import { confirmDialog } from '@lautstark/design/dialog';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
 /**
@@ -453,7 +454,15 @@ async function importFile(file: File): Promise<void> {
 }
 
 async function wipeEverything(): Promise<void> {
-  if (!confirm(t('danger_ask', { n: (await loadPhrases()).length }))) return;
+  if (!await confirmDialog({
+    title: t('danger_title'),
+    body: t('danger_ask', { n: (await loadPhrases()).length }),
+    confirmLabel: t('danger_do'),
+    cancelLabel: t('cancel'),
+    // Never the same word as the button beside it.
+    closeLabel: t('close'),
+    danger: true,
+  })) return;
   await wipe();
   say(t('danger_done'));
   location.reload();

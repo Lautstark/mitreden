@@ -21,6 +21,7 @@ import {
 } from './state.ts';
 import { busy, el, say } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
+import { confirmDialog } from '@lautstark/design/dialog';
 
 let showAll = false;
 
@@ -288,7 +289,14 @@ function editLine(node: HTMLElement, item: PhraseWithState): void {
 }
 
 async function remove(item: PhraseWithState): Promise<void> {
-  if (!confirm(t('ask_delete_this', { text: `„${item.text}“` }))) return;
+  if (!await confirmDialog({
+    title: t('menu_delete_one'),
+    body: t('ask_delete_this', { text: `„${item.text}“` }),
+    confirmLabel: t('delete_one_do'),
+    cancelLabel: t('cancel'),
+    closeLabel: t('close'),
+    danger: true,
+  })) return;
   busy('busy_delete');
   await deletePhrase(item.id);
   say(t('done_delete_one', { text: item.text }));
