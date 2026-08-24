@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
 test('the sidebar is a drawer: opens over a scrim, closes by tapping it', async ({ page }) => {
@@ -23,7 +23,7 @@ test('the sidebar is a drawer: opens over a scrim, closes by tapping it', async 
 
 test('opening a Sammlung closes the drawer', async ({ page }) => {
   await page.click('#railopen');
-  await page.click('#rows .list__item');
+  await page.click('#rows .collections__item');
   await expect(page.locator('#rail')).not.toBeInViewport();
 });
 
@@ -38,7 +38,7 @@ test('a rail put away on a laptop still opens as a drawer here', async ({ page }
   // on this width to undo it, so it must not follow the user onto the phone.
   await page.evaluate(() => localStorage.setItem('mitreden.rail', 'closed'));
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   const rail = page.locator('#rail');
   await expect(rail).not.toBeInViewport();
   await page.click('#railopen');

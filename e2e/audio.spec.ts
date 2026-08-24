@@ -20,7 +20,7 @@ test('a sentence typed in becomes a playable mp3', async ({ page }) => {
   test.setTimeout(5 * 60_000);
 
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.fill('#t', 'Ich will noch nicht ins Bett.');
   await page.click('#add');
 

@@ -23,7 +23,7 @@ type Page = import('@playwright/test').Page;
 
 async function openData(page: Page) {
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.click('#gear');
   await page.click('#p-data > summary');
 }

@@ -17,7 +17,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=en');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
 test('a sentence being recorded says so, and does not say it is untouched', async ({ page }) => {

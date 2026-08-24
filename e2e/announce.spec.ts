@@ -18,7 +18,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
 test('the status line is a live region before it has anything to say', async ({ page }) => {

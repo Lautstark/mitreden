@@ -18,7 +18,7 @@ const open = async (page: import('@playwright/test').Page): Promise<void> => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
 test('opens following the device, and says so in the heading', async ({ page }) => {
@@ -38,7 +38,7 @@ test('a chosen scheme is in force, named in the heading, and survives a reload',
   await expect(page.locator('#themestate')).toHaveText('Dunkel');
 
   await page.reload();
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
