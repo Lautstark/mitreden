@@ -66,13 +66,90 @@ export function shown(): readonly PhraseWithState[] {
 }
 
 /**
- * Every row names its own voice, so the word "recorded" would be true of all of
- * them and say nothing. Either it is not recorded, or you get the voice.
+ * What is being recorded at this moment, and what is behind it in the queue.
+ *
+ * A sentence's State is derived from whether its audio exists, so it has no
+ * word for this: from the moment the sentence is saved until the recording
+ * lands, "noch nicht aufgenommen" is the true answer and it reads as nothing
+ * happening — at the one point where something is, and where it can take a
+ * minute because the voice is still being fetched. This is that missing word.
+ *
+ * It lives here rather than in the row because a recording is started from
+ * three places — typing, the ⋯ menu, editing a sentence — and all three draw
+ * the same rows.
  */
-export const stateText = (item: PhraseWithState): string =>
-  item.state === 'missing' ? t('state_missing')
+const queue = new Set<string>();
+let recording: string | null = null;
+
+export type Work = 'recording' | 'queued' | null;
+
+export const workOn = (id: string): Work =>
+  recording === id ? 'recording' : queue.has(id) ? 'queued' : null;
+
+/** Its own watchers, and not notify(): a full redraw is too much to pay per
+ *  sentence. It revokes every blob URL, so a preview playing in another row
+ *  would stop each time the batch moved on. */
+const workWatchers: (() => void)[] = [];
+export const onWork = (fn: () => void): void => { workWatchers.push(fn); };
+const toldWork = (): void => { for (const fn of workWatchers) fn(); };
+
+/** Told about the one sentence that just gained a recording, by id. */
+const landedWatchers: ((id: string) => void)[] = [];
+export const onLanded = (fn: (id: string) => void): void => { landedWatchers.push(fn); };
+
+/** The whole batch, before the first of it is spoken. */
+export function queueWork(ids: readonly string[]): void {
+  for (const id of ids) queue.add(id);
+  toldWork();
+}
+
+/**
+ * build() reporting where it has got to: one sentence is starting, or one has
+ * finished — recorded or failed, which the row finds out by looking rather
+ * than being told, because "finished" is the only part of it build knows at
+ * the same moment for both.
+ */
+export function stepWork(id: string, done: boolean): void {
+  queue.delete(id);
+  if (!done) {
+    recording = id;
+    toldWork();
+    return;
+  }
+  // No toldWork() here: the row is about to be redrawn from fresh data, and
+  // repainting it first would flash the state it had before it was recorded.
+  if (recording === id) recording = null;
+  for (const fn of landedWatchers) fn(id);
+}
+
+/** Nothing is being recorded any more — including whatever build() skipped. */
+export function endWork(): void {
+  queue.clear();
+  recording = null;
+  toldWork();
+}
+
+/**
+ * The sentences again, without telling anyone. A batch reports one at a time
+ * and each report is about a single row, so the list re-reads and repaints
+ * that row itself; notify() here would redraw all of them.
+ */
+export async function refresh(): Promise<void> {
+  all = await phrases();
+}
+
+/**
+ * Every row names its own voice, so the word "recorded" would be true of all of
+ * them and say nothing. Either it is not recorded, or you get the voice — and
+ * before either of those, whether it is being recorded right now.
+ */
+export const stateText = (item: PhraseWithState): string => {
+  const work = workOn(item.id);
+  if (work) return t(work === 'recording' ? 'state_recording' : 'state_queued');
+  return item.state === 'missing' ? t('state_missing')
     : item.state === 'stale' ? t('state_stale')
       : item.voice ?? t('state_recorded');
+};
 
 export async function load(): Promise<void> {
   [all, declared] = await Promise.all([phrases(), loadCollections()]);

@@ -124,8 +124,17 @@ export interface Built {
 /**
  * A sentence that cannot be recorded is still a sentence: it stays in the list
  * and asks to be recorded again. One failure does not lose the rest.
+ *
+ * `onStep` is told which sentence is starting and which has finished, because
+ * only this loop knows: recording is one await per sentence and the first of
+ * them may spend a minute fetching the voice, so a page that hears nothing
+ * until the batch ends can only say "not recorded yet" about work already
+ * under way — and about work already done.
  */
-export async function build(ids: string[], voiceId: string, force = false): Promise<Built> {
+export async function build(
+  ids: string[], voiceId: string, force = false,
+  onStep?: (id: string, done: boolean) => void,
+): Promise<Built> {
   const items = await loadPhrases();
   const settings = await loadSettings();
   const wanted = new Set(ids);
@@ -137,13 +146,19 @@ export async function build(ids: string[], voiceId: string, force = false): Prom
     try {
       const mark = await fingerprint(item.text, voice);
       if (!force && item.fingerprint === mark && (await getAudio(item.id))) continue;
+      onStep?.(item.id, false);
       const { blob } = await record(item.text, voice, settings.azure);
       await putAudio(item.id, blob);
       item.voice = voice;
       item.fingerprint = mark;
       recorded += 1;
+      // Saved before it is announced: the row answers by reading the store,
+      // and a sentence reported as finished has to be findable there.
+      await savePhrases(items);
+      onStep?.(item.id, true);
     } catch (error) {
       failed.push(`${item.id}: ${error instanceof Error ? error.message : String(error)}`);
+      onStep?.(item.id, true);
     }
   }
   await savePhrases(items);

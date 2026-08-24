@@ -15,8 +15,11 @@ import type { Format, PhraseWithState } from '../core/types.ts';
 import { chosenVoice } from './composer.ts';
 import { deleteCollection, here } from './rail.ts';
 import { exportCollection } from './settings.ts';
-import { ALL, CAP, load, shown, stateText } from './state.ts';
-import { el, say } from './dom.ts';
+import {
+  ALL, CAP, endWork, load, onLanded, onWork, queueWork, refresh, shown, stateText,
+  stepWork, workOn,
+} from './state.ts';
+import { busy, el, say } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
 
 let showAll = false;
@@ -38,9 +41,13 @@ function openDownload(button: HTMLElement): void {
   });
 }
 
-export function draw(): void {
-  const items = [...shown()].reverse();          // newest first
-
+/**
+ * How much is here and how much of it is still open. Its own function because
+ * a batch moves that second number one sentence at a time, and saying so is a
+ * line of text rather than a reason to redraw the list.
+ */
+function paintCount(): void {
+  const items = shown();
   const pending = items.filter((item) => item.state !== 'ok').length;
   const searching = el<HTMLInputElement>('q').value.trim().length > 0;
   // A fraction made sense when a Sammlung was a filter over one long list. It
@@ -50,6 +57,12 @@ export function draw(): void {
     : !items.length ? t('count_none')
       : tn('count', items.length)
         + (pending ? t('count_open', { n: pending }) : t('count_all_recorded'));
+}
+
+export function draw(): void {
+  const items = [...shown()].reverse();          // newest first
+  const searching = el<HTMLInputElement>('q').value.trim().length > 0;
+  paintCount();
 
   const list = el('list');
   for (const url of playing.values()) URL.revokeObjectURL(url);
@@ -83,9 +96,57 @@ export function draw(): void {
   }
 }
 
+/** Two facts about one sentence: whether it has a recording, and whether one
+ *  is being made for it now. */
+const classOf = (item: PhraseWithState): string => {
+  const work = workOn(item.id);
+  return `item ${item.state}${work ? ` busy ${work}` : ''}`;
+};
+
+/**
+ * The rows a running batch is passing through, repainted where they stand.
+ *
+ * Not draw(): that rebuilds every row from scratch, which revokes the blob URL
+ * under any <audio> currently playing. A batch moves on every sentence or two,
+ * so a redraw each time would cut off a preview repeatedly — for a change that
+ * amounts to one class and one word per row.
+ */
+function repaintWork(): void {
+  for (const node of document.querySelectorAll<HTMLElement>('#list .item')) {
+    const item = ALL().find((one) => one.id === node.dataset.id);
+    if (!item) continue;
+    node.className = classOf(item);
+    const state = node.querySelector('.state');
+    if (state) state.textContent = stateText(item);
+    node.querySelector('.st')?.setAttribute('aria-busy', String(workOn(item.id) !== null));
+  }
+}
+
+/**
+ * One sentence now has its recording — or has failed to get one.
+ *
+ * The row is rebuilt where it stands, from data read back out of the store: it
+ * gains a player, which is the plainest possible "this one is done", and it
+ * says so while the rest of the batch is still going. Rebuilding the whole
+ * list to report one sentence would cut off a preview playing in another row
+ * every time the batch moved on.
+ */
+async function landed(id: string): Promise<void> {
+  await refresh();
+  const item = ALL().find((one) => one.id === id);
+  const node = el('list').querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
+  paintCount();
+  if (!item || !node) return;
+  // This row's own blob URL, which the row about to replace it will mint again.
+  const url = playing.get(id);
+  if (url) { URL.revokeObjectURL(url); playing.delete(id); }
+  node.replaceWith(row(item));
+}
+
 function row(item: PhraseWithState): HTMLElement {
   const node = document.createElement('div');
-  node.className = `item ${item.state}`;
+  node.dataset.id = item.id;
+  node.className = classOf(item);
 
   const text = document.createElement('div');
   text.className = 'txt';
@@ -98,6 +159,11 @@ function row(item: PhraseWithState): HTMLElement {
   meta.className = 'meta';
   meta.innerHTML = '<span class="st"><span class="dot"></span><span class="state"></span></span>';
   meta.querySelector('.state')!.textContent = stateText(item);
+  /* aria-busy, not an announcement. The visible marker is a coloured dot and
+     somebody reading the page needs the same fact — but a batch of forty
+     reporting itself one sentence at a time through the live region would
+     bury the message that actually matters at the end. */
+  meta.querySelector('.st')!.setAttribute('aria-busy', String(workOn(item.id) !== null));
   text.append(line, meta);
   node.appendChild(text);
 
@@ -149,8 +215,10 @@ function openMenu(button: HTMLElement, item: PhraseWithState): void {
 }
 
 async function again(item: PhraseWithState): Promise<void> {
-  say(t('busy_record'));
-  const { failed } = await build([item.id], chosenVoice());
+  busy('busy_record');
+  queueWork([item.id]);
+  const { failed } = await build([item.id], chosenVoice(), false, stepWork);
+  endWork();
   say(failed.length ? tn('not_recorded', failed.length, { why: failed[0]! })
     : t('done_edit', { text: item.text }));
   await load();
@@ -207,10 +275,12 @@ function editLine(node: HTMLElement, item: PhraseWithState): void {
     const text = node.textContent?.trim() ?? '';
     stop();
     if (!text || text === item.text) { node.textContent = item.text; return; }
-    say(t('busy_record'));
+    busy('busy_record');
     const changed = await editPhrase(item.id, text);
     if (!changed) { node.textContent = item.text; return; }
-    const { failed } = await build([item.id], item.voice ?? chosenVoice(), true);
+    queueWork([item.id]);
+    const { failed } = await build([item.id], item.voice ?? chosenVoice(), true, stepWork);
+    endWork();
     say(t('done_edit', { text: changed.text })
       + (failed.length ? ` ${tn('not_recorded', 1, { why: failed[0]! })}` : ''));
     await load();
@@ -219,7 +289,7 @@ function editLine(node: HTMLElement, item: PhraseWithState): void {
 
 async function remove(item: PhraseWithState): Promise<void> {
   if (!confirm(t('ask_delete_this', { text: `„${item.text}“` }))) return;
-  say(t('busy_delete'));
+  busy('busy_delete');
   await deletePhrase(item.id);
   say(t('done_delete_one', { text: item.text }));
   await load();
@@ -232,7 +302,7 @@ async function packAll(format: Format): Promise<void> {
     say(t('nothing_recorded'));
     return;
   }
-  say(t('busy_pack', { n: ids.length }));
+  busy('busy_pack', { n: ids.length });
   const files: ZipEntry[] = [];
   for (const id of ids) {
     const stored = await getAudio(id);
@@ -248,6 +318,8 @@ async function packAll(format: Format): Promise<void> {
 }
 
 export function wireList(): void {
+  onWork(repaintWork);
+  onLanded((id) => void landed(id));
   el('q').addEventListener('input', draw);
   el('dlall').onclick = () => openDownload(el('dlall'));
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {

@@ -17,7 +17,7 @@ import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
-import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
+import { applyLang, busy, el, say, sourceOf, speaks, weighs } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
@@ -294,7 +294,7 @@ async function saveKey(typed: string, region: string, button: HTMLButtonElement)
   const was = button.textContent;
   button.disabled = true;
   button.textContent = t('key_checking');
-  say(t('key_checking'));
+  busy('key_checking');
   try {
     const answer = await probeAzure({ key, region: where });
     if (!answer.ok) {
@@ -404,7 +404,7 @@ function readFile(data: unknown): { lines: Line[]; collection: string | null } {
 }
 
 async function importFile(file: File): Promise<void> {
-  say(t('busy_import'));
+  busy('busy_import');
   let parsed: unknown;
   try {
     parsed = JSON.parse(await file.text());

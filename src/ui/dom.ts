@@ -31,8 +31,27 @@ export function el<T extends HTMLElement = HTMLElement>(id: string): T {
  * #s is a live region in the markup and stays one.
  */
 export function say(message: string): void {
-  el('s').textContent = message;
+  const line = el('s');
+  line.textContent = message;
+  line.classList.remove('working');
 }
+
+/**
+ * The same line, for something that has started rather than finished.
+ *
+ * The words were already right — "Wird aufgenommen …" — but they arrived in the
+ * same grey as "42 hinzugefügt" and then sat there, so the one message that
+ * means *wait* looked exactly like the one that means *done*. The class draws a
+ * turning ring in front of it, and every ordinary say() takes it away again,
+ * which is why the removal is in say() rather than at each callsite: the end of
+ * a job is always reported, and forgetting to stop the spinner would leave the
+ * page claiming to be busy for the rest of the session.
+ */
+export const busy = (key: Key, vars?: Vars): void => {
+  const line = el('s');
+  line.textContent = t(key, vars);
+  line.classList.add('working');
+};
 
 /** Applies the words to the markup. Redrawing the data is somebody else's job. */
 export function applyLang(): void {
@@ -73,6 +92,3 @@ export function speaks(locale: string): string {
 /** What this voice costs to have before it will speak. */
 export const weighs = (bytes: number): string =>
   `${Math.round(bytes / 1e6)} MB`;
-
-/** Say something that needs a count and a word for it. */
-export const busy = (key: Key, vars?: Vars): void => say(t(key, vars));
