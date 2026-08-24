@@ -37,9 +37,16 @@ test('a Sammlung is made, named and deleted through the page', async ({ page }) 
   await expect(page.locator('#rows .list__name', { hasText: 'Beim Essen' })).toBeVisible();
 
   await page.click('#rows .list__item:has-text("Beim Essen")');
-  page.once('dialog', (d) => void d.accept());
   await page.click('#colmore');
   await page.click('.menu button.danger');
+
+  /* The question is a sheet in the page now rather than the browser's own
+     confirm, so it is pressed rather than accepted. The destructive button is
+     found by its class instead of its words, because this page has two
+     languages and the runner picks one. */
+  const question = page.locator('dialog[open]');
+  await expect(question).toBeVisible();
+  await question.locator('.foot button.destructive').click();
   await expect(page.locator('#rows .list__name', { hasText: 'Beim Essen' })).toHaveCount(0);
 });
 

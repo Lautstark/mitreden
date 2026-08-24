@@ -10,6 +10,7 @@ import { createCollection, deleteCollection as removeCollection, renameCollectio
 import { lang, t } from '../i18n/index.ts';
 import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
 import { el, say } from './dom.ts';
+import { confirmDialog } from '@lautstark/design/dialog';
 
 const counts = (): Map<string, number> => {
   const out = new Map<string, number>();
@@ -102,7 +103,16 @@ function scheduleRename(): void {
 }
 
 export async function deleteCollection(key: string, name: string, n: number): Promise<void> {
-  if (!confirm(t('ask_collection_delete', { name, n }))) return;
+  if (!await confirmDialog({
+    title: t('collection_delete'),
+    body: t('ask_collection_delete', { name, n }),
+    // What happens, which here is the half that is easy to get wrong: the
+    // Sammlung goes and the sentences do not.
+    confirmLabel: t('collection_delete_do'),
+    cancelLabel: t('cancel'),
+    closeLabel: t('close'),
+    danger: true,
+  })) return;
   if (!(await removeCollection(key))) return;
   OPEN.delete(key);
   say(t('done_collection_delete', { name }));
