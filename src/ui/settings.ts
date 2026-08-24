@@ -17,7 +17,8 @@ import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
-import { applyLang, closeMenus, el, menuOn, say, sourceOf, speaks, weighs } from './dom.ts';
+import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
+import { closeMenus, menuOn } from '@lautstark/design/menu';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
 /**

@@ -16,7 +16,8 @@ import { chosenVoice } from './composer.ts';
 import { deleteCollection, here } from './rail.ts';
 import { exportCollection } from './settings.ts';
 import { ALL, CAP, load, shown, stateText } from './state.ts';
-import { closeMenus, el, menuOn, say } from './dom.ts';
+import { el, say } from './dom.ts';
+import { closeMenus, menuOn } from '@lautstark/design/menu';
 
 let showAll = false;
 
