@@ -17,7 +17,7 @@ import { deleteCollection, here } from './rail.ts';
 import { exportCollection } from './settings.ts';
 import { ALL, CAP, load, shown, stateText } from './state.ts';
 import { el, say } from './dom.ts';
-import { closeMenus, menuOn } from '@lautstark/design/menu';
+import { menuOn } from '@lautstark/design/menu';
 
 let showAll = false;
 
@@ -33,8 +33,8 @@ const playing = new Map<string, string>();
  */
 function openDownload(button: HTMLElement): void {
   menuOn(button, (add) => {
-    add(t('download_mp3'), () => { closeMenus(); void packAll('mp3'); });
-    add(t('download_wav'), () => { closeMenus(); void packAll('wav'); });
+    add(t('download_mp3'), () => void packAll('mp3'));
+    add(t('download_wav'), () => void packAll('wav'));
   });
 }
 
@@ -137,14 +137,14 @@ function row(item: PhraseWithState): HTMLElement {
 function openMenu(button: HTMLElement, item: PhraseWithState): void {
   menuOn(button, (add) => {
     if (item.state !== 'missing') {
-      add(t('download_mp3'), () => { closeMenus(); void grab(item, 'mp3'); });
-      add(t('download_wav'), () => { closeMenus(); void grab(item, 'wav'); });
+      add(t('download_mp3'), () => void grab(item, 'mp3'));
+      add(t('download_wav'), () => void grab(item, 'wav'));
     } else {
       // A recording that failed was otherwise stuck: the only way back was to
       // retype the sentence.
-      add(t('menu_record'), () => { closeMenus(); void again(item); });
+      add(t('menu_record'), () => void again(item));
     }
-    add(t('menu_delete_one'), () => { closeMenus(); void remove(item); }, { danger: true });
+    add(t('menu_delete_one'), () => void remove(item), { danger: true });
   });
 }
 
@@ -253,9 +253,8 @@ export function wireList(): void {
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
-    add(t('collection_export'), () => { closeMenus(); void exportCollection(current); });
+    add(t('collection_export'), () => void exportCollection(current));
     add(t('collection_delete'), () => {
-      closeMenus();
       void deleteCollection(current.key, current.name, current.count);
     }, { danger: true });
   });
