@@ -18,7 +18,7 @@ import type { Collection, Phrase, Voice } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, el, say, sourceOf, speaks, weighs } from './dom.ts';
-import { closeMenus, menuOn } from '@lautstark/design/menu';
+import { menuOn } from '@lautstark/design/menu';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
 /**
@@ -590,7 +590,7 @@ export function wireSettings(backup: Sicherung): void {
     // read as five equal commands before, leaving the language in force to be
     // inferred from the button behind the open list.
     for (const [code, name] of Object.entries(LANGUAGES))
-      add(name, () => { closeMenus(); chooseLang(code as Lang); },
+      add(name, () => chooseLang(code as Lang),
         { checked: code === lang() });
   });
 
