@@ -86,6 +86,19 @@ test('every setting states itself in its own heading, before it is opened', asyn
   await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
 });
 
+test('opening a panel closes the one open before it', async ({ page }) => {
+  await page.click('#gear');
+  // Voice starts open, so a second panel is enough to show the group at work.
+  await expect(page.locator('#p-voice')).toHaveJSProperty('open', true);
+
+  await page.click('#p-theme > summary');
+  await expect(page.locator('#p-theme')).toHaveJSProperty('open', true);
+  // The browser does this, not us: the panels share a name, which makes them
+  // one group with radio semantics. Asserting the effect rather than the
+  // attribute, so a scripted accordion would keep this green.
+  await expect(page.locator('#p-voice')).toHaveJSProperty('open', false);
+});
+
 test('the page language is a menu like every other choice on the page', async ({ page }) => {
   await page.click('#gear');
   await page.click('#p-lang > summary');
