@@ -11,6 +11,7 @@ import { lang, t } from '../i18n/index.ts';
 import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
 import { el, say } from './dom.ts';
 import { confirmDialog } from '@lautstark/design/dialog';
+import { renameField, type RenameField } from '@lautstark/design/rename';
 
 const counts = (): Map<string, number> => {
   const out = new Map<string, number>();
@@ -50,10 +51,17 @@ export function drawRail(): void {
 
   // The header names where you are. There is always somewhere to be.
   const here = DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
-  const title = el<HTMLInputElement>('colname');
-  // Not while it is being typed in, or the caret jumps to the end mid-word.
-  if (document.activeElement !== title) title.value = here?.name ?? '';
+  // Through refresh() rather than by assigning: it declines while the field is
+  // being typed in — the caret jumping mid-word was the reason this guard was
+  // written here — and also while a keystroke is still waiting out its
+  // debounce, which this copy did not guard and which is the case where the
+  // stored name is written back over a half-typed one.
+  name?.refresh(here?.name ?? '');
 }
+
+/** The bound name field. Module state because drawRail() may only reach the
+ *  input through it, and wireRail() is what binds it. */
+let name: RenameField | null = null;
 
 export const here = () => DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
 
@@ -87,21 +95,6 @@ export function showRail(open: boolean): void {
 export const restoreRail = (): void =>
   showRail(localStorage.getItem(RAIL_KEY) !== 'closed');
 
-/** Renaming is typing in the title: saved a beat after you stop, and on exit. */
-let renameTimer: ReturnType<typeof setTimeout> | undefined;
-
-function scheduleRename(): void {
-  const current = here();
-  if (!current) return;
-  clearTimeout(renameTimer);
-  const to = el<HTMLInputElement>('colname').value;
-  renameTimer = setTimeout(async () => {
-    if (!to.trim() || to === current.name) return;
-    await renameCollection(current.key, to);
-    await load();
-  }, 400);
-}
-
 export async function deleteCollection(key: string, name: string, n: number): Promise<void> {
   if (!await confirmDialog({
     title: t('collection_delete'),
@@ -120,13 +113,18 @@ export async function deleteCollection(key: string, name: string, n: number): Pr
 }
 
 export function wireRail(): void {
-  el('colname').addEventListener('input', scheduleRename);
-  el('colname').addEventListener('blur', scheduleRename);
-  el('colname').addEventListener('keydown', (event) => {
-    if ((event as KeyboardEvent).key === 'Enter') {
-      event.preventDefault();
-      (event.target as HTMLElement).blur();
-    }
+  /* Renaming is typing in the title (§1.6). The debounce, the write on the way
+     out and the guard against a repaint typing over you are the package's; what
+     is left here is this product's own answer to an empty name, which is to
+     refuse it — a Sammlung must always be callable by something in the rail.
+     Leaving the field used to re-arm the same 400 ms timer rather than write,
+     so a name clicked away from was lost unless nothing navigated in the next
+     beat; a blur writes now. */
+  name = renameField(el<HTMLInputElement>('colname'), async (typed) => {
+    const current = here();
+    if (!current || !typed.trim() || typed === current.name) return;
+    await renameCollection(current.key, typed);
+    await load();
   });
 
   el('newcol').onclick = async () => {
@@ -137,10 +135,11 @@ export function wireRail(): void {
     say(t('done_collection_new', { name: made.name }));
     await load();
     // Straight into the name, selected: typing replaces the date it was given.
-    // Set here rather than left to drawRail, which leaves the field alone while
-    // it has focus — otherwise a second new Sammlung shows the first one's name.
+    // Through refresh() like every other assignment — the field is not focused
+    // yet, because pressing this button is what took focus off it, so the
+    // guard passes and the package's idea of what it last wrote stays true.
     const title = el<HTMLInputElement>('colname');
-    title.value = made.name;
+    name?.refresh(made.name);
     title.focus();
     title.select();
   };
