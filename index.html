@@ -89,8 +89,15 @@
            what it holds in its own heading — which voice, whether Azure has a
            key, how many sentences there are — so a look is enough and opening
            is a decision. components.css's .panel, native <details>, so the
-           browser owns the folding and the keyboard. -->
-      <details class="panel" id="p-voice" open>
+           browser owns the folding and the keyboard.
+
+           name="settings" makes the five one exclusive group - opening one
+           closes the rest - which is the platform's own accordion and behaves
+           like a radio group. Without it the sheet becomes a scroll through
+           everything anybody has ever opened, and the state in each heading,
+           which is the whole reason they are folded, stops being readable at a
+           glance. @lautstark/design conventions.md §3.5. -->
+      <details class="panel" name="settings" id="p-voice" open>
         <summary>
           <span class="section" data-i18n="voice_pick_title"></span>
           <span class="state" id="voicestate"></span>
@@ -102,7 +109,7 @@
         </div>
       </details>
 
-      <details class="panel" id="p-azure">
+      <details class="panel" name="settings" id="p-azure">
         <summary>
           <span class="section">Azure Speech</span>
           <span class="state" id="azurestate"></span>
@@ -110,7 +117,7 @@
         <div class="body" id="cloud"></div>
       </details>
 
-      <details class="panel" id="p-lang">
+      <details class="panel" name="settings" id="p-lang">
         <summary>
           <span class="section" data-i18n="panel_language"></span>
           <span class="state" id="langstate"></span>
@@ -132,7 +139,7 @@
            an answer too, and the default one — a two-state switch has to open in
            light or dark and so has to guess, which is how a tablet that dims
            itself at dusk ends up pinned bright. -->
-      <details class="panel" id="p-theme">
+      <details class="panel" name="settings" id="p-theme">
         <summary>
           <span class="section" data-i18n="panel_theme"></span>
           <span class="state" id="themestate"></span>
@@ -151,7 +158,7 @@
            subject — what happens to everything you have — and reading about the
            one is how you find the other. The reset keeps its own heading inside,
            because a destructive action still has to announce itself. -->
-      <details class="panel" id="p-data">
+      <details class="panel" name="settings" id="p-data">
         <summary>
           <span class="section" data-i18n="panel_data"></span>
           <span class="state" id="datastate"></span>
