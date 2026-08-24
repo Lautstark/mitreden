@@ -156,7 +156,7 @@ test('opening the page reaches nothing but this origin', async ({ page, baseURL 
   });
 
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 
   // Nothing at all until somebody records: the voice model is fetched on the
   // first recording, not on arrival, and that is what makes opening the page

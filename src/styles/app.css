@@ -36,20 +36,11 @@
   padding:0 4px}
 .rail input[type=search]{width:100%}
 
-/* One row per Sammlung: name, count, and the ⋯ once it is the one you are in. */
-.list{display:flex;flex-direction:column;gap:1px}
-/* A Sammlung in the sidebar. These carry bildhaft's names because `.row` also
-   meant "a line of buttons in a dialog", and that rule sits further down the
-   sheet: every Sammlung was being pushed apart by a margin meant for buttons. */
-.list__item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
-  border:0;background:none;color:var(--text-dim);font:inherit;cursor:pointer;
-  border-radius:var(--radius-sm);padding:8px 10px;transition:background .13s,color .13s}
-.list__item:hover{background:var(--surface-2);color:var(--text)}
-.list__item.on{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
-.list__name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;font-size:14px}
-/* No colour on the count: bildhaft leaves it to inherit, for contrast. */
-.list__count{font-size:12px;font-variant-numeric:tabular-nums}
+/* One row per Sammlung is components.css's `.collections` now - the name, the
+   count, the ellipsis on a long one, the accent behind the ones that are open.
+   The names went with it: `.list__*` was two thirds of an agreement and the
+   wrong name for a shared sheet, because `.list` is what any list is called.
+   See §5 5b. */
 /* The sentence is the control: click it and type. Same idea as the Sammlung's
    title, so there is one way to change a name in this program, not two. */
 .item .line{cursor:text;border-radius:var(--radius-sm);padding:1px 5px;margin:-1px -5px;

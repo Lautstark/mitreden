@@ -39,7 +39,7 @@ async function openVoices(page: import('@playwright/test').Page) {
  * followed back in. The Azure panel is folded, so it is opened too.
  */
 async function reopenVoices(page: import('@playwright/test').Page) {
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.click('#gear');
   await page.click('#p-azure > summary');
 }

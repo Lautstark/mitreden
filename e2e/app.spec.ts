@@ -8,11 +8,11 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
 test('opens with one Sammlung and nothing in it', async ({ page }) => {
-  await expect(page.locator('#rows .list__item')).toHaveCount(1);
+  await expect(page.locator('#rows .collections__item')).toHaveCount(1);
   await expect(page.locator('.empty')).toContainText('Tippe oben einen Satz');
   await expect(page.locator('.empty kbd')).toHaveText('Enter');
 });
@@ -27,16 +27,16 @@ test('a sentence typed in is a sentence listed, and survives a reload', async ({
 
 test('a Sammlung is made, named and deleted through the page', async ({ page }) => {
   await page.click('#newcol');
-  await expect(page.locator('#rows .list__item')).toHaveCount(2);
+  await expect(page.locator('#rows .collections__item')).toHaveCount(2);
   // Named after the day and already focused, so typing replaces it.
   await expect(page.locator('#colname')).toBeFocused();
 
   await page.fill('#colname', 'Beim Essen');
-  await expect(page.locator('#rows .list__name', { hasText: 'Beim Essen' })).toBeVisible();
+  await expect(page.locator('#rows .collections__name', { hasText: 'Beim Essen' })).toBeVisible();
   await page.reload();
-  await expect(page.locator('#rows .list__name', { hasText: 'Beim Essen' })).toBeVisible();
+  await expect(page.locator('#rows .collections__name', { hasText: 'Beim Essen' })).toBeVisible();
 
-  await page.click('#rows .list__item:has-text("Beim Essen")');
+  await page.click('#rows .collections__item:has-text("Beim Essen")');
   await page.click('#colmore');
   await page.click('.menu button.danger');
 
@@ -47,7 +47,7 @@ test('a Sammlung is made, named and deleted through the page', async ({ page }) 
   const question = page.locator('dialog[open]');
   await expect(question).toBeVisible();
   await question.locator('.foot button.destructive').click();
-  await expect(page.locator('#rows .list__name', { hasText: 'Beim Essen' })).toHaveCount(0);
+  await expect(page.locator('#rows .collections__name', { hasText: 'Beim Essen' })).toHaveCount(0);
 });
 
 test('every setting states itself in its own heading, before it is opened', async ({ page }) => {

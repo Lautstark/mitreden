@@ -12,6 +12,7 @@ import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
 import { el, say } from './dom.ts';
 import { confirmDialog } from '@lautstark/design/dialog';
 import { renameField, type RenameField } from '@lautstark/design/rename';
+import { drawCollections } from '@lautstark/design/collections';
 
 const counts = (): Map<string, number> => {
   const out = new Map<string, number>();
@@ -22,32 +23,33 @@ const counts = (): Map<string, number> => {
 
 export function drawRail(): void {
   const rows = el('rows');
-  rows.innerHTML = '';
   const count = counts();
 
-  for (const collection of DECLARED()) {
-    const row = document.createElement('button');
-    row.className = `list__item${OPEN.has(collection.key) ? ' on' : ''}`;
-    const name = document.createElement('span');
-    name.className = 'list__name';
-    name.textContent = collection.name;
-    const n = document.createElement('span');
-    n.className = 'list__count';
-    n.textContent = String(count.get(collection.key) ?? 0);
-    row.append(name, n);
-    row.onclick = (event) => {
-      if (event.metaKey || event.ctrlKey) {
-        if (OPEN.has(collection.key)) OPEN.delete(collection.key);
-        else OPEN.add(collection.key);
+  /* The rows are @lautstark/design/collections'. What is left here is what a
+     row means in this program: a Sammlung's count is how many sentences are in
+     it, and a press either opens it alone or adds it to what is open — this is
+     the one product whose arity is many (§4.1), so it is the one that uses the
+     additive flag rather than ignoring it. Which key that flag stands for is
+     the package's, so it cannot become Shift here and Cmd elsewhere. */
+  drawCollections(rows, {
+    rows: DECLARED().map((collection) => ({
+      id: collection.key,
+      name: collection.name,
+      count: count.get(collection.key) ?? 0,
+    })),
+    open: OPEN,
+    onPick: (key, additive) => {
+      if (additive) {
+        if (OPEN.has(key)) OPEN.delete(key);
+        else OPEN.add(key);
       } else {
         OPEN.clear();
-        OPEN.add(collection.key);
+        OPEN.add(key);
       }
       closeRail();
       notify();
-    };
-    rows.appendChild(row);
-  }
+    },
+  });
 
   // The header names where you are. There is always somewhere to be.
   const here = DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
@@ -120,10 +122,20 @@ export function wireRail(): void {
      Leaving the field used to re-arm the same 400 ms timer rather than write,
      so a name clicked away from was lost unless nothing navigated in the next
      beat; a blur writes now. */
-  name = renameField(el<HTMLInputElement>('colname'), async (typed) => {
-    const current = here();
-    if (!current || !typed.trim() || typed === current.name) return;
-    await renameCollection(current.key, typed);
+  const title = el<HTMLInputElement>('colname');
+  /* Which Sammlung a pending rename is for, taken on the keystroke rather than
+     read when the write runs. Pressing a rail row moves focus off the field
+     first, so the blur writes before the switch and the two are the same in
+     practice — but that is an ordering, not a guarantee, and this file had the
+     capture before the package arrived. The package owns the timing and not
+     what is being renamed, which is why it binds with addEventListener and
+     leaves room for this listener beside its own. */
+  let renaming: { key: string; name: string } | null = null;
+  title.addEventListener('input', () => { renaming = here() ?? null; });
+
+  name = renameField(title, async (typed) => {
+    if (!renaming || !typed.trim() || typed === renaming.name) return;
+    await renameCollection(renaming.key, typed);
     await load();
   });
 

@@ -10,7 +10,7 @@ test('the page loads and is used without saying anything to the console', async 
   page.on('requestfailed', (request) => noise.push(`failed: ${request.url()}`));
 
   await page.goto('/?lang=de');
-  await page.waitForFunction(() => document.querySelectorAll('#rows .list__item').length > 0);
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.fill('#t', 'Eine Zeile.');
   await page.click('#gear');
   for (const panel of ['p-voice', 'p-azure', 'p-lang', 'p-data'])
