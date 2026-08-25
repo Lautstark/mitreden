@@ -29,13 +29,18 @@ export function slug(text: string, fallback = 'phrase'): string {
   return short.join('-').slice(0, SLUG_CHARS).replace(/^-+|-+$/g, '') || fallback;
 }
 
-/**
- * A Sammlung's key. Cutting at 24 characters can land mid-word and leave the
- * separator dangling; trimming it keeps `normTag(normTag(x)) === normTag(x)`,
- * which every caller that stores a key and later looks it up depends on.
+/* normTag lived here: slug(name) cut to 24 characters, with the dangling
+ * separator trimmed so that normTag(normTag(x)) === normTag(x). It was how a
+ * Sammlung's key was made, and it is gone with the key — a Sammlung's identity
+ * is a minted UUID now (conventions.md §1.1, core/types.ts).
+ *
+ * Worth keeping the reason it was delicate, because it is the argument for not
+ * having had it: the idempotence above was load-bearing for every caller that
+ * stored a key and later looked one up, the truncation meant two names agreeing
+ * for 24 characters produced one key, and creating the second of those silently
+ * returned the first. Three questions, all of them consequences of making the
+ * identity out of a field somebody is allowed to edit.
  */
-export const normTag = (text: string): string =>
-  slug(text, '').slice(0, 24).replace(/-+$/, '');
 
 /** Punctuation stays in: "Nochmal!" and "Nochmal." are spoken differently. */
 export const normText = (text: string): string =>
@@ -44,15 +49,16 @@ export const normText = (text: string): string =>
 /* findTwin, freeKey and freeId used to live here, each taking the whole array
  * and scanning it, because the whole array was the only thing there was to ask.
  * They are questions about what the store already holds — "is there a sentence
- * like this", "is this key taken" — so they are db.ts's now, as twinOf(),
- * freeKey() and freeId(), answered by an index or a key lookup instead of a
- * scan. What stays here is the part that is a rule about names rather than a
- * question about storage: how a name becomes a key, and what "like this" means.
+ * like this", "is this id taken" — so they are db.ts's now, as twinOf() and
+ * idTaken(), answered by an index or a key lookup instead of a scan. What
+ * stays here is the part that is a rule about names rather than a question
+ * about storage: how a sentence becomes a file name, and what "like this"
+ * means.
  *
- * The disambiguation they did is unchanged and still matters: normTag
- * truncates, so two names differing only near the end — "Sammlung vom
- * 22.08.2026" and the same with "(2)" — arrive at the same key, and creating
- * the second one silently found the first. The number goes on the key.
+ * A sentence's id is still derived, and that is not the same decision §1.1
+ * makes about a Sammlung: it is a file name on somebody's talker, so it has to
+ * be readable and stable, and the text it comes from is not a field anybody
+ * renames in place.
  */
 
 /**

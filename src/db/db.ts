@@ -132,7 +132,7 @@ function touched(): void {
 let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
-  handle ??= openDB<MitredenDB>('mitreden', 2, {
+  handle ??= openDB<MitredenDB>('mitreden', 3, {
     upgrade(database) {
       // Snapshotted before the loop: objectStoreNames is live, and deleting
       // through it skips every other name.
@@ -142,7 +142,7 @@ export function db(): Promise<IDBPDatabase<MitredenDB>> {
       phrases.createIndex('collections', 'collections', { multiEntry: true });
       phrases.createIndex('norm', 'norm');
 
-      database.createObjectStore('collections', { keyPath: 'key' })
+      database.createObjectStore('collections', { keyPath: 'id' })
         .createIndex('createdAt', 'createdAt');
 
       // Out-of-line: a Settings object has no id of its own, and a Blob cannot
@@ -171,14 +171,14 @@ export async function allPhrases(): Promise<Phrase[]> {
 }
 
 /** The sentences in one Sammlung, off the index rather than by filtering. */
-export async function phrasesIn(key: string): Promise<Phrase[]> {
-  return (await (await db()).getAllFromIndex('phrases', 'collections', key))
+export async function phrasesIn(id: string): Promise<Phrase[]> {
+  return (await (await db()).getAllFromIndex('phrases', 'collections', id))
     .map((r) => shown(r)!);
 }
 
 /** How many are in one, without loading any of them. §1.8's row count. */
-export const countIn = async (key: string): Promise<number> =>
-  (await db()).countFromIndex('phrases', 'collections', key);
+export const countIn = async (id: string): Promise<number> =>
+  (await db()).countFromIndex('phrases', 'collections', id);
 
 /** How many there are at all. The delete-everything question asks this. */
 export const countPhrases = async (): Promise<number> => (await db()).count('phrases');
@@ -240,13 +240,8 @@ export async function allCollections(): Promise<Collection[]> {
     .map((r) => declared(r)!);
 }
 
-export const getCollection = async (key: string): Promise<Collection | undefined> =>
-  declared(await (await db()).get('collections', key));
-
-/** Whether a Sammlung already has this key. Same shape and same reason as
- *  idTaken above. */
-export const keyTaken = async (key: string): Promise<boolean> =>
-  (await (await db()).getKey('collections', key)) !== undefined;
+export const getCollection = async (id: string): Promise<Collection | undefined> =>
+  declared(await (await db()).get('collections', id));
 
 /**
  * Writes a Sammlung, keeping the order it was made in.
@@ -270,7 +265,7 @@ export async function putCollections(items: readonly Collection[]): Promise<void
   const newest = await tx.store.index('createdAt').openKeyCursor(null, 'prev');
   let next = Math.max(Date.now(), (newest ? newest.key : 0) + 1);
   for (const item of items) {
-    const held = await tx.store.get(item.key);
+    const held = await tx.store.get(item.id);
     await tx.store.put({ ...item, createdAt: held ? held.createdAt : next++ });
   }
   await tx.done;
@@ -288,18 +283,18 @@ export const putCollection = (item: Collection): Promise<void> => putCollections
  * actually in it. The array version walked every sentence in the library to
  * strip a key from the few that had it; the index says which few.
  */
-export async function dropCollection(key: string): Promise<boolean> {
+export async function dropCollection(id: string): Promise<boolean> {
   const tx = (await db()).transaction(['collections', 'phrases'], 'readwrite');
   const collections = tx.objectStore('collections');
-  if (!(await collections.get(key))) {
+  if (!(await collections.get(id))) {
     await tx.done;
     return false;
   }
-  await collections.delete(key);
+  await collections.delete(id);
 
   const phrases = tx.objectStore('phrases');
-  for (const member of await phrases.index('collections').getAll(key)) {
-    await phrases.put({ ...member, collections: member.collections.filter((k) => k !== key) });
+  for (const member of await phrases.index('collections').getAll(id)) {
+    await phrases.put({ ...member, collections: member.collections.filter((k) => k !== id) });
   }
   await tx.done;
   touched();

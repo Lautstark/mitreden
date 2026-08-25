@@ -76,9 +76,9 @@ describe('the round trip', () => {
   /** A library of three Sammlungen with sentences spread across them. */
   async function seed(): Promise<void> {
     await putCollections([
-      { key: 'kueche', name: 'Küche' },
-      { key: 'schule', name: 'Schule' },
-      { key: 'oma', name: 'Bei Oma' },
+      { id: 'kueche', name: 'Küche' },
+      { id: 'schule', name: 'Schule' },
+      { id: 'oma', name: 'Bei Oma' },
     ]);
     await putPhrases([
       { id: 'p1', text: 'Ich möchte Wasser', collections: ['kueche'] },
@@ -114,7 +114,17 @@ describe('the round trip', () => {
 
     const restored = await allPhrases();
     const hunger = restored.find((one) => one.text === 'Ich habe Hunger');
-    expect(hunger?.collections.sort()).toEqual(['kueche', 'oma']);
+
+    /* Resolved through the names rather than compared against the ids in the
+       file. Every arriving Sammlung is minted a fresh id (§1.1, §1.10), so the
+       ids on a restored sentence are deliberately *not* the ones exported —
+       what has to survive the trip is which Sammlungen the sentence is in, and
+       that is a question about names. Asserting the literal ids tested the old
+       identity scheme rather than this property, and would have gone green
+       against a restore that carried the ids across and dropped the names. */
+    const named = new Map((await allCollections()).map((c) => [c.id, c.name]));
+    expect(hunger?.collections.map((id) => named.get(id)).sort())
+      .toEqual(['Bei Oma', 'Küche']);
   });
 
   it('adds rather than overwrites, so restoring cannot destroy existing work', async () => {
@@ -188,7 +198,7 @@ describe('the round trip', () => {
   });
 
   it('keeps a voice and its fingerprint together or drops both', async () => {
-    await putCollections([{ key: 'k', name: 'K' }]);
+    await putCollections([{ id: 'k', name: 'K' }]);
     // A fingerprint without the voice it was taken with cannot decide
     // staleness, and would make a missing recording look current.
     await putPhrases([

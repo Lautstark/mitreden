@@ -61,7 +61,7 @@ export function found(): readonly PhraseWithState[] {
 export function shown(): readonly PhraseWithState[] {
   const list = found();
   return OPEN.size
-    ? list.filter((item) => item.collections.some((key) => OPEN.has(key)))
+    ? list.filter((item) => item.collections.some((id) => OPEN.has(id)))
     : list;
 }
 
@@ -155,8 +155,8 @@ export async function load(): Promise<void> {
   [all, declared] = await Promise.all([phrases(), loadCollections()]);
   // An open Sammlung survives being emptied — it is still a place. It only
   // goes when the Sammlung itself does.
-  for (const key of [...OPEN]) if (!declared.some((c) => c.key === key)) OPEN.delete(key);
+  for (const id of [...OPEN]) if (!declared.some((c) => c.id === id)) OPEN.delete(id);
   // There is always somewhere to be.
-  if (!OPEN.size && declared.length) OPEN.add(declared[0]!.key);
+  if (!OPEN.size && declared.length) OPEN.add(declared[0]!.id);
   notify();
 }

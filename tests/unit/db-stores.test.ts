@@ -32,8 +32,8 @@ const LIBRARY = [
 beforeEach(async () => {
   await wipe();
   await putCollections([
-    { key: 'kueche', name: 'Küche' },
-    { key: 'schlafen', name: 'Schlafen' },
+    { id: 'kueche', name: 'Küche' },
+    { id: 'schlafen', name: 'Schlafen' },
   ]);
   await putPhrases(LIBRARY);
 });
@@ -54,7 +54,7 @@ describe('the sentences in one Sammlung', () => {
   });
 
   it('are empty for a Sammlung nothing is in, rather than an error', async () => {
-    await putCollection({ key: 'leer', name: 'Leer' });
+    await putCollection({ id: 'leer', name: 'Leer' });
     expect(await phrasesIn('leer')).toEqual([]);
   });
 
@@ -91,7 +91,7 @@ describe('deleting a Sammlung', () => {
 
   it('leaves the Sammlungen it was not about alone', async () => {
     await dropCollection('kueche');
-    expect((await allCollections()).map((c) => c.key)).toEqual(['schlafen']);
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen']);
     // The one that was in both keeps the other half of its membership.
     expect((await getPhrase('mude'))!.collections).toEqual(['schlafen']);
   });
@@ -125,8 +125,8 @@ describe('a sentence like this one', () => {
 
 describe('the order the Sammlungen were made in', () => {
   it('is the order they come back in', async () => {
-    await putCollection({ key: 'dritte', name: 'Dritte' });
-    expect((await allCollections()).map((c) => c.key))
+    await putCollection({ id: 'dritte', name: 'Dritte' });
+    expect((await allCollections()).map((c) => c.id))
       .toEqual(['kueche', 'schlafen', 'dritte']);
   });
 
@@ -141,15 +141,15 @@ describe('the order the Sammlungen were made in', () => {
   it('holds for a batch that arrives inside one millisecond', async () => {
     await wipe();
     await putCollections([
-      { key: 'zuletzt', name: 'C' }, { key: 'mitte', name: 'B' }, { key: 'auch', name: 'A' },
+      { id: 'zuletzt', name: 'C' }, { id: 'mitte', name: 'B' }, { id: 'auch', name: 'A' },
     ]);
-    expect((await allCollections()).map((c) => c.key))
+    expect((await allCollections()).map((c) => c.id))
       .toEqual(['zuletzt', 'mitte', 'auch']);
   });
 
   it('does not move when one is renamed, because renaming is not making', async () => {
-    await putCollection({ key: 'kueche', name: 'Die Küche' });
-    expect((await allCollections()).map((c) => c.key)).toEqual(['kueche', 'schlafen']);
+    await putCollection({ id: 'kueche', name: 'Die Küche' });
+    expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
     expect((await allCollections())[0]!.name).toBe('Die Küche');
   });
 });
@@ -160,14 +160,14 @@ describe('the order the Sammlungen were made in', () => {
 describe('every Sammlung with how much is in it', () => {
   it('gives the name and the count, in the order they were made', async () => {
     expect(await collections()).toEqual([
-      { key: 'kueche', name: 'Küche', count: 3 },
-      { key: 'schlafen', name: 'Schlafen', count: 2 },
+      { id: 'kueche', name: 'Küche', count: 3 },
+      { id: 'schlafen', name: 'Schlafen', count: 2 },
     ]);
   });
 
   it('counts a new one as empty rather than leaving it out', async () => {
-    await putCollection({ key: 'leer', name: 'Leer' });
-    expect((await collections()).at(-1)).toEqual({ key: 'leer', name: 'Leer', count: 0 });
+    await putCollection({ id: 'leer', name: 'Leer' });
+    expect((await collections()).at(-1)).toEqual({ id: 'leer', name: 'Leer', count: 0 });
   });
 });
 

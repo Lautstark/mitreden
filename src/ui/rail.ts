@@ -33,9 +33,9 @@ export function drawRail(): void {
      the package's, so it cannot become Shift here and Cmd elsewhere. */
   drawCollections(rows, {
     rows: DECLARED().map((collection) => ({
-      id: collection.key,
+      id: collection.id,
       name: collection.name,
-      count: count.get(collection.key) ?? 0,
+      count: count.get(collection.id) ?? 0,
     })),
     open: OPEN,
     onPick: (key, additive) => {
@@ -52,7 +52,7 @@ export function drawRail(): void {
   });
 
   // The header names where you are. There is always somewhere to be.
-  const here = DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
+  const here = DECLARED().find((c) => OPEN.has(c.id)) ?? DECLARED()[0];
   // Through refresh() rather than by assigning: it declines while the field is
   // being typed in — the caret jumping mid-word was the reason this guard was
   // written here — and also while a keystroke is still waiting out its
@@ -65,7 +65,7 @@ export function drawRail(): void {
  *  input through it, and wireRail() is what binds it. */
 let name: RenameField | null = null;
 
-export const here = () => DECLARED().find((c) => OPEN.has(c.key)) ?? DECLARED()[0];
+export const here = () => DECLARED().find((c) => OPEN.has(c.id)) ?? DECLARED()[0];
 
 function closeRail(): void {
   if (narrow()) {
@@ -130,19 +130,19 @@ export function wireRail(): void {
      capture before the package arrived. The package owns the timing and not
      what is being renamed, which is why it binds with addEventListener and
      leaves room for this listener beside its own. */
-  let renaming: { key: string; name: string } | null = null;
+  let renaming: { id: string; name: string } | null = null;
   title.addEventListener('input', () => { renaming = here() ?? null; });
 
   name = renameField(title, async (typed) => {
     if (!renaming || !typed.trim() || typed === renaming.name) return;
-    await renameCollection(renaming.key, typed);
+    await renameCollection(renaming.id, typed);
     await load();
   });
 
   el('newcol').onclick = async () => {
     const made = await createCollection(null, lang() === 'de');
     OPEN.clear();
-    OPEN.add(made.key);
+    OPEN.add(made.id);
     closeRail();
     say(t('done_collection_new', { name: made.name }));
     await load();

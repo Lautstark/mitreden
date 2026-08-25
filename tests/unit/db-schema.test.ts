@@ -91,10 +91,10 @@ describe('opening a database left behind by version 1', () => {
 
   /* And it is an ordinary database afterwards, indexes and all. */
   it('takes a write afterwards, the way a browser that had never been here does', async () => {
-    await store.putCollection({ key: 'neu', name: 'Neu' });
+    await store.putCollection({ id: 'neu', name: 'Neu' });
     await store.putPhrases([{ id: 'a', text: 'Hallo.', collections: ['neu'] }]);
 
-    expect((await store.allCollections()).map((c) => c.key)).toEqual(['neu']);
+    expect((await store.allCollections()).map((c) => c.id)).toEqual(['neu']);
     expect(await store.countIn('neu'), 'the membership index was created too').toBe(1);
     expect((await store.twinOf('hallo.'))?.id, 'and so was the twin index').toBe('a');
   });

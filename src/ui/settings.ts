@@ -338,7 +338,7 @@ async function forgetKey(): Promise<void> {
 /** One Sammlung as a file, named after it and dated. */
 export async function exportCollection(collection: Collection): Promise<void> {
   // Off the membership index rather than by filtering the whole library.
-  const items = await phrasesIn(collection.key);
+  const items = await phrasesIn(collection.id);
   download({ collection: collection.name, items }, `mitreden-${safeName(collection.name)}`);
 }
 
@@ -446,7 +446,7 @@ async function importFile(file: File): Promise<void> {
   // than failing at recording time. Azure's catalogue is memoised, and the
   // dialog this import runs from has already asked for it.
   const here = new Set((await offered((await settings()).azure)).map((voice) => voice.id));
-  const { added, merged, revoiced } = await addPhrases(lines, [into.key], here);
+  const { added, merged, revoiced } = await addPhrases(lines, [into.id], here);
   // The count, and then what became of the voices that did not survive the
   // journey. Silence there is what made the picker look like it was ignored.
   say(t('done_import', { added, merged })
