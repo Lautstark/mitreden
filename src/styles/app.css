@@ -59,6 +59,12 @@
 .sheet > .head h2{flex:1}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
 .hint{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--text-faint)}
+/* The probe line is a live region and stays in the page with nothing in it
+   (§3.8, and see paintAzure) — so empty it must cost nothing, or the panel
+   gains a 6px gap from a paragraph that is not there. Not [hidden] and not
+   display:none: both take it back out of the accessibility tree, which is the
+   arrangement this replaced. */
+.probe:empty{margin:0}
 /* Panels do the separating in the settings now, so the card that used to box
    each block is a second border around the same content. What is left of the
    sheet's own spacing is the gap between a panel's controls. */

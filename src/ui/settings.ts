@@ -237,9 +237,27 @@ export async function drawSetup(): Promise<void> {
     ? t('key_hint', { hint: azure.key.slice(-4) })
     : t('key_none');
 
+  /*
+   * The probe line is a live region, and it is never hidden — §3.8. It used to
+   * be toggled with `[hidden]` when no key was stored, which is one of the two
+   * ways that section names for getting silence: the element leaves the
+   * accessibility tree and comes back carrying its next message.
+   *
+   * What saved it in practice was luck of timing. The answer arrives from a
+   * promise, so by then the region was on screen and empty and the change was
+   * noticed; only the synchronous "asking…" was lost. Removing the need to
+   * reason about that is the whole point of the rule, so what is emptied now is
+   * the text. Empty, a <p> with no content takes no room, which is why it can
+   * stay.
+   *
+   * It is a second region in this page, and a legitimate one: it reports inside
+   * a modal, and the page's own status line is inert behind that modal while it
+   * is open. §3.8 allows exactly this.
+   */
   const probe = card.querySelector<HTMLElement>('.probe')!;
-  probe.hidden = !azure;
-  if (azure) {
+  if (!azure) {
+    probe.textContent = '';
+  } else {
     // The person who stored a key has one question — does Azure answer? —
     // and the badge's "stored" was never it. Memoised per key and region, so
     // this line and the picker's own ask share a single request.

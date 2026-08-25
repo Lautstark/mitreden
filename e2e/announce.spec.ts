@@ -48,3 +48,24 @@ test('a reported result lands in the live region and stays there', async ({ page
   await expect(line).toHaveAttribute('role', 'status');
   expect(await line.evaluate((node) => getComputedStyle(node).display)).not.toBe('none');
 });
+
+test('the Azure probe line is a region that is never hidden', async ({ page }) => {
+  /* A second live region, and a legitimate one: it reports inside a modal, and
+     the page's own status line is inert behind that modal while it is open
+     (§3.8). What it must not do is what it used to — `probe.hidden = !azure`,
+     so with no key stored the region left the accessibility tree and came back
+     carrying its next message.
+
+     No key is stored here, which is exactly the state that used to hide it. */
+  await page.click('#gear');
+  const panel = page.locator('#p-azure');
+  if ((await panel.getAttribute('open')) === null) await panel.locator('summary').click();
+
+  const probe = page.locator('.probe');
+  await expect(probe).toHaveAttribute('role', 'status');
+  await expect(probe).not.toHaveAttribute('hidden', /.*/);
+  await expect(probe).toBeEmpty();
+  // Empty it costs nothing, which is what lets it stay rather than being hidden.
+  expect(await probe.evaluate((node) => node.getBoundingClientRect().height)).toBe(0);
+  expect(await probe.evaluate((node) => getComputedStyle(node).marginTop)).toBe('0px');
+});
