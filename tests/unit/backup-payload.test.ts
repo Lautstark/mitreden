@@ -6,7 +6,8 @@ import {
 import de from '../../src/i18n/de.json';
 import en from '../../src/i18n/en.json';
 import {
-  allCollections, allPhrases, putCollections, putPhrases, saveSettings, wipe,
+  allCollections, allPhrases, countIn, putCollections, putPhrases, saveSettings,
+  wipe,
 } from '../../src/db/db.ts';
 
 /**
@@ -81,9 +82,11 @@ describe('the round trip', () => {
       { id: 'oma', name: 'Bei Oma' },
     ]);
     await putPhrases([
-      { id: 'p1', text: 'Ich möchte Wasser', collections: ['kueche'] },
-      { id: 'p2', text: 'Ich habe Hunger', collections: ['kueche', 'oma'] },
-      { id: 'p3', text: 'Wann ist Pause', collections: ['schule'] },
+      { id: 'p1', text: 'Ich möchte Wasser', collection: 'kueche' },
+      // The same sentence in two Sammlungen, which is two rows now.
+      { id: 'p2', text: 'Ich habe Hunger', collection: 'kueche' },
+      { id: 'p2-2', text: 'Ich habe Hunger', collection: 'oma' },
+      { id: 'p3', text: 'Wann ist Pause', collection: 'schule' },
     ]);
   }
 
@@ -101,19 +104,19 @@ describe('the round trip', () => {
     const done = await importBackup(backup);
 
     expect(done.collections).toBe(3);
-    expect(done.added).toBe(3);
+    expect(done.added).toBe(4);
     expect((await allCollections()).map((c) => c.name).sort())
       .toEqual(['Bei Oma', 'Küche', 'Schule']);
   });
 
-  it('keeps which sentence belonged where, including the one in two places', async () => {
+  it('keeps which sentence belonged where, including the text in two places', async () => {
     await seed();
     const backup = await exportEverything(NOTICE);
     await wipe();
     await importBackup(backup);
 
     const restored = await allPhrases();
-    const hunger = restored.find((one) => one.text === 'Ich habe Hunger');
+    const hunger = restored.filter((one) => one.text === 'Ich habe Hunger');
 
     /* Resolved through the names rather than compared against the ids in the
        file. Every arriving Sammlung is minted a fresh id (§1.1, §1.10), so the
@@ -123,7 +126,7 @@ describe('the round trip', () => {
        identity scheme rather than this property, and would have gone green
        against a restore that carried the ids across and dropped the names. */
     const named = new Map((await allCollections()).map((c) => [c.id, c.name]));
-    expect(hunger?.collections.map((id) => named.get(id)).sort())
+    expect(hunger.map((one) => named.get(one.collection!)).sort())
       .toEqual(['Bei Oma', 'Küche']);
   });
 
@@ -131,7 +134,7 @@ describe('the round trip', () => {
     await seed();
     const backup = await exportEverything(NOTICE);
     // Not a wipe: somebody restoring onto a library that already has something.
-    await putPhrases([{ id: 'own', text: 'Mein eigener Satz', collections: ['kueche'] }]);
+    await putPhrases([{ id: 'own', text: 'Mein eigener Satz', collection: 'kueche' }]);
 
     await importBackup(backup);
 
@@ -152,16 +155,105 @@ describe('the round trip', () => {
     expect(names).toContain('Küche (importiert)');
   });
 
-  it('merges a sentence that is already here instead of duplicating it', async () => {
+  /*
+   * A restore onto the same library used to merge every sentence into the row
+   * that was already there, because a row could hold both memberships. It
+   * cannot, and the Sammlungen it merged into were never the arriving ones
+   * anyway: §1.10 mints a fresh id for every Sammlung in the file, so the
+   * "Küche (importiert)" above is a different place from the Küche. Its
+   * sentences belong in it, and they arrive.
+   *
+   * Which is the same rule stated at the top of importBackup — adds, never
+   * overwrites — reaching the sentences as well as the Sammlungen.
+   */
+  it('fills the Sammlung it restored rather than merging into the one here', async () => {
     await seed();
     const backup = await exportEverything(NOTICE);
     const done = await importBackup(backup);
 
-    expect(done.merged).toBe(3);
-    expect(done.added).toBe(0);
-    expect((await allPhrases()).length).toBe(3);
+    expect(done.merged).toBe(0);
+    expect(done.added).toBe(4);
+    expect((await allPhrases()).length).toBe(8);
+    // And nothing was pulled out of the Sammlungen that were already here.
+    const named = new Map((await allCollections()).map((c) => [c.name, c.id]));
+    expect(await countIn(named.get('Küche')!)).toBe(2);
+    expect(await countIn(named.get('Küche (importiert)')!)).toBe(2);
   });
 
+  /* What merging still means: the same text twice in one arriving Sammlung. It
+     is the only shape left where two rows would be two of the same thing in the
+     same place. */
+  it('merges a sentence the file has twice in one Sammlung', async () => {
+    const file = await exportEverything(NOTICE);
+    const done = await importBackup({
+      ...file,
+      collections: [{ id: 'k', name: 'Küche' }],
+      phrases: [
+        { id: 'a', text: 'Ich habe Hunger', collection: 'k' },
+        { id: 'b', text: 'ich   habe hunger', collection: 'k' },
+      ],
+    });
+
+    expect(done.added).toBe(1);
+    expect(done.merged).toBe(1);
+  });
+
+  /*
+   * A version 1 file, which is every Sicherung anybody already has: a sentence
+   * names every Sammlung it was in. It restores the way the version 4 migration
+   * splits — one row per Sammlung — because that is the same question asked of
+   * the same shape, and the arrangement the file recorded is worth keeping.
+   */
+  it('splits a version 1 sentence that was in two Sammlungen', async () => {
+    const file = await exportEverything(NOTICE);
+    const done = await importBackup({
+      ...file,
+      version: 1,
+      collections: [{ id: 'k', name: 'Küche' }, { id: 'o', name: 'Bei Oma' }],
+      phrases: [{
+        id: 'p', text: 'Ich habe Hunger', collections: ['k', 'o'],
+        voice: 'piper:de_DE-thorsten-medium', fingerprint: 'aaaaaaaaaaaa',
+      }] as never,
+    });
+
+    expect(done.added).toBe(2);
+    const named = new Map((await allCollections()).map((c) => [c.id, c.name]));
+    expect((await allPhrases()).map((one) => named.get(one.collection!)).sort())
+      .toEqual(['Bei Oma', 'Küche']);
+    // Both keep the voice and the mark, which travel together and are what say
+    // whether a re-recording would come out sounding the same.
+    for (const one of await allPhrases()) {
+      expect(one.voice).toBe('piper:de_DE-thorsten-medium');
+      expect(one.fingerprint).toBe('aaaaaaaaaaaa');
+    }
+  });
+
+  /* A file written before Collection.voice existed still lands with the voices
+     it was made in: the sentences say what they were recorded in, and the
+     Sammlung takes the one most of them used. */
+  it('gives a version 1 Sammlung the voice its sentences were recorded in', async () => {
+    const file = await exportEverything(NOTICE);
+    await importBackup({
+      ...file,
+      version: 1,
+      settings: { voice: 'piper:de_DE-kerstin-low' },
+      collections: [{ id: 'k', name: 'Küche' }, { id: 'l', name: 'Leer' }],
+      phrases: [
+        { id: 'a', text: 'Eins', collections: ['k'], voice: 'piper:de_DE-thorsten-medium' },
+        { id: 'b', text: 'Zwei', collections: ['k'], voice: 'piper:de_DE-thorsten-medium' },
+        { id: 'c', text: 'Drei', collections: ['k'], voice: 'piper:de_DE-kerstin-low' },
+      ] as never,
+    });
+
+    const voices = new Map((await allCollections()).map((c) => [c.name, c.voice]));
+    expect(voices.get('Küche'), 'two against one').toBe('piper:de_DE-thorsten-medium');
+    expect(voices.get('Leer'), 'nothing to vote with, so the file’s own default')
+      .toBe('piper:de_DE-kerstin-low');
+  });
+
+  /* The number moved because the shape did, and this is what the number is for:
+     a mitreden from before this change would read a version 2 file, find no
+     `collections` anywhere, and restore the library as one uncollected heap. */
   it('refuses a file from a newer mitreden rather than reading it wrong', async () => {
     await expect(importBackup({ ...(await exportEverything(NOTICE)), version: 99 }))
       .rejects.toThrow(TOO_NEW);

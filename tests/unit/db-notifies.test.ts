@@ -31,7 +31,7 @@ describe('the change notifier', () => {
     stop = onChanged(() => { heard++; });
   });
 
-  const phrase = (id: string, text = 'Hallo') => ({ id, text, collections: [] });
+  const phrase = (id: string, text = 'Hallo') => ({ id, text });
 
   it('putPhrase() announces the write', async () => {
     await putPhrase(phrase('a'));
@@ -74,8 +74,8 @@ describe('the change notifier', () => {
   it('dropCollection() announces once, for the Sammlung and its members', async () => {
     await putCollection({ id: 'k', name: 'K' });
     await putPhrases([
-      { id: 'a', text: 'Hallo', collections: ['k'] },
-      { id: 'b', text: 'Tschüss', collections: ['k'] },
+      { id: 'a', text: 'Hallo', collection: 'k' },
+      { id: 'b', text: 'Tschüss', collection: 'k' },
     ]);
     heard = 0;
     await dropCollection('k');
