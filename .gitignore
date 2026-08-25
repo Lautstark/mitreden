@@ -13,6 +13,12 @@ playwright-report/
 *.wav
 *.mp3
 
+# The container's own settings file, which it wrote next to the data it
+# mounted. The container is gone and nothing in src/ reads this any more, so a
+# copy on disk is a leftover rather than a setting - ignored so it stops
+# showing up as untracked in every status.
+config.json
+
 # Credentials
 .env
 .env.*
