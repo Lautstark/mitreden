@@ -2,8 +2,10 @@
  * The sidebar: which Sammlungen exist, which one you are in, and making one.
  *
  * A Sammlung is a place you work in, not a label a sentence happens to carry.
- * Clicking one opens it; Cmd or Ctrl adds a second, because a sentence can
- * genuinely be in two at once and that has to be reachable.
+ * Clicking one opens it; Cmd or Ctrl adds a second, because working across two
+ * of them at once is a real thing to be doing, and that has to be reachable.
+ * §4.2, which is about the open set and not about how many Sammlungen a
+ * sentence is in.
  */
 
 import {
@@ -20,7 +22,7 @@ import { drawCollections } from '@lautstark/design/collections';
 const counts = (): Map<string, number> => {
   const out = new Map<string, number>();
   for (const item of ALL())
-    for (const key of item.collections) out.set(key, (out.get(key) ?? 0) + 1);
+    if (item.collection) out.set(item.collection, (out.get(item.collection) ?? 0) + 1);
   return out;
 };
 
@@ -30,10 +32,11 @@ export function drawRail(): void {
 
   /* The rows are @lautstark/design/collections'. What is left here is what a
      row means in this program: a Sammlung's count is how many sentences are in
-     it, and a press either opens it alone or adds it to what is open — this is
-     the one product whose arity is many (§4.1), so it is the one that uses the
-     additive flag rather than ignoring it. Which key that flag stands for is
-     the package's, so it cannot become Shift here and Cmd elsewhere. */
+     it, and a press either opens it alone or adds it to what is open. Which
+     key that flag stands for is
+     the package's, so it cannot become Shift here and Cmd elsewhere. mitreden
+     is still the one product that uses the additive flag — §4.2 — and that did
+     not change when arity did. */
   drawCollections(rows, {
     rows: DECLARED().map((collection) => ({
       id: collection.id,

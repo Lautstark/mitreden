@@ -35,13 +35,25 @@
 
 import {
   allCollections, allPhrases, idTaken, loadSettings, putCollections,
-  putPhrases, twinOf, type Settings,
+  putPhrases, twinsOf, type Settings,
 } from './db.ts';
 import { free, normText, slug } from '../core/ids.ts';
+import { commonest } from '../core/voices.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
 export const BACKUP_FORMAT = 'mitreden-backup';
-export const BACKUP_VERSION = 1;
+/**
+ * Version 2: a sentence names one Sammlung rather than a list of them, and a
+ * Sammlung names the voice it records in.
+ *
+ * The number moves because the shape did, and TOO_NEW is what the number is
+ * for: a mitreden from before this change reading a version 2 file would find
+ * no `collections` on any sentence and restore the whole library as one heap of
+ * uncollected sentences, which is precisely the lossy round trip the head of
+ * this file exists to have ended. It refuses instead. Version 1 files still
+ * read here — see importBackup.
+ */
+export const BACKUP_VERSION = 2;
 
 export interface Backup {
   format: typeof BACKUP_FORMAT;
@@ -109,18 +121,30 @@ export const isBackup = (data: unknown): data is Backup =>
   && (data as { format?: unknown }).format === BACKUP_FORMAT;
 
 /**
+ * A sentence as some file has it, which is not quite as this version has it: a
+ * version 1 backup names every Sammlung the sentence was in.
+ */
+type Arriving = Partial<Phrase> & { collections?: string[] };
+
+/** Which Sammlungen an arriving sentence named, whichever version wrote it. */
+const memberships = (source: Arriving): string[] =>
+  source.collections ?? (source.collection ? [source.collection] : []);
+
+/**
  * Restores a full backup, keeping the Sammlungen apart.
  *
  * Adds, never overwrites — the same rule bildhaft's import follows, and for
  * the same reason: restoring a backup must not be able to destroy work that is
  * already here. A Sammlung whose key is taken gets a free one, and a sentence
- * that already exists joins the restored Sammlungen instead of being
- * duplicated.
+ * whose text is already here gets a row of its own in the restored Sammlung
+ * rather than pulling the existing row out of the one it is in.
  */
 export async function importBackup(backup: Backup): Promise<Restored> {
   if (typeof backup.version !== 'number' || backup.version > BACKUP_VERSION) {
     throw new Error(TOO_NEW);
   }
+
+  const arriving = (backup.phrases ?? []) as Arriving[];
 
   /* Every arriving Sammlung gets a fresh id, whatever the file called it.
      conventions.md §1.10 — a Sammlung arriving from a file joins the ones
@@ -134,6 +158,18 @@ export async function importBackup(backup: Backup): Promise<Restored> {
      to share a name and the person should be able to see which one arrived. */
   const held = new Set((await allCollections()).map((c) => c.name));
 
+  /* What each arriving Sammlung's sentences were recorded in, so that a file
+     written before Collection.voice existed still lands with the voices it was
+     made in. The file's own settings voice is the tie-break and the fallback —
+     it is what that mitreden would have recorded a new sentence in. */
+  const votes = new Map<string, (string | undefined)[]>();
+  for (const source of arriving) {
+    for (const was of memberships(source)) {
+      votes.set(was, [...votes.get(was) ?? [], source.voice]);
+    }
+  }
+  const fallback = backup.settings?.voice;
+
   // Old id -> the id it got here, so membership survives the trip.
   const moved = new Map<string, string>();
   const landed: Collection[] = [];
@@ -144,48 +180,63 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     const name = source.name || was;
     const id = crypto.randomUUID();
     moved.set(was, id);
-    landed.push({ id, name: held.has(name) ? `${name} (importiert)` : name });
+    const voice = source.voice ?? commonest(votes.get(was) ?? [], fallback) ?? fallback;
+    const made: Collection = { id, name: held.has(name) ? `${name} (importiert)` : name };
+    if (voice) made.voice = voice;
+    landed.push(made);
   }
 
-  /* Same as the keys above: a sentence already merged into by this restore is
-     the twin of the next identical line in the file, and it is not in the store
+  /* Same as the keys above: a sentence already written by this restore is the
+     twin of the next identical line in the file, and it is not in the store
      yet. */
   const writing = new Map<string, Phrase>();
-  const twinIn = async (text: string): Promise<Phrase | undefined> => {
+  const twins = async (text: string): Promise<Phrase[]> => {
     const key = normText(text);
-    for (const held of writing.values()) if (normText(held.text) === key) return held;
-    return twinOf(text);
+    const here = [...writing.values()].filter((one) => normText(one.text) === key);
+    return [...here, ...(await twinsOf(text)).filter((one) => !writing.has(one.id))];
   };
 
   let added = 0;
   let merged = 0;
-  for (const source of backup.phrases ?? []) {
+  for (const source of arriving) {
     const text = String(source?.text ?? '').trim();
     if (!text) continue;
-    // Membership, translated through whatever the Sammlungen became here. A
-    // sentence naming a Sammlung the file did not carry is not dropped: it
-    // keeps the tag, and shows up under it once that Sammlung exists again.
-    const into = (source.collections ?? []).map((was) => moved.get(was) ?? was);
+    /* Membership, translated through whatever the Sammlungen became here. A
+       sentence naming a Sammlung the file did not carry is not dropped: it
+       keeps the tag, and shows up under it once that Sammlung exists again.
 
-    const twin = await twinIn(text);
-    if (twin) {
-      for (const id of into) if (!twin.collections.includes(id)) twin.collections.push(id);
-      writing.set(twin.id, twin);
-      merged += 1;
-      continue;
-    }
+       A version 1 sentence that was in two lands as two rows, for the same
+       reason addPhrases() makes a second row rather than merging, and the same
+       reason the version 4 migration splits one — a sentence is in one Sammlung
+       now, and the arrangement the file recorded is worth keeping. `undefined`
+       is the uncollected sentence, which is a real state and restores as one. */
+    const into: (string | undefined)[] = memberships(source)
+      .map((was) => moved.get(was) ?? was);
+    if (!into.length) into.push(undefined);
 
-    const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
-    const phrase: Phrase = { id, text, collections: into };
-    // The voice and the fingerprint travel together or not at all: a
-    // fingerprint without the voice it was taken with cannot decide staleness,
-    // and would make a missing recording look current.
-    if (source.voice) {
-      phrase.voice = source.voice;
-      if (source.fingerprint) phrase.fingerprint = source.fingerprint;
+    for (const target of into) {
+      const alike = await twins(text);
+      if (alike.some((twin) => twin.collection === target)) {
+        merged += 1;
+        continue;
+      }
+
+      const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
+      const phrase: Phrase = { id, text };
+      if (target !== undefined) phrase.collection = target;
+      // The voice and the fingerprint travel together or not at all: a
+      // fingerprint without the voice it was taken with cannot decide staleness,
+      // and would make a missing recording look current. They are a record of a
+      // recording that was really made, which is why they cross even though the
+      // recording itself does not — they are what says whether the sentence
+      // would come back sounding the same.
+      if (source.voice) {
+        phrase.voice = source.voice;
+        if (source.fingerprint) phrase.fingerprint = source.fingerprint;
+      }
+      writing.set(phrase.id, phrase);
+      added += 1;
     }
-    writing.set(phrase.id, phrase);
-    added += 1;
   }
 
   await putCollections(landed);

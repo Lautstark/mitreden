@@ -11,10 +11,11 @@
 import {
   allCollections, allPhrases, countIn, dropAudio, dropCollection, dropPhrase,
   getAudio, getCollection, getPhrase, idTaken, loadSettings, putAudio,
-  putCollection, putPhrase, putPhrases, saveSettings, twinOf, type Settings,
+  putCollection, putPhrase, putPhrases, saveSettings, twinsOf, type Settings,
 } from './db.ts';
 import { record } from '../core/audio.ts';
 import { fingerprint, free, normText, slug } from '../core/ids.ts';
+import { commonest } from '../core/voices.ts';
 import type { Collection, CollectionWithCount, Phrase, PhraseWithState, State } from '../core/types.ts';
 
 /** A Sammlung named after the day, the way a new notebook gets a date. */
@@ -35,19 +36,62 @@ export async function ensureCollection(german: boolean): Promise<Collection[]> {
   if (declared.length) return declared;
   const name = defaultName(german);
   const made: Collection = { id: crypto.randomUUID(), name };
+  // The settings voice, if there is one yet. On a genuinely first run there is
+  // not, and the Sammlung goes without: voiceFor() falls through to whatever the
+  // page is offering by then.
+  const { voice } = await loadSettings();
+  if (voice) made.voice = voice;
   await putCollection(made);
   return [made];
 }
 
-async function stateOf(item: Phrase): Promise<State> {
+/**
+ * Which voice a sentence is supposed to be recorded in: its Sammlung's, or the
+ * settings one when the Sammlung has none or there is no Sammlung.
+ *
+ * One rule covering both of the loose ends. A Sammlung without a voice and a
+ * sentence without a Sammlung are different shapes with the same question, and
+ * the settings voice is the answer to both — it is the default for the next
+ * Sammlung, so it is also the standing answer for anything that never got one.
+ *
+ * `fallback` is the last resort: on a first run nobody has saved a voice yet
+ * and the page is nevertheless offering one. Only build() has that to give.
+ *
+ * The whole of what changed is *where the voice comes from*. fingerprint() is
+ * untouched, and so is what it decides: the mark is taken over the text and the
+ * voice, so handing it the Sammlung's voice makes a Sammlung whose voice was
+ * changed report every one of its sentences stale, and nothing else had to move
+ * for that to be true.
+ */
+const voiceFor = (
+  item: Phrase, voices: ReadonlyMap<string, string | undefined>, fallback?: string,
+): string | undefined =>
+  (item.collection ? voices.get(item.collection) : undefined) ?? fallback;
+
+async function stateOf(item: Phrase, wanted: string | undefined): Promise<State> {
   if (!(await getAudio(item.id))) return 'missing';
   if (!item.voice || !item.fingerprint) return 'stale';
-  return (await fingerprint(item.text, item.voice)) === item.fingerprint ? 'ok' : 'stale';
+  // No voice decided anywhere is not the same as a voice that changed: compare
+  // against what it was recorded in, so a library nobody has picked a voice for
+  // does not read as entirely stale.
+  const against = wanted ?? item.voice;
+  return (await fingerprint(item.text, against)) === item.fingerprint ? 'ok' : 'stale';
+}
+
+/** Which voice each Sammlung records in, with the settings voice standing in
+ *  for the ones that have none. Read once per pass rather than once per
+ *  sentence: every caller here is about the whole library. */
+async function voiceMap(): Promise<Map<string, string | undefined>> {
+  const [declared, saved] = await Promise.all([allCollections(), loadSettings()]);
+  return new Map(declared.map((c) => [c.id, c.voice ?? saved.voice]));
 }
 
 export async function phrases(): Promise<PhraseWithState[]> {
-  const items = await allPhrases();
-  return Promise.all(items.map(async (item) => ({ ...item, state: await stateOf(item) })));
+  const [items, voices, saved] = await Promise.all([allPhrases(), voiceMap(), loadSettings()]);
+  return Promise.all(items.map(async (item) => ({
+    ...item,
+    state: await stateOf(item, voiceFor(item, voices, saved.voice)),
+  })));
 }
 
 /** Every Sammlung with how much is in it. The count comes off the membership
@@ -68,10 +112,25 @@ export type Line = string | { text: string; voice?: string };
 export interface Added {
   added: number;
   merged: number;
-  /** Of the added, how many named a voice this browser cannot reach. */
+  /** Of the lines that named a voice, how many named one this browser cannot
+   *  reach — so it counted for nothing when the Sammlung's voice was decided. */
   revoiced: number;
   ids: string[];
 }
+
+/**
+ * The voice a set of arriving lines votes for, which is what a file's voices are
+ * *for* now: the Sammlung records, so a voice on a line is evidence about the
+ * Sammlung rather than an instruction about the line. `reachable` throws out the
+ * votes this browser could not honour — an Azure voice with no key would fail
+ * every recording in the Sammlung it won.
+ */
+export const votedVoice = (
+  lines: readonly Line[], reachable?: ReadonlySet<string>,
+): string | undefined => commonest(lines.map((line) => {
+  const named = typeof line === 'string' ? undefined : line.voice;
+  return named && (!reachable || reachable.has(named)) ? named : undefined;
+}));
 
 /**
  * Adding is not recording. The sentences are saved and handed back at once so
@@ -79,52 +138,97 @@ export interface Added {
  * that is a 60 MB model download, and a list that stays empty for a minute
  * looks like the typing was thrown away.
  *
+ * `into` is one Sammlung or none, because a sentence is in one Sammlung or none.
+ *
+ * ## What a twin does now
+ *
+ * A sentence whose text is already here used to be *merged*: the existing row
+ * gained the new Sammlung and there was one row with two memberships. One-to-one
+ * leaves three possibilities and this takes the third.
+ *
+ * - **A move** — hand the existing row to the new Sammlung — is the wrong one.
+ *   Adding "Ich habe Hunger." to the nursery Sammlung would empty it out of the
+ *   morning one, silently, and the person asked for neither half of that.
+ * - **A refusal** is worse. This program exists to hand a Sammlung to a device
+ *   as a set of files; a Sammlung that cannot hold a sentence because some other
+ *   Sammlung has it is a Sammlung that cannot do its job.
+ * - **A second row of its own** is what happens. Same text, its own numbered id,
+ *   its own membership, its own recording.
+ *
+ * That third one costs a row and, unlike the arrangement it replaces, a second
+ * clip: `audio` is keyed by the *sentence id* (putAudio in db.ts), so two rows
+ * are two keys even when they would hold identical bytes. Which is why the bytes
+ * are copied rather than made again — if the twin was recorded in the very voice
+ * this Sammlung records in, the new row is a copy of it in every respect that
+ * decides staleness, so it arrives already recorded and build() has nothing to
+ * do. A twin from a Sammlung with a different voice is a genuine second
+ * recording, and that is correct rather than wasteful: it is a different sound.
+ *
+ * A twin in the Sammlung being added to is still a merge, and now a true no-op:
+ * there is nothing to add.
+ *
  * `reachable` is the voices this page can actually speak in, and only an import
- * has one: it decides whether a voice arriving with a sentence is kept.
+ * has one. A line's own voice is not written onto the sentence any more — see
+ * votedVoice above, and Phrase.voice, which build() alone writes.
  */
 export async function addPhrases(
-  lines: readonly Line[], into: string[], reachable?: ReadonlySet<string>,
+  lines: readonly Line[], into?: string, reachable?: ReadonlySet<string>,
 ): Promise<Added> {
   /* What this call will write, collected and put in one transaction at the end
      rather than saved per line. Twins are looked up in the store *and* here:
      two identical lines in one paste have no twin in the database yet, and the
      array version got that for free by mutating the array it was scanning. */
   const writing = new Map<string, Phrase>();
-  const twinIn = async (text: string): Promise<Phrase | undefined> => {
+  const twins = async (text: string): Promise<Phrase[]> => {
     const key = normText(text);
-    for (const held of writing.values()) if (normText(held.text) === key) return held;
-    return twinOf(text);
+    const here = [...writing.values()].filter((held) => normText(held.text) === key);
+    return [...here, ...(await twinsOf(text)).filter((held) => !writing.has(held.id))];
   };
+
+  const saved = await loadSettings();
+  const wanted = (into ? (await getCollection(into))?.voice : undefined) ?? saved.voice;
+
   const fresh: Phrase[] = [];
+  const copying: [string, string][] = [];
   let merged = 0;
   let revoiced = 0;
   for (const line of lines) {
     const named = typeof line === 'string' ? undefined : line.voice;
     const text = (typeof line === 'string' ? line : line.text).trim();
     if (!text) continue;
-    const twin = await twinIn(text);
-    if (twin) {
-      // A twin keeps its own voice: it may already have the recording, and the
-      // file's voice is about a copy of the sentence that did not survive.
-      for (const key of into) if (!twin.collections.includes(key)) twin.collections.push(key);
-      writing.set(twin.id, twin);
+    if (named && reachable && !reachable.has(named)) revoiced += 1;
+
+    const alike = await twins(text);
+    if (alike.some((twin) => twin.collection === into)) {
       merged += 1;
       continue;
     }
+
     const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
-    const item: Phrase = { id, text, collections: [...into] };
-    // A sentence that arrives naming its voice keeps it, so the same file on a
-    // second device records the way it did on the first — that is the whole
-    // point of the program. A voice this page cannot reach is the exception:
-    // build() prefers the sentence's own voice over the picked one, so keeping
-    // an Azure voice here without a key would fail the recording rather than
-    // fall back to a voice that works.
-    if (named && (!reachable || reachable.has(named))) item.voice = named;
-    else if (named) revoiced += 1;
+    const item: Phrase = { id, text };
+    if (into !== undefined) item.collection = into;
+    /* Already recorded, in the voice this Sammlung records in: the clip is the
+       same sound, so it is copied rather than made a second time. The
+       fingerprint comes with it — the two travel together (db/backup.ts) — and
+       it is the twin's own, not a fresh one, because taking a new mark over the
+       same text and the same voice would produce that exact string anyway. */
+    const same = alike.find((twin) => twin.voice && twin.voice === wanted && twin.fingerprint);
+    if (same) {
+      item.voice = same.voice;
+      item.fingerprint = same.fingerprint;
+      copying.push([same.id, id]);
+    }
     writing.set(item.id, item);
     fresh.push(item);
   }
   await putPhrases([...writing.values()]);
+  // After the sentences, and outside their transaction: a clip is not in the
+  // Sicherung and putAudio deliberately announces nothing, so this is not part
+  // of the write that has to be all or nothing.
+  for (const [from, to] of copying) {
+    const clip = await getAudio(from);
+    if (clip) await putAudio(to, clip);
+  }
   return { added: fresh.length, merged, revoiced, ids: fresh.map((i) => i.id) };
 }
 
@@ -148,13 +252,19 @@ export async function build(
   onStep?: (id: string, done: boolean) => void,
 ): Promise<Built> {
   const items = await allPhrases();
-  const settings = await loadSettings();
+  const [settings, voices] = await Promise.all([loadSettings(), voiceMap()]);
   const wanted = new Set(ids);
   let recorded = 0;
   const failed: string[] = [];
   for (const item of items) {
     if (wanted.size && !wanted.has(item.id)) continue;
-    const voice = force ? voiceId : item.voice ?? voiceId;
+    /* The Sammlung's voice, not the sentence's. `voiceId` is only the last
+       resort — a first run where nothing has been saved and nothing has been
+       set — and `force` no longer means "in this voice regardless": there is
+       one right voice for this sentence and force is about recording it again
+       rather than about which one. */
+    const voice = voiceFor(item, voices, settings.voice ?? voiceId);
+    if (!voice) continue;
     try {
       const mark = await fingerprint(item.text, voice);
       if (!force && item.fingerprint === mark && (await getAudio(item.id))) continue;
@@ -212,7 +322,9 @@ export async function deletePhrase(id: string): Promise<void> {
  * uniquified, and only when nobody supplied one — see §1.5, which is about the
  * suggestion rather than about uniqueness.
  */
-export async function createCollection(name: string | null, german: boolean): Promise<Collection> {
+export async function createCollection(
+  name: string | null, german: boolean, voice?: string,
+): Promise<Collection> {
   let shown = name?.trim() ?? '';
   if (!shown) {
     const base = defaultName(german);
@@ -220,6 +332,12 @@ export async function createCollection(name: string | null, german: boolean): Pr
     for (let n = 2; await named(shown); n++) shown = `${base} (${n})`;
   }
   const made: Collection = { id: crypto.randomUUID(), name: shown };
+  /* The settings voice is the default for the next Sammlung — that is what the
+     setting is now — unless the caller knows better. An import does: the file's
+     sentences say which voice they were made in, and honouring that is what
+     makes the same file record the same way on a second device. */
+  const decided = voice ?? (await loadSettings()).voice;
+  if (decided) made.voice = decided;
   await putCollection(made);
   return made;
 }
@@ -245,6 +363,9 @@ export async function renameCollection(id: string, to: string): Promise<Collecti
 export const deleteCollection = dropCollection;
 
 export const settings = loadSettings;
+/** The default for the *next* Sammlung. It does not reach into the ones that
+ *  already exist: those carry their own, and changing one of those is a change
+ *  to that Sammlung. */
 export const saveVoice = async (voice: string): Promise<void> =>
   saveSettings({ ...(await loadSettings()), voice });
 

@@ -457,14 +457,21 @@ async function importFile(file: File): Promise<void> {
     say(t('import_empty'));
     return;
   }
-  const into = await createCollection(collection ?? file.name.replace(/\.json$/i, ''), lang() === 'de');
-  const { addPhrases } = await import('../db/repo.ts');
-  // Which voices this page can speak in, so a sentence arriving in one it
-  // cannot — an Azure voice on a browser with no key — loses it here rather
-  // than failing at recording time. Azure's catalogue is memoised, and the
-  // dialog this import runs from has already asked for it.
+  const { addPhrases, votedVoice } = await import('../db/repo.ts');
+  // Which voices this page can speak in, so a voice arriving with a sentence it
+  // cannot honour — an Azure voice on a browser with no key — is discounted
+  // here rather than failing at recording time. Azure's catalogue is memoised,
+  // and the dialog this import runs from has already asked for it.
   const here = new Set((await offered((await settings()).azure)).map((voice) => voice.id));
-  const { added, merged, revoiced } = await addPhrases(lines, [into.id], here);
+  /* The Sammlung takes the voice the file was made in, rather than the sentences
+     each keeping their own: the voice belongs to the Sammlung now, so that is
+     where a file's voice has to land for the same file to record the same way on
+     a second device. A file whose sentences disagree gives the Sammlung the one
+     most of them used — see votedVoice. */
+  const into = await createCollection(
+    collection ?? file.name.replace(/\.json$/i, ''), lang() === 'de', votedVoice(lines, here),
+  );
+  const { added, merged, revoiced } = await addPhrases(lines, into.id, here);
   // The count, and then what became of the voices that did not survive the
   // journey. Silence there is what made the picker look like it was ignored.
   say(t('done_import', { added, merged })

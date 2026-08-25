@@ -7,8 +7,25 @@ export interface Phrase {
   /** Stable, derived from the text once. It is a filename on somebody's talker. */
   id: string;
   text: string;
-  /** Ids, not names: a Sammlung can be renamed without touching its sentences. */
-  collections: string[];
+  /**
+   * The one Sammlung it is in, by id rather than by name: a Sammlung can be
+   * renamed without touching its sentences.
+   *
+   * One, not several. It used to be an array, because arity here was many —
+   * conventions.md §4.1, which this overturns. The voice lives on the Sammlung
+   * now (see Collection.voice), and a sentence in two of them would have two
+   * answers to "which voice records this" and no way to choose between them.
+   *
+   * Absent is a real state and not an error: composer.ts puts a new sentence in
+   * none when two Sammlungen are open, because guessing which was meant is
+   * worse than asking. Such a sentence records in the settings voice.
+   */
+  collection?: string;
+  /**
+   * The voice it was actually recorded in. Written by build() and by nothing
+   * else: it is a record of what happened, not a choice anybody makes here.
+   * The choice is the Sammlung's.
+   */
   voice?: string;
   /** Text and voice at the time of recording, so staleness is decidable. */
   fingerprint?: string;
@@ -31,6 +48,22 @@ export interface Collection {
    */
   id: string;
   name: string;
+  /**
+   * Which voice its sentences are recorded in — the choice that used to be made
+   * once for the whole page and written onto each sentence as it was recorded.
+   *
+   * Optional, and absent means the settings voice. A Sammlung is created with
+   * whatever the settings hold (createCollection in db/repo.ts), so an absent
+   * one is left over from a migration where no sentence had a voice to vote
+   * with, from a restored backup written before this field existed, or from a
+   * first run where nobody has picked a voice yet. All three want the same
+   * answer, and the settings voice is it.
+   *
+   * Changing it makes the Sammlung's sentences stale, through the fingerprint
+   * comparison in repo.ts: the fingerprint is taken over the text and the voice,
+   * so feeding it a different voice is all it takes.
+   */
+  voice?: string;
 }
 
 export interface CollectionWithCount extends Collection {

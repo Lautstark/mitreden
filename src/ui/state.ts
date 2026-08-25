@@ -39,8 +39,8 @@ let remembered: string | null = null;
 
 /**
  * Whatever is open, kept in the settings record — conventions.md §1.2, and the
- * whole set rather than one of them, because arity here is many (§4.1) and
- * "where I was" is all of the places I was.
+ * whole set rather than one of them, because several can be open at once (§4.2)
+ * and "where I was" is all of the places I was.
  *
  * Called from notify() and load() rather than from each of the four places that
  * change OPEN. Same shape as db.ts's touched(), and for the same reason: the
@@ -86,7 +86,7 @@ const bare = (s: string): string =>
 const umlaut = (s: string): string =>
   s.toLowerCase().replaceAll('ä', 'ae').replaceAll('ö', 'oe').replaceAll('ü', 'ue').replaceAll('ß', 'ss');
 const haystack = (item: PhraseWithState): string =>
-  `${bare(item.text)} | ${umlaut(item.text)} | ${item.collections.join(' ')}`;
+  `${bare(item.text)} | ${umlaut(item.text)} | ${item.collection ?? ''}`;
 
 export function found(): readonly PhraseWithState[] {
   const query = el<HTMLInputElement>('q').value.trim();
@@ -100,14 +100,21 @@ export function found(): readonly PhraseWithState[] {
 }
 
 /**
- * Search first, then the Sammlung. There was a third axis — a row of pills
- * narrowing to one voice — and it was answering a question nobody had: every
- * row already names its own voice, and a Sammlung is small enough to read.
+ * Search first, then the Sammlung — the union of whatever is open. There was a
+ * third axis, a row of pills narrowing to one voice, and it was answering a
+ * question nobody had: every row already names its own voice, and a Sammlung is
+ * small enough to read.
+ *
+ * The multi-select survives arity changing (§4.2, which reads as though it
+ * followed from §4.1 and does not): how many Sammlungen may be open at once and
+ * how many a sentence may be in are separate questions. Opening the morning
+ * Sammlung and the nursery one together still shows both, and the only thing
+ * that changed is that a sentence appearing in both is now two sentences.
  */
 export function shown(): readonly PhraseWithState[] {
   const list = found();
   return OPEN.size
-    ? list.filter((item) => item.collections.some((id) => OPEN.has(id)))
+    ? list.filter((item) => item.collection !== undefined && OPEN.has(item.collection))
     : list;
 }
 

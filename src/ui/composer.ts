@@ -116,8 +116,10 @@ async function add(): Promise<void> {
   }
   // A sentence goes into the Sammlung you are in. There is nothing to decide:
   // you opened one, you typed, it belongs there. With several open it goes in
-  // uncollected — guessing which of two you meant would be worse than asking.
-  const into = OPEN.size === 1 ? [...OPEN] : [];
+  // uncollected — guessing which of two you meant would be worse than asking —
+  // and an uncollected sentence records in the settings voice, which is the same
+  // answer a Sammlung without one gets.
+  const into = OPEN.size === 1 ? [...OPEN][0] : undefined;
   busy('busy_add');
   const { added, merged, ids } = await addPhrases(lines, into);
   box.value = '';

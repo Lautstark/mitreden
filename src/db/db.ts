@@ -19,11 +19,11 @@
  *   two hundred times, once per sentence, because `build()` saves after each
  *   one so the row can be found the moment it is announced.
  * - **"The sentences in this Sammlung" was a filter over everything.** It is a
- *   query now: `collections` is a multiEntry index, so a Sammlung's members are
- *   a range the database walks. That index is the one this product needs most,
- *   because arity here is *many* (§4.1) — a sentence belongs to the morning
- *   Sammlung and the nursery one at once, which is exactly the shape a
- *   multiEntry index exists for and exactly the shape a filter is worst at.
+ *   query now: `collection` is an index, so a Sammlung's members are a range
+ *   the database walks. It was a *multiEntry* index until version 4, because
+ *   arity here was many (§4.1) and a sentence belonged to the morning Sammlung
+ *   and the nursery one at once. It belongs to one now — see Phrase.collection
+ *   and the migration below — so the index is an ordinary one.
  * - **A count meant loading every sentence.** §1.8 wants one in every sidebar
  *   row; it is `index.count(key)` now and touches no records at all.
  * - **"Is there already a sentence like this?" was a linear scan** on every
@@ -50,10 +50,10 @@
  *
  * ## No migration
  *
- * Version 3 drops every store it finds. conventions.md's rule about its own
- * rules: one user, disposable data, and the old shape deleted in the change
- * that adopts the new one. A library worth keeping across this goes out through
- * the Sicherung, which is what that file is for.
+ * Version 4 drops every store it finds, the way version 3 did. conventions.md's
+ * rule about its own rules: one user, disposable data, and the old shape deleted
+ * in the change that adopts the new one. A library worth keeping across this
+ * goes out through the Sicherung, which is what that file is for.
  */
 
 import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction } from 'idb';
@@ -61,11 +61,20 @@ import { normText } from '../core/ids.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
 export interface Settings {
-  voice?: string;
   azure?: { key: string; region: string };
   /**
-   * Which Sammlungen are open — a set, not one, because arity here is many
-   * (§4.1) and "where I was" is all of them. conventions.md §1.2.
+   * The voice the next Sammlung is made with — and, until one is made, the voice
+   * a Sammlung that has none records in. It used to be the voice the next
+   * *sentence* was recorded in; the field is the same and what it is the default
+   * for has moved out one level. See Collection.voice.
+   */
+  voice?: string;
+  /**
+   * Which Sammlungen are open — a set, not one. Several can be open at once and
+   * "where I was" is all of them (§4.2, and conventions.md §1.2). That is about
+   * the open set and not about arity: a sentence is in one Sammlung now, and
+   * opening the morning one and the nursery one together still shows the union
+   * of the two.
    */
   open?: string[];
   /**
@@ -88,10 +97,11 @@ interface MitredenDB extends DBSchema {
     key: string;
     value: StoredPhrase;
     indexes: {
-      /** multiEntry: one entry per Sammlung the sentence is in, which is what
-       *  makes membership a query in the one product where a sentence can be
-       *  in several (§4.1). */
-      collections: string;
+      /** The Sammlung it is in, so membership is a query rather than a filter.
+       *  A sentence in none carries no key here at all, which is what IndexedDB
+       *  does with an absent key path — and is right: nothing ever asks the
+       *  index for the uncollected ones. */
+      collection: string;
       /** The twin lookup. Not unique: nothing has ever stopped two sentences
        *  normalising alike — editPhrase() does not check — so this finds *a*
        *  twin, which is all the callers ever wanted. */
@@ -140,14 +150,14 @@ function touched(): void {
 let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
-  handle ??= openDB<MitredenDB>('mitreden', 3, {
+  handle ??= openDB<MitredenDB>('mitreden', 4, {
     upgrade(database) {
       // Snapshotted before the loop: objectStoreNames is live, and deleting
       // through it skips every other name.
       for (const name of [...database.objectStoreNames]) database.deleteObjectStore(name);
 
       const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
-      phrases.createIndex('collections', 'collections', { multiEntry: true });
+      phrases.createIndex('collection', 'collection');
       phrases.createIndex('norm', 'norm');
 
       database.createObjectStore('collections', { keyPath: 'id' })
@@ -180,13 +190,13 @@ export async function allPhrases(): Promise<Phrase[]> {
 
 /** The sentences in one Sammlung, off the index rather than by filtering. */
 export async function phrasesIn(id: string): Promise<Phrase[]> {
-  return (await (await db()).getAllFromIndex('phrases', 'collections', id))
+  return (await (await db()).getAllFromIndex('phrases', 'collection', id))
     .map((r) => shown(r)!);
 }
 
 /** How many are in one, without loading any of them. §1.8's row count. */
 export const countIn = async (id: string): Promise<number> =>
-  (await db()).countFromIndex('phrases', 'collections', id);
+  (await db()).countFromIndex('phrases', 'collection', id);
 
 /** How many there are at all. The delete-everything question asks this. */
 export const countPhrases = async (): Promise<number> => (await db()).count('phrases');
@@ -195,12 +205,19 @@ export const getPhrase = async (id: string): Promise<Phrase | undefined> =>
   shown(await (await db()).get('phrases', id));
 
 /**
- * A sentence like this one, or nothing. "Like" is normText's answer:
- * punctuation stays in, because "Nochmal!" and "Nochmal." are spoken
- * differently.
+ * Every sentence like this one. "Like" is normText's answer: punctuation stays
+ * in, because "Nochmal!" and "Nochmal." are spoken differently.
+ *
+ * All of them rather than one. It handed back the first until arity changed,
+ * and the first is no longer enough to answer with: the same text may sit in
+ * two Sammlungen as two rows now, and what a caller wants to know is whether
+ * one of them is in the Sammlung it is adding to. The index was never unique —
+ * editPhrase() has always been able to make two rows normalise alike — so this
+ * is the honest shape of the question.
  */
-export async function twinOf(text: string): Promise<Phrase | undefined> {
-  return shown(await (await db()).getFromIndex('phrases', 'norm', normText(text)));
+export async function twinsOf(text: string): Promise<Phrase[]> {
+  return (await (await db()).getAllFromIndex('phrases', 'norm', normText(text)))
+    .map((r) => shown(r)!);
 }
 
 /** Whether a sentence already has this id. A key lookup, not a scan — and the
@@ -230,7 +247,7 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
   const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
   const phrases = tx.objectStore('phrases');
   for (const item of items) await phrases.put({ ...item, norm: normText(item.text) });
-  await bump(tx, items.flatMap((item) => item.collections));
+  await bump(tx, items.map((item) => item.collection));
   await tx.done;
   touched();
 }
@@ -244,7 +261,7 @@ export async function dropPhrase(id: string): Promise<void> {
   // Sammlungen just changed, and afterwards there is nothing left to ask.
   const held = await phrases.get(id);
   await phrases.delete(id);
-  if (held) await bump(tx, held.collections);
+  if (held) await bump(tx, [held.collection]);
   await tx.done;
   touched();
 }
@@ -264,9 +281,11 @@ export async function dropPhrase(id: string): Promise<void> {
  */
 async function bump(
   tx: IDBPTransaction<MitredenDB, ('phrases' | 'collections')[], 'readwrite'>,
-  ids: readonly string[],
+  ids: readonly (string | undefined)[],
 ): Promise<void> {
-  const wanted = [...new Set(ids)];
+  // A sentence in no Sammlung moves nothing, and that is not a special case to
+  // guard against — it is one of the ids being absent.
+  const wanted = [...new Set(ids)].filter((id) => id !== undefined);
   if (!wanted.length) return;
   const collections = tx.objectStore('collections');
   let next = await nextStamp(collections.index('updatedAt'));
@@ -368,8 +387,9 @@ export async function dropCollection(id: string): Promise<boolean> {
   await collections.delete(id);
 
   const phrases = tx.objectStore('phrases');
-  for (const member of await phrases.index('collections').getAll(id)) {
-    await phrases.put({ ...member, collections: member.collections.filter((k) => k !== id) });
+  for (const member of await phrases.index('collection').getAll(id)) {
+    const { collection: _gone, ...rest } = member;
+    await phrases.put(rest);
   }
   await tx.done;
   touched();
