@@ -3,7 +3,7 @@ import {
   getAudio, putAudio, putCollection, putPhrases, saveSettings, wipe,
 } from '../../src/db/db.ts';
 import {
-  addPhrases, createCollection, phrases, votedVoice,
+  addPhrases, collections, createCollection, phrases, saveCollectionVoice, votedVoice,
 } from '../../src/db/repo.ts';
 import { fingerprint } from '../../src/core/ids.ts';
 
@@ -101,6 +101,48 @@ describe('a Sammlung being made', () => {
 
   it('goes without one when nobody has picked a voice yet', async () => {
     expect((await createCollection('Küche', true)).voice).toBeUndefined();
+  });
+});
+
+describe('writing a Sammlung’s voice', () => {
+  /* The one write behind the sheet in the ⋯. It is worth its own test because
+     nothing else in this file goes through it: the cases above put a Collection
+     into the store by hand, which is what a migration or a restore does, and
+     this is what somebody pressing a row in a list does. */
+  it('is what makes the sentences in it stale, and takes nothing away', async () => {
+    await putCollection({ id: 'kueche', name: 'Küche', voice: THORSTEN });
+    await recorded('hunger', 'Ich habe Hunger.', THORSTEN, 'kueche');
+    expect(await stateOf('hunger')).toBe('ok');
+
+    await saveCollectionVoice('kueche', KERSTIN);
+
+    expect(await stateOf('hunger')).toBe('stale');
+    expect(await getAudio('hunger'), 'the clip is still there and still plays').toBeTruthy();
+    // And the sentence still says what it was actually recorded in. That half
+    // is build()'s to write and this must not touch it — db/backup.ts needs the
+    // voice and the fingerprint to travel together.
+    expect((await phrases()).find((one) => one.id === 'hunger')?.voice).toBe(THORSTEN);
+  });
+
+  it('reaches one Sammlung and not the default, nor any other', async () => {
+    await saveSettings({ voice: THORSTEN });
+    await putCollection({ id: 'kueche', name: 'Küche', voice: THORSTEN });
+    await putCollection({ id: 'kita', name: 'Kita' });
+    await recorded('durst', 'Ich habe Durst.', THORSTEN, 'kita');
+
+    await saveCollectionVoice('kueche', KERSTIN);
+
+    // The Sammlung with no voice of its own goes on following the default,
+    // which this did not move.
+    expect(await stateOf('durst')).toBe('ok');
+    const held = await collections();
+    expect(held.find((one) => one.id === 'kita')?.voice).toBeUndefined();
+    expect((await createCollection('Danach', true)).voice,
+      'the default a new Sammlung starts with is untouched').toBe(THORSTEN);
+  });
+
+  it('answers nothing for a Sammlung that is not there', async () => {
+    expect(await saveCollectionVoice('weg', KERSTIN)).toBeNull();
   });
 });
 

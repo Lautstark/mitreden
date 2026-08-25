@@ -4,10 +4,15 @@
  * Enter records; Shift + Enter is a new line. Several lines at once each become
  * their own sentence, because that is how a set of them gets written down.
  *
- * The voice is no longer chosen here. It is a setting — one answer that holds
- * until it is changed — and a picker beside the composer invited it to be
+ * The voice is not chosen here. A picker beside the composer invited it to be
  * re-decided per sentence, which is not what it does. What is left is the
  * sentence: which voice is in force, and the way through to changing it.
+ *
+ * *Which* voice that is stopped being one answer when the voice moved onto the
+ * Sammlung. In a Sammlung it is that Sammlung's; with none open or two, the
+ * next sentence goes uncollected and it is the default. The line says which of
+ * the two it read, because both are true statements about a voice and only one
+ * of them is true here — see drawVoice.
  */
 
 import { addPhrases, build, settings, saveVoice } from '../db/repo.ts';
@@ -15,7 +20,7 @@ import { asVoice, defaultVoice, offered } from '../core/voices.ts';
 import { setProgress } from '../core/audio.ts';
 import { LANGUAGES, lang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
-import { OPEN, endWork, load, queueWork, stepWork } from './state.ts';
+import { DECLARED, OPEN, endWork, load, queueWork, stepWork, subscribe } from './state.ts';
 import { busy, el, say, sourceOf, speaks } from './dom.ts';
 
 let voices: Voice[] = [];
@@ -35,7 +40,39 @@ let deliberate = false;
  */
 let starts: Partial<Record<Lang, string>> = {};
 
+/**
+ * The default voice: what a new Sammlung is made with, and what records a
+ * sentence that is in none. Not "the voice the next recording gets" any more —
+ * that question is answered by the Sammlung when there is one, and by this only
+ * when there is not.
+ */
 export const chosenVoice = (): string => chosen;
+
+/**
+ * Which Sammlung the next sentence lands in — the one that is open, or none.
+ *
+ * add() below and the line above the composer have to agree about this or the
+ * page names one voice and records in another, so they ask the same function
+ * rather than repeating the rule. Two open Sammlungen answer *none*, on
+ * purpose: guessing which of them was meant is worse than asking.
+ */
+export const nextCollection = (): string | undefined =>
+  OPEN.size === 1 ? [...OPEN][0] : undefined;
+
+/**
+ * The voice the next recording actually gets, which is the sentence the line
+ * beside the composer states.
+ *
+ * The same rule as voiceFor() in db/repo.ts, read off what the page already has
+ * in memory rather than out of the store: the Sammlung's voice, or the default
+ * when it has none or there is no Sammlung. The two must not be allowed to
+ * disagree — one decides what is said and the other what is recorded.
+ */
+export const voiceInForce = (): string => {
+  const into = nextCollection();
+  const held = into ? DECLARED().find((one) => one.id === into)?.voice : undefined;
+  return held ?? chosen;
+};
 export const knownVoices = (): readonly Voice[] => voices;
 export const voiceById = (id: string): Voice | undefined =>
   voices.find((voice) => voice.id === id);
@@ -73,13 +110,21 @@ export async function loadVoices(): Promise<void> {
  */
 export function relangVoice(): void {
   const start = starts[lang()];
-  if (deliberate || !start || start === chosen) return;
-  chosen = start;
+  if (!deliberate && start && start !== chosen) {
+    chosen = start;
+    for (const fn of watchers) fn();
+  }
+  // Unconditionally, and after the guard rather than inside it: the line says
+  // *whose* voice it is naming, and those words change with the language even
+  // on the pass where the voice itself does not move.
   drawVoice();
-  for (const fn of watchers) fn();
 }
 
-/** Picking a voice records nothing: it is the voice the next recording gets. */
+/**
+ * Picking the default. It records nothing and reaches into no Sammlung that
+ * already exists — createCollection copies it in at creation and nothing else
+ * reads it except a Sammlung that never got one, and a sentence in none.
+ */
 export async function pickVoice(id: string): Promise<void> {
   if (!id || id === chosen) return;
   chosen = id;
@@ -88,7 +133,7 @@ export async function pickVoice(id: string): Promise<void> {
   drawVoice();
   for (const fn of watchers) fn();
   const picked = voiceById(id);
-  if (picked) say(t('voice_now', { voice: picked.label }));
+  if (picked) say(t('voice_now_default', { voice: picked.label }));
 }
 
 /**
@@ -96,9 +141,26 @@ export async function pickVoice(id: string): Promise<void> {
  * the voice's name, who renders it, and what it speaks. The last two were
  * missing, and a picker of forty names with nothing to tell them apart is a
  * list you scroll rather than choose from.
+ *
+ * And a fourth, added when the voice moved onto the Sammlung: *whose* voice
+ * this is. The sentence was true before because there was one answer; there are
+ * two now — this Sammlung's, or the default an uncollected sentence records in
+ * — and a line naming a voice without saying which of the two it read is a line
+ * that is right by luck. It is also what makes one „Ändern" leading to two
+ * different places honest: the word beside it says which door, before the press
+ * rather than after it.
  */
 function drawVoice(): void {
-  const voice = voiceById(chosen);
+  const into = nextCollection();
+  const voice = voiceById(voiceInForce());
+  el('voicewhat').textContent = t(into ? 'voice_label_collection' : 'voice_label_default');
+  // The button says nothing but „Ändern" and has room for nothing more, so what
+  // it leads to is in the name a reader hears rather than only in the caption a
+  // reader sees.
+  const change = el('voicepick');
+  const what = t(into ? 'voice_change_collection' : 'voice_change_default');
+  change.title = what;
+  change.setAttribute('aria-label', what);
   el('voicename').textContent = voice?.label ?? '—';
   // The language, not the locale. "Englisch (Vereinigte Staaten)" is the honest
   // answer and it is also the one that pushed this line onto a row of its own;
@@ -119,7 +181,7 @@ async function add(): Promise<void> {
   // uncollected — guessing which of two you meant would be worse than asking —
   // and an uncollected sentence records in the settings voice, which is the same
   // answer a Sammlung without one gets.
-  const into = OPEN.size === 1 ? [...OPEN][0] : undefined;
+  const into = nextCollection();
   busy('busy_add');
   const { added, merged, ids } = await addPhrases(lines, into);
   box.value = '';
@@ -142,6 +204,11 @@ async function add(): Promise<void> {
 }
 
 export function wireComposer(): void {
+  /* The line is about where the next sentence lands, so it is redrawn whenever
+     that moves — which is a rail click, a Sammlung deleted, a voice written
+     onto the open one. It reads DECLARED() and OPEN, both of which this is the
+     notification for. */
+  subscribe(drawVoice);
   el('add').onclick = () => void add();
   el('t').addEventListener('keydown', (event) => {
     const key = event as KeyboardEvent;

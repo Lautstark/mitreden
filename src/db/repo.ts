@@ -348,6 +348,26 @@ export async function createCollection(
 const named = async (name: string): Promise<boolean> =>
   (await allCollections()).some((c) => c.name === name);
 
+/**
+ * What this Sammlung records in. Its own field, written by the one surface that
+ * is unambiguously about one Sammlung — the sheet behind its ⋯.
+ *
+ * Nothing is re-recorded here and nothing is thrown away. Every clip stays, and
+ * every sentence in the Sammlung goes from `ok` to `stale` on the next read,
+ * because stateOf compares the fingerprint against the voice the *Sammlung*
+ * records in. That is the whole mechanism, and it is the one that already
+ * existed; this function only moves the value it reads.
+ */
+export async function saveCollectionVoice(id: string, voice: string): Promise<Collection | null> {
+  const hit = await getCollection(id);
+  if (!hit) return null;
+  hit.voice = voice;
+  // Keeps its place in the list, like a rename: putCollection carries the old
+  // stamp across, and setting a voice is not making a Sammlung.
+  await putCollection(hit);
+  return hit;
+}
+
 export async function renameCollection(id: string, to: string): Promise<Collection | null> {
   const hit = await getCollection(id);
   if (!hit) return null;

@@ -97,12 +97,19 @@
            everything anybody has ever opened, and the state in each heading,
            which is the whole reason they are folded, stops being readable at a
            glance. @lautstark/design conventions.md §3.5. -->
+      <!-- The default a new Sammlung starts with, and not the voice the next
+           sentence gets — which is what this panel used to say and what it
+           stopped being when the voice moved onto the Sammlung. What one
+           particular Sammlung records in is behind the ⋯ beside its name;
+           conventions.md §3.10 is the test that put it there, and the hint
+           below is how somebody standing in front of this list finds it. -->
       <details class="panel" name="settings" id="p-voice" open>
         <summary>
-          <span class="section" data-i18n="voice_pick_title"></span>
+          <span class="section" data-i18n="panel_voice_default"></span>
           <span class="state" id="voicestate"></span>
         </summary>
         <div class="body">
+          <p class="hint" data-i18n="voice_default_hint"></p>
           <input id="voiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
           <div class="chips" id="voicefilters"></div>
           <div class="voices" id="voices"></div>
@@ -204,6 +211,31 @@
       </details>
     </dialog>
 
+    <!-- One Sammlung's own voice. A sheet rather than a column of folded panels
+         (§3.5) because there is exactly one thing here to set: mitreden's
+         Sammlung holds a voice and nothing else, where vorlaut's talker holds a
+         voice and a device language and so earns the column. A single folded
+         panel would be a heading you have to open to reach the only thing
+         behind it.
+
+         Live apply, no Save and no Cancel: a voice destroys nothing. The clips
+         stay; they stop matching what the Sammlung says it sounds like, which
+         is what the line under the list says and what „neu aufnehmen" in the
+         same ⋯ undoes. -->
+    <dialog id="colvoice" class="sheet">
+      <div class="head">
+        <h2 id="colvoicetitle"></h2>
+        <button id="colvoiceclose" class="btn quiet icon" data-i18n-aria="close">✕</button>
+      </div>
+      <div class="body">
+        <p class="hint" id="colvoicelead"></p>
+        <input id="colvoiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
+        <div class="chips" id="colvoicefilters"></div>
+        <div class="voices" id="colvoices"></div>
+        <p class="hint" id="colvoicecost"></p>
+      </div>
+    </dialog>
+
       <div class="compose">
         <textarea id="t" data-i18n-ph="new_phrases_hint"></textarea>
         <button class="send" id="add" data-i18n-aria="add_phrase"
@@ -213,9 +245,18 @@
         <span><kbd>Enter</kbd> <span id="chint1" data-i18n="compose_records"></span> ·
           <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2" data-i18n="compose_newline"></span></span>
         <!-- Not a control: a statement of which voice the next recording gets,
-             and a way through to where that is changed. -->
+             and a way through to where that is changed.
+
+             Both halves are written from composer.ts rather than carried by
+             data-i18n, because both depend on where the next sentence lands.
+             In a Sammlung the line names that Sammlung's voice and the button
+             leads to the Sammlung's own sheet; with none open or two, the next
+             sentence goes uncollected and both point at the default in
+             Einstellungen. One button and two doors, and what makes that honest
+             rather than a trap is that the caption to its left says which of
+             the two it means before it is pressed. -->
         <span class="right voicenow">
-          <span class="voicenow__what" data-i18n="voice_label"></span>
+          <span class="voicenow__what" id="voicewhat"></span>
           <b id="voicename"></b>
           <span class="voicenow__from" id="voicefrom"></span>
           <button id="voicepick" class="btn quiet sm" data-i18n="voice_change"></button>
