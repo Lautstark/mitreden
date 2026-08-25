@@ -7,7 +7,7 @@ export interface Phrase {
   /** Stable, derived from the text once. It is a filename on somebody's talker. */
   id: string;
   text: string;
-  /** Keys, not names: a Sammlung can be renamed without touching its sentences. */
+  /** Ids, not names: a Sammlung can be renamed without touching its sentences. */
   collections: string[];
   voice?: string;
   /** Text and voice at the time of recording, so staleness is decidable. */
@@ -19,8 +19,17 @@ export interface PhraseWithState extends Phrase {
 }
 
 export interface Collection {
-  /** Minted once from the name; never re-derived. */
-  key: string;
+  /**
+   * A UUID, minted once, opaque, never derived from the name and never
+   * re-derived — conventions.md §1.1.
+   *
+   * It used to be `normTag(name)`, which had to answer three questions a UUID
+   * does not have: what happens when the name is edited, what happens when two
+   * names reduce to the same key, and what happens when the reduction truncates
+   * mid-word. The second of those was not hypothetical — see createCollection
+   * in db/repo.ts, which silently handed back somebody else's Sammlung.
+   */
+  id: string;
   name: string;
 }
 

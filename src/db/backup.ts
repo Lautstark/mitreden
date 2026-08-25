@@ -34,10 +34,10 @@
  */
 
 import {
-  allCollections, allPhrases, idTaken, keyTaken, loadSettings, putCollections,
+  allCollections, allPhrases, idTaken, loadSettings, putCollections,
   putPhrases, twinOf, type Settings,
 } from './db.ts';
-import { free, normTag, normText, slug } from '../core/ids.ts';
+import { free, normText, slug } from '../core/ids.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
 export const BACKUP_FORMAT = 'mitreden-backup';
@@ -122,27 +122,29 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     throw new Error(TOO_NEW);
   }
 
-  /* What this restore will write, so that a key or an id taken by something
-     earlier in the same file is seen as taken. The array version got that by
-     pushing into the arrays it was scanning; here the store is asked and this
-     is the other half of the answer. */
-  const arriving = new Set<string>();
-  const free_ = (base: string, taken: (k: string) => Promise<boolean>) =>
-    free(base, async (c) => arriving.has(c) || taken(c));
+  /* Every arriving Sammlung gets a fresh id, whatever the file called it.
+     conventions.md §1.10 — a Sammlung arriving from a file joins the ones
+     already here — and §1.1: the id is minted, never carried and never derived.
+     Minting unconditionally is also what makes a backup written before ids were
+     UUIDs restore without a word of compatibility code, since nothing here
+     reads the incoming id for anything but the membership map below.
 
-  // Old key -> the key it got here, so membership survives a renamed collision.
+     The name is what can still collide, and a name collision is the only kind
+     left: it is marked rather than resolved, because two Sammlungen are allowed
+     to share a name and the person should be able to see which one arrived. */
+  const held = new Set((await allCollections()).map((c) => c.name));
+
+  // Old id -> the id it got here, so membership survives the trip.
   const moved = new Map<string, string>();
   const landed: Collection[] = [];
   for (const source of backup.collections ?? []) {
-    if (!source?.key) continue;
-    const name = source.name || source.key;
-    const taken = await keyTaken(source.key);
-    const key = taken
-      ? await free_(normTag(name), keyTaken)
-      : (normTag(source.key) || await free_(normTag(name), keyTaken));
-    arriving.add(key);
-    moved.set(source.key, key);
-    landed.push({ key, name: taken ? `${name} (importiert)` : name });
+    const was = (source as { id?: string; key?: string })?.id
+      ?? (source as { key?: string })?.key;
+    if (!was) continue;
+    const name = source.name || was;
+    const id = crypto.randomUUID();
+    moved.set(was, id);
+    landed.push({ id, name: held.has(name) ? `${name} (importiert)` : name });
   }
 
   /* Same as the keys above: a sentence already merged into by this restore is
@@ -163,11 +165,11 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     // Membership, translated through whatever the Sammlungen became here. A
     // sentence naming a Sammlung the file did not carry is not dropped: it
     // keeps the tag, and shows up under it once that Sammlung exists again.
-    const into = (source.collections ?? []).map((key) => moved.get(key) ?? key);
+    const into = (source.collections ?? []).map((was) => moved.get(was) ?? was);
 
     const twin = await twinIn(text);
     if (twin) {
-      for (const key of into) if (!twin.collections.includes(key)) twin.collections.push(key);
+      for (const id of into) if (!twin.collections.includes(id)) twin.collections.push(id);
       writing.set(twin.id, twin);
       merged += 1;
       continue;

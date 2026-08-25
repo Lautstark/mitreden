@@ -5,7 +5,7 @@
  * the whole coupling between the sidebar, the list and the composer.
  */
 
-import { collections as loadCollections, phrases } from '../db/repo.ts';
+import { collections as loadCollections, phrases, saveOpen, settings } from '../db/repo.ts';
 import { t } from '../i18n/index.ts';
 import type { CollectionWithCount, PhraseWithState } from '../core/types.ts';
 import { el } from './dom.ts';
@@ -26,9 +26,55 @@ export const DECLARED = (): readonly CollectionWithCount[] => declared;
 /** Which Sammlungen are open. */
 export const OPEN = new Set<string>();
 
+/**
+ * The last set written, so that a repaint does not rewrite it.
+ *
+ * notify() runs for every change on the page and most of them have nothing to
+ * do with which Sammlung is open. Writing the settings record each time would
+ * be harmless in the store and loud everywhere else: saveSettings announces a
+ * change through db.ts's notifier, so the standing backup would reschedule
+ * itself on every keystroke that redraws a row.
+ */
+let remembered: string | null = null;
+
+/**
+ * Whatever is open, kept in the settings record — conventions.md §1.2, and the
+ * whole set rather than one of them, because arity here is many (§4.1) and
+ * "where I was" is all of the places I was.
+ *
+ * Called from notify() and load() rather than from each of the four places that
+ * change OPEN. Same shape as db.ts's touched(), and for the same reason: the
+ * fifth caller is written by somebody who has never heard of this.
+ */
+function rememberOpen(): void {
+  const now = [...OPEN].join('\u0000');
+  if (now === remembered) return;
+  remembered = now;
+  void saveOpen([...OPEN]);
+}
+
+/**
+ * What was open last time, before anything is drawn.
+ *
+ * Ids that no longer name a Sammlung are dropped here rather than trusted: the
+ * record is written by a page that had them and read by one that may not — a
+ * restore, a wipe, or a Sammlung deleted in another tab.
+ */
+export async function restoreOpen(): Promise<void> {
+  const held = (await settings()).open ?? [];
+  OPEN.clear();
+  for (const id of held) OPEN.add(id);
+  // Not a write: this is what was read, so remembering it stops load() writing
+  // the same set straight back.
+  remembered = [...OPEN].join('\u0000');
+}
+
 const watchers: (() => void)[] = [];
 export const subscribe = (fn: () => void): void => { watchers.push(fn); };
-export const notify = (): void => { for (const fn of watchers) fn(); };
+export const notify = (): void => {
+  rememberOpen();
+  for (const fn of watchers) fn();
+};
 
 /**
  * Searching German without a German keyboard: "hor auf", "hoer auf" and
@@ -61,7 +107,7 @@ export function found(): readonly PhraseWithState[] {
 export function shown(): readonly PhraseWithState[] {
   const list = found();
   return OPEN.size
-    ? list.filter((item) => item.collections.some((key) => OPEN.has(key)))
+    ? list.filter((item) => item.collections.some((id) => OPEN.has(id)))
     : list;
 }
 
@@ -155,8 +201,11 @@ export async function load(): Promise<void> {
   [all, declared] = await Promise.all([phrases(), loadCollections()]);
   // An open Sammlung survives being emptied — it is still a place. It only
   // goes when the Sammlung itself does.
-  for (const key of [...OPEN]) if (!declared.some((c) => c.key === key)) OPEN.delete(key);
-  // There is always somewhere to be.
-  if (!OPEN.size && declared.length) OPEN.add(declared[0]!.key);
+  for (const id of [...OPEN]) if (!declared.some((c) => c.id === id)) OPEN.delete(id);
+  // There is always somewhere to be. The first one is the one last worked on
+  // now that §1.4 orders the list, which is the better answer to "where" than
+  // the oldest Sammlung in the library was.
+  if (!OPEN.size && declared.length) OPEN.add(declared[0]!.id);
+  // notify() is what writes the set; nothing here has to remember to.
   notify();
 }

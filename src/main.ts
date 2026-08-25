@@ -21,7 +21,7 @@ import { drawRail, wireRail } from './ui/rail.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { wireSettings } from './ui/settings.ts';
 import { applyLang, el } from './ui/dom.ts';
-import { load, subscribe } from './ui/state.ts';
+import { load, restoreOpen, subscribe } from './ui/state.ts';
 
 function chooseLang(): void {
   const asked = new URL(location.href).searchParams.get('lang');
@@ -71,6 +71,10 @@ export async function start(): Promise<void> {
   subscribe(drawList);
   await ensureCollection(lang() === 'de');
   await loadVoices();
+  // Which Sammlungen were open, before anything is drawn — otherwise the first
+  // paint is whatever load() would have fallen back to, and it is replaced a
+  // frame later by where the person actually was (§1.2).
+  await restoreOpen();
   await load();
   // Never prompts — there is no gesture here. A folder needing its permission
   // re-confirmed lands in needs-permission and says so in Einstellungen →

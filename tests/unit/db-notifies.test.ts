@@ -59,12 +59,12 @@ describe('the change notifier', () => {
   });
 
   it('putCollection() announces the write', async () => {
-    await putCollection({ key: 'k', name: 'K' });
+    await putCollection({ id: 'k', name: 'K' });
     expect(heard).toBe(1);
   });
 
   it('putCollections() announces once for the whole batch', async () => {
-    await putCollections([{ key: 'a', name: 'A' }, { key: 'b', name: 'B' }]);
+    await putCollections([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
     expect(heard).toBe(1);
   });
 
@@ -72,7 +72,7 @@ describe('the change notifier', () => {
    * the membership goes and the sentences stay — and both halves are one
    * transaction, so both halves are one announcement. */
   it('dropCollection() announces once, for the Sammlung and its members', async () => {
-    await putCollection({ key: 'k', name: 'K' });
+    await putCollection({ id: 'k', name: 'K' });
     await putPhrases([
       { id: 'a', text: 'Hallo', collections: ['k'] },
       { id: 'b', text: 'Tschüss', collections: ['k'] },

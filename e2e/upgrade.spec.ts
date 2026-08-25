@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * A browser that was here before version 2, meeting version 2.
+ * A browser holding an older database, meeting the current one.
  *
  * There is no carrying-across and there is not meant to be — conventions.md's
  * rule about its own rules: one user, disposable data, and the old shape
@@ -51,8 +51,8 @@ const SEED_V1 = `
 test('a browser holding the old database gets a working first visit', async ({ page }) => {
   /* The application's own scripts are blocked for this first load, and that is
      not belt and braces: opening the app is what triggers the upgrade, so if
-     any of it ran first the database would already be at version 2 and the seed
-     below would fail — or, worse, quietly not matter. Every assertion after the
+     any of it ran first the database would already be at the current version
+     and the seed below would fail — or, worse, quietly not matter. Every assertion after the
      reload would then still pass, against a browser that had never held the old
      shape at all. Blocking the scripts is what makes this test about something.
 
@@ -122,8 +122,108 @@ test('a browser holding the old database gets a working first visit', async ({ p
       keep({ version: database.version, stores, indexes });
     };
   }))).toEqual({
-    version: 2,
+    version: 3,
     stores: ['audio', 'collections', 'phrases', 'settings'],
     indexes: ['collections', 'norm'],
   });
+});
+
+/** Version 2, made the way version 2 made it: the stores are already right,
+ *  and the one thing that differs is the shape this change is about — the
+ *  Sammlungen are keyed by `key`, a slug of the name, rather than by a minted
+ *  `id`. Written out here rather than imported, for the same reason as above. */
+const SEED_V2 = `
+  new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden', 2);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
+      phrases.createIndex('collections', 'collections', { multiEntry: true });
+      phrases.createIndex('norm', 'norm');
+      database.createObjectStore('collections', { keyPath: 'key' })
+        .createIndex('createdAt', 'createdAt');
+      database.createObjectStore('settings');
+      database.createObjectStore('audio');
+    };
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const tx = database.transaction(['phrases', 'collections'], 'readwrite');
+      tx.objectStore('phrases').put({
+        id: 'hunger', text: 'Ich habe Hunger.', norm: 'ich habe hunger.',
+        collections: ['kueche'],
+      });
+      tx.objectStore('collections').put({ key: 'kueche', name: 'Küche', createdAt: 1 });
+      tx.oncomplete = () => { database.close(); keep(); };
+      tx.onerror = () => drop(tx.error);
+    };
+  })
+`;
+
+/*
+ * The upgrade that actually happens on somebody's machine today, and the one
+ * with a way to fail that version 1 did not have: the `collections` store is
+ * being replaced by one with a different keyPath. Deleting a store and creating
+ * another of the same name inside one versionchange transaction is legal, and
+ * it is also the sort of thing that works against a stand-in and is refused by
+ * a browser — which is the whole reason this file exists beside the unit test.
+ */
+test('a browser holding the keyed database gets a working first visit', async ({ page }) => {
+  await page.route('**/*.js', (route) => route.abort());
+  await page.goto('/?lang=de');
+  await page.evaluate(SEED_V2);
+
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const store = database.transaction('collections').objectStore('collections');
+      const ask = store.getAll();
+      ask.onsuccess = () => {
+        const version = database.version;
+        const path = store.keyPath;
+        database.close();
+        keep({ version, path, kept: (ask.result as unknown[]).length });
+      };
+    };
+  })), 'the seed has to have landed before the app ever ran')
+    .toEqual({ version: 2, path: 'key', kept: 1 });
+
+  await page.unroute('**/*.js');
+  await page.reload();
+
+  await page.waitForFunction(
+    () => document.querySelectorAll('#rows .collections__item').length > 0,
+  );
+  // Nothing came across, so the Küche is gone and the seeded one is named for
+  // the day (§1.9, and the rule about the rules).
+  await expect(page.locator('#rows .collections__item')).toHaveCount(1);
+  await expect(page.locator('#rows .collections__name')).not.toHaveText('Küche');
+  await expect(page.locator('.item')).toHaveCount(0);
+
+  const errors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+
+  await page.fill('#t', 'Ich möchte nach draußen.');
+  await page.press('#t', 'Enter');
+  await expect(page.locator('.item')).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.locator('.item')).toHaveCount(1);
+  expect(errors, 'a rejected open shows up here first').toEqual([]);
+
+  // The store the upgrade replaced is keyed the new way, which is the half of
+  // this that a clean drop alone would not prove.
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const store = database.transaction('collections').objectStore('collections');
+      const path = store.keyPath;
+      database.close();
+      keep({ version: database.version, path });
+    };
+  }))).toEqual({ version: 3, path: 'id' });
 });

@@ -335,7 +335,7 @@ export function wireList(): void {
     if (!current) return;
     add(t('collection_export'), () => void exportCollection(current));
     add(t('collection_delete'), () => {
-      void deleteCollection(current.key, current.name, current.count);
+      void deleteCollection(current.id, current.name, current.count);
     }, { danger: true });
   });
 }

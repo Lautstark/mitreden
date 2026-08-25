@@ -10,11 +10,11 @@
 
 import {
   allCollections, allPhrases, countIn, dropAudio, dropCollection, dropPhrase,
-  getAudio, getCollection, getPhrase, idTaken, keyTaken, loadSettings, putAudio,
+  getAudio, getCollection, getPhrase, idTaken, loadSettings, putAudio,
   putCollection, putPhrase, putPhrases, saveSettings, twinOf, type Settings,
 } from './db.ts';
 import { record } from '../core/audio.ts';
-import { fingerprint, free, normText, normTag, slug } from '../core/ids.ts';
+import { fingerprint, free, normText, slug } from '../core/ids.ts';
 import type { Collection, CollectionWithCount, Phrase, PhraseWithState, State } from '../core/types.ts';
 
 /** A Sammlung named after the day, the way a new notebook gets a date. */
@@ -34,7 +34,7 @@ export async function ensureCollection(german: boolean): Promise<Collection[]> {
   const declared = await allCollections();
   if (declared.length) return declared;
   const name = defaultName(german);
-  const made: Collection = { key: normTag(name) || 'sammlung', name };
+  const made: Collection = { id: crypto.randomUUID(), name };
   await putCollection(made);
   return [made];
 }
@@ -55,7 +55,7 @@ export async function phrases(): Promise<PhraseWithState[]> {
  *  library and tallying it. §1.8 wants this number in every row. */
 export async function collections(): Promise<CollectionWithCount[]> {
   const declared = await allCollections();
-  return Promise.all(declared.map(async (c) => ({ ...c, count: await countIn(c.key) })));
+  return Promise.all(declared.map(async (c) => ({ ...c, count: await countIn(c.id) })));
 }
 
 /**
@@ -195,26 +195,31 @@ export async function deletePhrase(id: string): Promise<void> {
 }
 
 /**
- * Only `create` turns a name into a key. A key handed back in is used as it
- * stands: normTag truncates, so minting it twice returns something shorter that
- * matches nothing, and the Sammlung could then be neither renamed nor deleted.
+ * Always a new Sammlung, always a fresh id.
+ *
+ * It used to derive the id from the name, and a *named* call — which is what an
+ * import is — looked the derived key up first and handed back whatever it
+ * found. normTag truncates at 24 characters, so two files whose names agreed
+ * that far reduced to one key, and the second import silently poured its
+ * sentences into the first file's Sammlung. No error, no warning, and the only
+ * visible sign was a count that had grown. That is the collision §1.1 predicts
+ * when identity is made out of a mutable field, and it is why this mints
+ * instead (conventions.md §1.1, §1.10).
+ *
+ * Two Sammlungen may now genuinely share a name, which is correct: the identity
+ * is never the name, and a person who imports the same file twice has two of
+ * them because that is what they asked for. Only the *offered* name is
+ * uniquified, and only when nobody supplied one — see §1.5, which is about the
+ * suggestion rather than about uniqueness.
  */
 export async function createCollection(name: string | null, german: boolean): Promise<Collection> {
   let shown = name?.trim() ?? '';
-  let key: string;
-  if (shown) {
-    key = normTag(shown);
-    const existing = await getCollection(key);
-    if (existing) return existing;
-  } else {
+  if (!shown) {
     const base = defaultName(german);
     shown = base;
-    // The shown name is uniquified before the key is, so that two made on the
-    // same day read as two rather than as one with a puzzling key.
     for (let n = 2; await named(shown); n++) shown = `${base} (${n})`;
-    key = await free(normTag(shown), keyTaken);
   }
-  const made: Collection = { key, name: shown };
+  const made: Collection = { id: crypto.randomUUID(), name: shown };
   await putCollection(made);
   return made;
 }
@@ -225,8 +230,8 @@ export async function createCollection(name: string | null, german: boolean): Pr
 const named = async (name: string): Promise<boolean> =>
   (await allCollections()).some((c) => c.name === name);
 
-export async function renameCollection(key: string, to: string): Promise<Collection | null> {
-  const hit = await getCollection(key);
+export async function renameCollection(id: string, to: string): Promise<Collection | null> {
+  const hit = await getCollection(id);
   if (!hit) return null;
   hit.name = to.trim();
   // Keeps its place in the list: putCollection carries the old stamp across,
@@ -242,6 +247,24 @@ export const deleteCollection = dropCollection;
 export const settings = loadSettings;
 export const saveVoice = async (voice: string): Promise<void> =>
   saveSettings({ ...(await loadSettings()), voice });
+
+/**
+ * Which Sammlungen are open, and whether the rail is there — both in the
+ * settings record with every other preference, and neither in localStorage.
+ * conventions.md §1.2 and §1.3.
+ *
+ * A preference living in two stores is one that gets restored by one of them
+ * and overwritten by the other; and localStorage survives the database being
+ * cleared, so "start again from nothing" would leave a pointer to a Sammlung
+ * that no longer exists. The scheme and the language stay where they are for a
+ * reason this does not have — they must be readable before the first paint,
+ * and this is allowed to arrive a frame late.
+ */
+export const saveOpen = async (open: readonly string[]): Promise<void> =>
+  saveSettings({ ...(await loadSettings()), open: [...open] });
+
+export const saveRailOpen = async (railOpen: boolean): Promise<void> =>
+  saveSettings({ ...(await loadSettings()), railOpen });
 export async function saveAzure(azure: Settings['azure']): Promise<void> {
   const now = await loadSettings();
   if (azure) await saveSettings({ ...now, azure });

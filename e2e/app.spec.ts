@@ -377,3 +377,53 @@ test('the page reaches no host but Hugging Face', async ({ page }) => {
   await page.waitForTimeout(500);
   expect([...new Set(offsite)].filter((h) => h !== 'huggingface.co')).toEqual([]);
 });
+
+test('which Sammlungen were open comes back, all of them', async ({ page }) => {
+  /* conventions.md §1.2. Coming back to the one you were in is the whole of
+     what "open" means; and here it is the ones, plural, because arity is many
+     (§4.1) and the rail multi-selects for exactly that reason. Restoring one of
+     two would be a worse answer than restoring none, because it would look
+     like the second Sammlung had been closed.
+
+     It lived in module state before this, so every reload landed on whichever
+     Sammlung happened to be first. */
+  await page.click('#newcol');
+  await page.fill('#colname', 'Beim Essen');
+  await expect(page.locator('#rows .collections__name', { hasText: 'Beim Essen' })).toBeVisible();
+
+  const rows = page.locator('#rows .collections__item');
+  await expect(rows).toHaveCount(2);
+
+  // One, then the other with the chord that adds rather than replaces.
+  await rows.first().click();
+  await expect(rows.first()).toHaveAttribute('aria-current', 'true');
+  await rows.nth(1).click({ modifiers: ['ControlOrMeta'] });
+  const open = page.locator('#rows .collections__item[aria-current="true"]');
+  await expect(open).toHaveCount(2);
+
+  /* The write is asynchronous and the class changes before it lands, so the
+     reload waits for the record rather than for the screen. Without this the
+     test reloads between the two writes and restores one Sammlung — which is
+     exactly the state it exists to rule out, arrived at for the wrong
+     reason. */
+  await page.waitForFunction(() => new Promise<boolean>((keep) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => keep(false);
+    request.onsuccess = () => {
+      const database = request.result;
+      const ask = database.transaction('settings').objectStore('settings').get('settings');
+      ask.onsuccess = () => {
+        database.close();
+        keep(((ask.result as { open?: string[] } | undefined)?.open ?? []).length === 2);
+      };
+      ask.onerror = () => { database.close(); keep(false); };
+    };
+  }));
+
+  await page.reload();
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+
+  // Both, and still both: the set is what was written, not its first member.
+  await expect(page.locator('#rows .collections__item')).toHaveCount(2);
+  await expect(page.locator('#rows .collections__item[aria-current="true"]')).toHaveCount(2);
+});
