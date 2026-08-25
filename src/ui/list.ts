@@ -207,11 +207,15 @@ function openMenu(button: HTMLElement, item: PhraseWithState): void {
     if (item.state !== 'missing') {
       add(t('download_mp3'), () => void grab(item, 'mp3'));
       add(t('download_wav'), () => void grab(item, 'wav'));
-    } else {
-      // A recording that failed was otherwise stuck: the only way back was to
-      // retype the sentence.
-      add(t('menu_record'), () => void again(item));
     }
+    /* Not only when the recording is missing. A stale row has a clip that plays
+       and says „geändert seit der Aufnahme", and until now the only way to act
+       on that was to retype the sentence — which was a small gap when the voice
+       was the sentence's own and is not one now: changing a Sammlung's voice
+       makes every row in it stale at once, and a state nothing can leave is a
+       state that should not have been reachable. The Sammlung's own ⋯ does all
+       of them; this does the one you are looking at. */
+    if (item.state !== 'ok') add(t('menu_record'), () => void again(item));
     add(t('menu_delete_one'), () => void remove(item), { danger: true });
   });
 }
@@ -330,6 +334,40 @@ async function packAll(format: Format): Promise<void> {
   say(t('done_pack', { n: files.length, format: format.toUpperCase() }));
 }
 
+/**
+ * Everything in this Sammlung that is not what it should sound like, spoken
+ * again.
+ *
+ * The half a per-Sammlung voice needs and did not have. Changing the voice
+ * marks every sentence in the Sammlung stale — that is the fingerprint doing
+ * exactly what it was built to do — and without a way to act on all of them the
+ * change would leave a Sammlung of rows complaining with nothing to press.
+ * conventions.md §3.10 already assumed this button existed: "only an explicit
+ * *record again* moves what has been made".
+ *
+ * Only the ones that need it. `force` stays false, so this is not a way to
+ * spend a minute re-recording forty sentences that are already right — build()
+ * skips anything whose fingerprint still matches, and the filter here is so the
+ * queue on screen says the true number rather than counting them all.
+ */
+async function recordAgain(id: string): Promise<void> {
+  const ids = ALL().filter((item) => item.collection === id && item.state !== 'ok')
+    .map((item) => item.id);
+  if (!ids.length) {
+    say(t('nothing_to_record'));
+    return;
+  }
+  busy('busy_record');
+  queueWork(ids);
+  // The voice is the Sammlung's and build() reads it; this is the last resort
+  // it falls back to when nothing anywhere has decided one.
+  const { recorded, failed } = await build(ids, chosenVoice(), false, stepWork);
+  endWork();
+  say(tn('done_record_again', recorded)
+    + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));
+  await load();
+}
+
 export function wireList(): void {
   onWork(repaintWork);
   onLanded((id) => void landed(id));
@@ -343,6 +381,7 @@ export function wireList(): void {
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
+    add(t('collection_record'), () => void recordAgain(current.id));
     add(t('collection_export'), () => void exportCollection(current));
     add(t('collection_voice'), () => openCollectionVoice(current.id));
     add(t('collection_delete'), () => {
