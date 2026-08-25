@@ -15,7 +15,8 @@ import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase } from '../core/types.ts';
-import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
+import { chosenVoice, knownVoices, loadVoices, nextCollection, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
+import { openCollectionVoice } from './collectionVoice.ts';
 import { voicePicker } from './voicepicker.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
@@ -457,9 +458,31 @@ export function openSetup(panel?: string): void {
 export function wireSettings(backup: Sicherung): void {
   wireBackupFolder(backup);
   el('gear').onclick = () => openSetup();
-  // The composer names the voice in force; this is the way from that name to
-  // the place it is decided, which is the whole of what moved.
-  el('voicepick').onclick = () => openSetup('p-voice');
+  /*
+   * The composer names one voice, and this is the way through to where *that*
+   * one is decided. Which is two places now, because there are two answers: in
+   * a Sammlung it is the Sammlung's, and the sheet behind its ⋯ is where it
+   * changes; with none open or two the next sentence goes uncollected, and what
+   * records it is the default here.
+   *
+   * One button and two doors is the arrangement worth defending rather than
+   * apologising for. A destination that moves is dishonest when the control
+   * stands alone — a toolbar button leading somewhere different each press is a
+   * trap. This one does not stand alone: it is the verb of a sentence whose
+   * subject is spelled out one word to its left, „Stimme der Sammlung" or
+   * „Standardstimme", and its own accessible name says the same thing. So the
+   * destination is read before the press rather than discovered after it.
+   *
+   * The alternatives are both worse. Always leading here is what it did before
+   * this change, and it opens a picker that does not govern what the line says.
+   * Two buttons would put a permanent second control in a caption, for a
+   * question only one of which is ever live.
+   */
+  el('voicepick').onclick = () => {
+    const into = nextCollection();
+    if (into) openCollectionVoice(into);
+    else openSetup('p-voice');
+  };
   el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
   // A pick redraws the list it was made in, so the mark moves with the click —
   // and the heading, which names the voice in force.

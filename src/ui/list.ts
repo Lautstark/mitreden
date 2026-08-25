@@ -13,6 +13,7 @@ import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
 import type { Format, PhraseWithState } from '../core/types.ts';
 import { chosenVoice } from './composer.ts';
+import { openCollectionVoice } from './collectionVoice.ts';
 import { deleteCollection, here } from './rail.ts';
 import { exportCollection } from './settings.ts';
 import {
@@ -334,10 +335,16 @@ export function wireList(): void {
   onLanded((id) => void landed(id));
   el('q').addEventListener('input', draw);
   el('dlall').onclick = () => openDownload(el('dlall'));
+  /* conventions.md §3.6, in its own order: what acts on this Sammlung, then what
+     this Sammlung is set to, then the delete. The voice is here rather than in
+     Einstellungen because its answer changes with which Sammlung is open, which
+     is §3.10's test — and beside the name there is no question about which one
+     the menu means. */
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
     add(t('collection_export'), () => void exportCollection(current));
+    add(t('collection_voice'), () => openCollectionVoice(current.id));
     add(t('collection_delete'), () => {
       void deleteCollection(current.id, current.name, current.count);
     }, { danger: true });

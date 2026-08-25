@@ -97,12 +97,19 @@
            everything anybody has ever opened, and the state in each heading,
            which is the whole reason they are folded, stops being readable at a
            glance. @lautstark/design conventions.md §3.5. -->
+      <!-- The default a new Sammlung starts with, and not the voice the next
+           sentence gets — which is what this panel used to say and what it
+           stopped being when the voice moved onto the Sammlung. What one
+           particular Sammlung records in is behind the ⋯ beside its name;
+           conventions.md §3.10 is the test that put it there, and the hint
+           below is how somebody standing in front of this list finds it. -->
       <details class="panel" name="settings" id="p-voice" open>
         <summary>
-          <span class="section" data-i18n="voice_pick_title"></span>
+          <span class="section" data-i18n="panel_voice_default"></span>
           <span class="state" id="voicestate"></span>
         </summary>
         <div class="body">
+          <p class="hint" data-i18n="voice_default_hint"></p>
           <input id="voiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
           <div class="chips" id="voicefilters"></div>
           <div class="voices" id="voices"></div>
@@ -202,6 +209,31 @@
           <button class="btn destructive sm" id="wipe" data-i18n="danger_do"></button>
         </div>
       </details>
+    </dialog>
+
+    <!-- One Sammlung's own voice. A sheet rather than a column of folded panels
+         (§3.5) because there is exactly one thing here to set: mitreden's
+         Sammlung holds a voice and nothing else, where vorlaut's talker holds a
+         voice and a device language and so earns the column. A single folded
+         panel would be a heading you have to open to reach the only thing
+         behind it.
+
+         Live apply, no Save and no Cancel: a voice destroys nothing. The clips
+         stay; they stop matching what the Sammlung says it sounds like, which
+         is what the line under the list says and what „neu aufnehmen" in the
+         same ⋯ undoes. -->
+    <dialog id="colvoice" class="sheet">
+      <div class="head">
+        <h2 id="colvoicetitle"></h2>
+        <button id="colvoiceclose" class="btn quiet icon" data-i18n-aria="close">✕</button>
+      </div>
+      <div class="body">
+        <p class="hint" id="colvoicelead"></p>
+        <input id="colvoiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
+        <div class="chips" id="colvoicefilters"></div>
+        <div class="voices" id="colvoices"></div>
+        <p class="hint" id="colvoicecost"></p>
+      </div>
     </dialog>
 
       <div class="compose">
