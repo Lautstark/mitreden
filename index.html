@@ -213,9 +213,18 @@
         <span><kbd>Enter</kbd> <span id="chint1" data-i18n="compose_records"></span> ·
           <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2" data-i18n="compose_newline"></span></span>
         <!-- Not a control: a statement of which voice the next recording gets,
-             and a way through to where that is changed. -->
+             and a way through to where that is changed.
+
+             Both halves are written from composer.ts rather than carried by
+             data-i18n, because both depend on where the next sentence lands.
+             In a Sammlung the line names that Sammlung's voice and the button
+             leads to the Sammlung's own sheet; with none open or two, the next
+             sentence goes uncollected and both point at the default in
+             Einstellungen. One button and two doors, and what makes that honest
+             rather than a trap is that the caption to its left says which of
+             the two it means before it is pressed. -->
         <span class="right voicenow">
-          <span class="voicenow__what" data-i18n="voice_label"></span>
+          <span class="voicenow__what" id="voicewhat"></span>
           <b id="voicename"></b>
           <span class="voicenow__from" id="voicefrom"></span>
           <button id="voicepick" class="btn quiet sm" data-i18n="voice_change"></button>
