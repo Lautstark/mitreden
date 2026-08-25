@@ -6,7 +6,10 @@
  * genuinely be in two at once and that has to be reachable.
  */
 
-import { createCollection, deleteCollection as removeCollection, renameCollection } from '../db/repo.ts';
+import {
+  createCollection, deleteCollection as removeCollection, renameCollection,
+  saveRailOpen, settings,
+} from '../db/repo.ts';
 import { lang, t } from '../i18n/index.ts';
 import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
 import { el, say } from './dom.ts';
@@ -85,17 +88,23 @@ const narrow = (): boolean => matchMedia('(max-width:820px)').matches;
  *
  * Only a desktop question. Narrow screens have no rail to collapse; they have
  * one to dismiss, which is what ✕ and the scrim already do.
+ *
+ * Kept in the settings record with every other preference, not in localStorage
+ * — conventions.md §1.3. The scheme and the language are still in localStorage
+ * and that is not an inconsistency: both have to be readable before the first
+ * paint or the page flashes and corrects itself. This one is allowed to arrive
+ * a frame late, which is the whole of the difference.
  */
-const RAIL_KEY = 'mitreden.rail';
-
-export function showRail(open: boolean): void {
+export function showRail(open: boolean, remember = true): void {
   document.body.classList.toggle('railed', !open);
   el('reveal').hidden = open;
-  localStorage.setItem(RAIL_KEY, open ? 'open' : 'closed');
+  if (remember) void saveRailOpen(open);
 }
 
-export const restoreRail = (): void =>
-  showRail(localStorage.getItem(RAIL_KEY) !== 'closed');
+/** What it was set to last time. Absent means open: a rail nobody has put away
+ *  is there, and a first visit should not have to say so. */
+export const restoreRail = async (): Promise<void> =>
+  showRail((await settings()).railOpen !== false, false);
 
 export async function deleteCollection(key: string, name: string, n: number): Promise<void> {
   if (!await confirmDialog({
@@ -164,5 +173,5 @@ export function wireRail(): void {
   el('scrim').onclick = closeRail;
   el('railhide').onclick = () => showRail(false);
   el('railshow').onclick = () => showRail(true);
-  restoreRail();
+  void restoreRail();
 }

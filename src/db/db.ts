@@ -63,6 +63,16 @@ import type { Collection, Phrase } from '../core/types.ts';
 export interface Settings {
   voice?: string;
   azure?: { key: string; region: string };
+  /**
+   * Which Sammlungen are open — a set, not one, because arity here is many
+   * (§4.1) and "where I was" is all of them. conventions.md §1.2.
+   */
+  open?: string[];
+  /**
+   * Whether the rail is a column of the page at all. A desktop choice; the
+   * phone has no rail to collapse, only one to dismiss. conventions.md §1.3.
+   */
+  railOpen?: boolean;
 }
 
 /** A sentence as the store holds it: the program's shape, plus the index key

@@ -247,6 +247,24 @@ export const deleteCollection = dropCollection;
 export const settings = loadSettings;
 export const saveVoice = async (voice: string): Promise<void> =>
   saveSettings({ ...(await loadSettings()), voice });
+
+/**
+ * Which Sammlungen are open, and whether the rail is there — both in the
+ * settings record with every other preference, and neither in localStorage.
+ * conventions.md §1.2 and §1.3.
+ *
+ * A preference living in two stores is one that gets restored by one of them
+ * and overwritten by the other; and localStorage survives the database being
+ * cleared, so "start again from nothing" would leave a pointer to a Sammlung
+ * that no longer exists. The scheme and the language stay where they are for a
+ * reason this does not have — they must be readable before the first paint,
+ * and this is allowed to arrive a frame late.
+ */
+export const saveOpen = async (open: readonly string[]): Promise<void> =>
+  saveSettings({ ...(await loadSettings()), open: [...open] });
+
+export const saveRailOpen = async (railOpen: boolean): Promise<void> =>
+  saveSettings({ ...(await loadSettings()), railOpen });
 export async function saveAzure(azure: Settings['azure']): Promise<void> {
   const now = await loadSettings();
   if (azure) await saveSettings({ ...now, azure });
