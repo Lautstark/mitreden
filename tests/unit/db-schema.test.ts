@@ -1,13 +1,17 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-/* The database somebody already had, and what version 2 does with it: nothing.
+/* The database somebody already had, and what the current version does with it:
+ * nothing.
  *
- * There is no carrying-across, and that is the decision rather than an
- * omission — conventions.md's rule about its own rules: one user, disposable
- * data, and the old shape deleted in the change that adopts the new one. A
- * library worth keeping across this goes out through the Sicherung, which is
- * what that file is for and is a better answer than a migration nobody reads a
- * second time.
+ * There is no carrying-across from version 1 and there is not meant to be —
+ * conventions.md's rule about its own rules: one user, disposable data, and the
+ * old shape deleted in the change that adopts the new one. A library worth
+ * keeping across this goes out through the Sicherung, which is what that file is
+ * for and is a better answer than a migration nobody reads a second time.
+ *
+ * Version 3 is the exception, and the reason it is one is in db-migration.test.ts
+ * beside the migration it tests: that upgrade carries recordings, which no
+ * Sicherung holds.
  *
  * So what is under test is that the drop is *clean*, not that it happens. An
  * upgrade that threw would leave db() rejecting forever, on a page that looks
@@ -92,10 +96,10 @@ describe('opening a database left behind by version 1', () => {
   /* And it is an ordinary database afterwards, indexes and all. */
   it('takes a write afterwards, the way a browser that had never been here does', async () => {
     await store.putCollection({ id: 'neu', name: 'Neu' });
-    await store.putPhrases([{ id: 'a', text: 'Hallo.', collections: ['neu'] }]);
+    await store.putPhrases([{ id: 'a', text: 'Hallo.', collection: 'neu' }]);
 
     expect((await store.allCollections()).map((c) => c.id)).toEqual(['neu']);
     expect(await store.countIn('neu'), 'the membership index was created too').toBe(1);
-    expect((await store.twinOf('hallo.'))?.id, 'and so was the twin index').toBe('a');
+    expect((await store.twinsOf('hallo.'))[0]?.id, 'and so was the twin index').toBe('a');
   });
 });

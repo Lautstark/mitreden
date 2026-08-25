@@ -280,7 +280,11 @@ function editLine(node: HTMLElement, item: PhraseWithState): void {
     const changed = await editPhrase(item.id, text);
     if (!changed) { node.textContent = item.text; return; }
     queueWork([item.id]);
-    const { failed } = await build([item.id], item.voice ?? chosenVoice(), true, stepWork);
+    // The Sammlung's voice decides, so there is nothing to pass but the last
+    // resort. `true` is "record it again even though the fingerprint matches" —
+    // which it will not, the text having just changed — and no longer "in this
+    // voice regardless".
+    const { failed } = await build([item.id], chosenVoice(), true, stepWork);
     endWork();
     say(t('done_edit', { text: changed.text })
       + (failed.length ? ` ${tn('not_recorded', 1, { why: failed[0]! })}` : ''));

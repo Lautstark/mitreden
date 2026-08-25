@@ -145,3 +145,33 @@ export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   // would say the question had been asked and answered no.
   ...(voice.rushesFragments ? { rushesFragments: true } : {}),
 });
+
+/**
+ * The voice a set of sentences agrees on, or the commonest one if they do not.
+ *
+ * The voice is the Sammlung's now, and three places have to hand one to a
+ * Sammlung that arrived without: the version 4 migration, a restored backup
+ * written before Collection.voice existed, and an imported file whose sentences
+ * each name the voice they were made in. All three have the same evidence — a
+ * handful of votes, most of which agree — and all three want the same answer,
+ * so the rule is written once.
+ *
+ * Whichever voice the most sentences already carry wins, because that is the
+ * one that leaves the fewest recordings stale. Nothing here re-records; a
+ * sentence on the losing side keeps its clip and is marked stale, which is the
+ * true statement about it.
+ *
+ * A tie is broken by `preferred` when it is one of the tied, and otherwise by
+ * the id, so that the same library migrates the same way twice. Alphabetical
+ * order means nothing; being decidable does.
+ */
+export function commonest(
+  votes: Iterable<string | undefined>, preferred?: string,
+): string | undefined {
+  const tally = new Map<string, number>();
+  for (const vote of votes) if (vote) tally.set(vote, (tally.get(vote) ?? 0) + 1);
+  if (!tally.size) return undefined;
+  const most = Math.max(...tally.values());
+  const tied = [...tally].filter(([, n]) => n === most).map(([id]) => id);
+  return preferred && tied.includes(preferred) ? preferred : tied.sort()[0];
+}

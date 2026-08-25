@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   allCollections, allPhrases, countIn, countPhrases, dropCollection, getPhrase,
-  dropPhrase, phrasesIn, putCollection, putCollections, putPhrases, twinOf, wipe,
+  dropPhrase, phrasesIn, putCollection, putCollections, putPhrases, twinsOf, wipe,
 } from '../../src/db/db.ts';
 import { collections, editPhrase } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
@@ -20,13 +20,16 @@ import { exportEverything } from '../../src/db/backup.ts';
  */
 
 const LIBRARY = [
-  { id: 'hunger', text: 'Ich habe Hunger.', collections: ['kueche'] },
-  { id: 'durst', text: 'Ich habe Durst.', collections: ['kueche'] },
-  // The one in two places at once: arity here is many (§4.1), and it is the
-  // whole reason the membership index is multiEntry.
-  { id: 'mude', text: 'Ich bin müde.', collections: ['kueche', 'schlafen'] },
-  { id: 'buch', text: 'Vorlesen, bitte.', collections: ['schlafen'] },
-  { id: 'allein', text: 'Nichts für niemanden.', collections: [] },
+  { id: 'hunger', text: 'Ich habe Hunger.', collection: 'kueche' },
+  { id: 'durst', text: 'Ich habe Durst.', collection: 'kueche' },
+  // The same sentence in two Sammlungen: two rows, each with an id of its own,
+  // because a sentence is in one Sammlung and the voice is the Sammlung's. It
+  // used to be one row with a two-entry membership, which is what the version 4
+  // migration splits.
+  { id: 'mude', text: 'Ich bin müde.', collection: 'kueche' },
+  { id: 'mude-2', text: 'Ich bin müde.', collection: 'schlafen' },
+  { id: 'buch', text: 'Vorlesen, bitte.', collection: 'schlafen' },
+  { id: 'allein', text: 'Nichts für niemanden.' },
 ];
 
 beforeEach(async () => {
@@ -39,11 +42,11 @@ beforeEach(async () => {
 });
 
 describe('the sentences in one Sammlung', () => {
-  it('are a query, and one in two places answers to both', async () => {
+  it('are a query, and the same text in two of them answers as two rows', async () => {
     expect((await phrasesIn('kueche')).map((p) => p.id).sort())
       .toEqual(['durst', 'hunger', 'mude']);
     expect((await phrasesIn('schlafen')).map((p) => p.id).sort())
-      .toEqual(['buch', 'mude']);
+      .toEqual(['buch', 'mude-2']);
   });
 
   it('leave out the one that is in none', async () => {
@@ -69,10 +72,10 @@ describe('the sentences in one Sammlung', () => {
 
   it('follow a sentence being moved between Sammlungen', async () => {
     const one = (await getPhrase('durst'))!;
-    await putPhrases([{ ...one, collections: ['schlafen'] }]);
+    await putPhrases([{ ...one, collection: 'schlafen' }]);
     expect(await countIn('kueche')).toBe(2);
     expect((await phrasesIn('schlafen')).map((p) => p.id).sort())
-      .toEqual(['buch', 'durst', 'mude']);
+      .toEqual(['buch', 'durst', 'mude-2']);
   });
 });
 
@@ -92,8 +95,13 @@ describe('deleting a Sammlung', () => {
   it('leaves the Sammlungen it was not about alone', async () => {
     await dropCollection('kueche');
     expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen']);
-    // The one that was in both keeps the other half of its membership.
-    expect((await getPhrase('mude'))!.collections).toEqual(['schlafen']);
+    // The row that was in the deleted one is uncollected and still a sentence;
+    // the row holding the same text in the other Sammlung is untouched. Under
+    // the old shape these were one record and this was one membership being
+    // stripped from it — the assertion that would have been silently wrong if
+    // the strip reached the wrong record.
+    expect((await getPhrase('mude'))!.collection).toBeUndefined();
+    expect((await getPhrase('mude-2'))!.collection).toBe('schlafen');
   });
 
   it('says so when there was nothing to delete', async () => {
@@ -104,13 +112,21 @@ describe('deleting a Sammlung', () => {
 
 describe('a sentence like this one', () => {
   it('is found however it was spaced or capitalised', async () => {
-    expect((await twinOf('ICH   habe    hunger.'))?.id).toBe('hunger');
+    expect((await twinsOf('ICH   habe    hunger.')).map((p) => p.id)).toEqual(['hunger']);
+  });
+
+  /* All of them, not the first. The first stopped being enough to answer with
+     when a sentence stopped being in several Sammlungen: what a caller asks now
+     is whether one of the twins is in the Sammlung it is adding to. */
+  it('is every row with that text, not whichever one the index reaches first', async () => {
+    expect((await twinsOf('Ich bin müde.')).map((p) => p.collection).sort())
+      .toEqual(['kueche', 'schlafen']);
   });
 
   /* normText keeps punctuation in, because "Nochmal!" and "Nochmal." are
    * spoken differently — so they are two sentences, not a twin. */
   it('is not found when only the punctuation differs', async () => {
-    expect(await twinOf('Ich habe Hunger!')).toBeUndefined();
+    expect(await twinsOf('Ich habe Hunger!')).toEqual([]);
   });
 
   /* The lookup is an index on a field derived from the text, so the thing that
@@ -118,8 +134,8 @@ describe('a sentence like this one', () => {
    * written in one place for exactly this reason. */
   it('follows the text when a sentence is edited', async () => {
     await editPhrase('hunger', 'Ich möchte etwas essen.');
-    expect(await twinOf('Ich habe Hunger.'), 'the old text is nobody now').toBeUndefined();
-    expect((await twinOf('ich möchte etwas essen.'))?.id).toBe('hunger');
+    expect(await twinsOf('Ich habe Hunger.'), 'the old text is nobody now').toEqual([]);
+    expect((await twinsOf('ich möchte etwas essen.')).map((p) => p.id)).toEqual(['hunger']);
   });
 });
 
@@ -164,15 +180,26 @@ describe('last edited, first in the list', () => {
   it('moves a Sammlung when a sentence lands in it', async () => {
     expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
 
-    await putPhrases([{ id: 'neu', text: 'Noch ein Satz.', collections: ['kueche'] }]);
+    await putPhrases([{ id: 'neu', text: 'Noch ein Satz.', collection: 'kueche' }]);
     expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
   });
 
-  it('moves both when a sentence lands in two at once', async () => {
-    await putPhrases([{ id: 'beide', text: 'In zweien.', collections: ['schlafen', 'kueche'] }]);
+  it('moves both when one batch lands in two of them', async () => {
+    await putPhrases([
+      { id: 'eins', text: 'Ins Schlafen.', collection: 'schlafen' },
+      { id: 'zwei', text: 'In die Küche.', collection: 'kueche' },
+    ]);
     // Both rose above nothing else here, and the write order inside the batch
     // is what decides between them.
     expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
+  });
+
+  /* A sentence in no Sammlung moves nothing, and is not an error either. It is
+     a real state — composer.ts makes one whenever two Sammlungen are open. */
+  it('is unmoved by a sentence that is in none', async () => {
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
+    await putPhrases([{ id: 'niemand', text: 'Für niemanden.' }]);
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
   });
 
   it('moves a Sammlung when a sentence leaves it', async () => {
@@ -185,7 +212,7 @@ describe('last edited, first in the list', () => {
   it('is unbothered by a sentence naming a Sammlung that is not here', async () => {
     // importBackup keeps an unknown tag on purpose, so that the sentence shows
     // up if that Sammlung ever comes back. There is nothing to move.
-    await putPhrases([{ id: 'fremd', text: 'Woanders.', collections: ['weg'] }]);
+    await putPhrases([{ id: 'fremd', text: 'Woanders.', collection: 'weg' }]);
     expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
   });
 });

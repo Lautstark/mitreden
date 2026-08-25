@@ -19,11 +19,11 @@
  *   two hundred times, once per sentence, because `build()` saves after each
  *   one so the row can be found the moment it is announced.
  * - **"The sentences in this Sammlung" was a filter over everything.** It is a
- *   query now: `collections` is a multiEntry index, so a Sammlung's members are
- *   a range the database walks. That index is the one this product needs most,
- *   because arity here is *many* (§4.1) — a sentence belongs to the morning
- *   Sammlung and the nursery one at once, which is exactly the shape a
- *   multiEntry index exists for and exactly the shape a filter is worst at.
+ *   query now: `collection` is an index, so a Sammlung's members are a range
+ *   the database walks. It was a *multiEntry* index until version 4, because
+ *   arity here was many (§4.1) and a sentence belonged to the morning Sammlung
+ *   and the nursery one at once. It belongs to one now — see Phrase.collection
+ *   and the migration below — so the index is an ordinary one.
  * - **A count meant loading every sentence.** §1.8 wants one in every sidebar
  *   row; it is `index.count(key)` now and touches no records at all.
  * - **"Is there already a sentence like this?" was a linear scan** on every
@@ -48,24 +48,47 @@
  *   one is moved by every edit, including the sentences going in and out. See
  *   bump() below for why that half matters more than the rename.
  *
- * ## No migration
+ * ## Migration, and where the rule about not having one stops
  *
- * Version 3 drops every store it finds. conventions.md's rule about its own
- * rules: one user, disposable data, and the old shape deleted in the change
- * that adopts the new one. A library worth keeping across this goes out through
- * the Sicherung, which is what that file is for.
+ * Version 3 dropped every store it found, and version 4 still does that for
+ * anything older than 3. conventions.md's rule about its own rules: one user,
+ * disposable data, and the old shape deleted in the change that adopts the new
+ * one. A library worth keeping across that goes out through the Sicherung.
+ *
+ * Version 4 is different, and the difference is the `audio` store. Dropping
+ * version 1 and 2 cost recordings that a Sicherung could not have carried
+ * anyway — it holds no audio, by design, because the audio is reproducible.
+ * "Reproducible" was cheap when the change was a schema: restore the file, press
+ * record, wait. It is not cheap here, because this change moves the voice from
+ * the sentence to the Sammlung, and re-recording a library *in the new
+ * arrangement* is exactly the thing the person would want to check before
+ * agreeing to. So version 4 carries the library across rather than asking for it
+ * back, and it carries every clip: `migrate` below copies blobs where it splits a
+ * sentence and deletes none. Nothing is re-recorded and nothing is lost.
  */
 
-import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction } from 'idb';
-import { normText } from '../core/ids.ts';
+import {
+  openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames,
+} from 'idb';
+import { normText, slug } from '../core/ids.ts';
+import { commonest } from '../core/voices.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
 export interface Settings {
-  voice?: string;
   azure?: { key: string; region: string };
   /**
-   * Which Sammlungen are open — a set, not one, because arity here is many
-   * (§4.1) and "where I was" is all of them. conventions.md §1.2.
+   * The voice the next Sammlung is made with — and, until one is made, the voice
+   * a Sammlung that has none records in. It used to be the voice the next
+   * *sentence* was recorded in; the field is the same and what it is the default
+   * for has moved out one level. See Collection.voice.
+   */
+  voice?: string;
+  /**
+   * Which Sammlungen are open — a set, not one. Several can be open at once and
+   * "where I was" is all of them (§4.2, and conventions.md §1.2). That is about
+   * the open set and not about arity: a sentence is in one Sammlung now, and
+   * opening the morning one and the nursery one together still shows the union
+   * of the two.
    */
   open?: string[];
   /**
@@ -88,10 +111,11 @@ interface MitredenDB extends DBSchema {
     key: string;
     value: StoredPhrase;
     indexes: {
-      /** multiEntry: one entry per Sammlung the sentence is in, which is what
-       *  makes membership a query in the one product where a sentence can be
-       *  in several (§4.1). */
-      collections: string;
+      /** The Sammlung it is in, so membership is a query rather than a filter.
+       *  A sentence in none carries no key here at all, which is what IndexedDB
+       *  does with an absent key path — and is right: nothing ever asks the
+       *  index for the uncollected ones. */
+      collection: string;
       /** The twin lookup. Not unique: nothing has ever stopped two sentences
        *  normalising alike — editPhrase() does not check — so this finds *a*
        *  twin, which is all the callers ever wanted. */
@@ -137,17 +161,132 @@ function touched(): void {
   for (const listener of watchers) listener();
 }
 
+/**
+ * The library as version 3 left it: a sentence names every Sammlung it is in.
+ *
+ * Only ever seen inside the migration, so it is declared here rather than kept
+ * anywhere the program can reach. `collections` is the whole of the difference.
+ */
+type PhraseV3 = Omit<StoredPhrase, 'collection'> & { collections?: string[] };
+
+/**
+ * Version 3 to version 4: the voice moves to the Sammlung, and a sentence stops
+ * being in several.
+ *
+ * Every await in here is on an IndexedDB request and nothing else. A
+ * versionchange transaction commits the moment control reaches the event loop
+ * with no request outstanding, so one `await` on a promise from elsewhere — a
+ * fetch, or `crypto.subtle.digest` — would commit this halfway through and
+ * leave a half-migrated library behind. That is why no fingerprint is taken
+ * here: none needs to be. A split sentence copies the fingerprint it already
+ * had, because it is a copy of the same text recorded in the same voice.
+ *
+ * What each shape becomes:
+ *
+ * - **In one Sammlung.** `collections: [a]` becomes `collection: a`. The row
+ *   keeps its id, its voice, its fingerprint and its recording; nothing is
+ *   touched but the field name.
+ * - **In none.** Stays in none. It is a real state (composer.ts makes one every
+ *   time two Sammlungen are open) and it records in the settings voice.
+ * - **In several.** The row stays in the *first* — the Sammlung it was
+ *   originally added to, since every later entry was pushed on by the twin
+ *   merge that this change removes. It keeps its id, which matters more than it
+ *   looks: the id is a file name, and the file may already be on a talker. Each
+ *   further Sammlung gets a row of its own, with a fresh numbered id, the same
+ *   text, and a **copy of the clip** — so the sentence is still recorded, in
+ *   the same voice, in both places. Moving it would empty one Sammlung the
+ *   person never asked to empty; dropping the extra membership would lose the
+ *   arrangement; re-recording would be the silent en-masse rebuild that this
+ *   whole file argues against.
+ * - **Naming a Sammlung that is not here.** Kept, exactly as before: a restored
+ *   backup deliberately keeps an unknown tag so the sentence reappears if that
+ *   Sammlung ever comes back.
+ *
+ * And each Sammlung takes the voice its sentences were actually recorded in —
+ * `commonest`, so the reading that leaves the fewest of them stale wins. One
+ * whose sentences disagree makes the minority stale, which is a true statement
+ * about them and not a loss: every clip is still there and still plays.
+ * One with nothing to vote with is left without a voice and follows the
+ * settings default, which is what it was doing before this change anyway.
+ */
+async function migrate(
+  tx: IDBPTransaction<MitredenDB, StoreNames<MitredenDB>[], 'versionchange'>,
+): Promise<void> {
+  const store = tx.objectStore('phrases');
+  store.deleteIndex('collections' as 'collection');
+  store.createIndex('collection', 'collection');
+
+  const held = (await store.getAll()) as PhraseV3[];
+  const audio = tx.objectStore('audio');
+
+  /* Ids taken, so a split row is numbered the way free() in core/ids.ts numbers
+     — against what is already stored *and* against what this loop has minted so
+     far. free() itself is not used: it is async, and an await on its predicate
+     is an await on something that is not a request. */
+  const taken = new Set(held.map((one) => one.id));
+  const mint = (text: string): string => {
+    const base = slug(text);
+    if (!taken.has(base)) { taken.add(base); return base; }
+    for (let n = 2; ; n++) {
+      const candidate = `${base}-${n}`;
+      if (!taken.has(candidate)) { taken.add(candidate); return candidate; }
+    }
+  };
+
+  /** Which voices were used in each Sammlung, for the vote below. */
+  const votes = new Map<string, (string | undefined)[]>();
+  const vote = (id: string, voice: string | undefined): void => {
+    const list = votes.get(id) ?? [];
+    list.push(voice);
+    votes.set(id, list);
+  };
+
+  for (const was of held) {
+    const { collections = [], ...rest } = was;
+    const [first, ...also] = collections;
+    const stays: StoredPhrase = first === undefined ? rest : { ...rest, collection: first };
+    await store.put(stays);
+    if (first !== undefined) vote(first, was.voice);
+
+    if (!also.length) continue;
+    // Read once for all the copies rather than once each: they are the same
+    // clip, and a Blob handed to several put()s is stored once per key anyway.
+    const clip = await audio.get(was.id);
+    for (const id of also) {
+      const copy: StoredPhrase = { ...rest, id: mint(was.text), collection: id };
+      await store.put(copy);
+      if (clip) await audio.put(clip, copy.id);
+      vote(id, was.voice);
+    }
+  }
+
+  const preferred = (await tx.objectStore(SETTINGS).get(SETTINGS))?.voice;
+  const collections = tx.objectStore('collections');
+  for (const collection of await collections.getAll()) {
+    const voice = commonest(votes.get(collection.id) ?? [], preferred);
+    if (voice) await collections.put({ ...collection, voice });
+  }
+}
+
 let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
-  handle ??= openDB<MitredenDB>('mitreden', 3, {
-    upgrade(database) {
+  handle ??= openDB<MitredenDB>('mitreden', 4, {
+    async upgrade(database, from, _to, tx) {
+      // A version 3 library is carried across, recordings and all. Anything
+      // older is dropped, which is the rule this file has always followed and
+      // the head of it says why version 4 is the exception.
+      if (from === 3) {
+        await migrate(tx);
+        return;
+      }
+
       // Snapshotted before the loop: objectStoreNames is live, and deleting
       // through it skips every other name.
       for (const name of [...database.objectStoreNames]) database.deleteObjectStore(name);
 
       const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
-      phrases.createIndex('collections', 'collections', { multiEntry: true });
+      phrases.createIndex('collection', 'collection');
       phrases.createIndex('norm', 'norm');
 
       database.createObjectStore('collections', { keyPath: 'id' })
@@ -180,13 +319,13 @@ export async function allPhrases(): Promise<Phrase[]> {
 
 /** The sentences in one Sammlung, off the index rather than by filtering. */
 export async function phrasesIn(id: string): Promise<Phrase[]> {
-  return (await (await db()).getAllFromIndex('phrases', 'collections', id))
+  return (await (await db()).getAllFromIndex('phrases', 'collection', id))
     .map((r) => shown(r)!);
 }
 
 /** How many are in one, without loading any of them. §1.8's row count. */
 export const countIn = async (id: string): Promise<number> =>
-  (await db()).countFromIndex('phrases', 'collections', id);
+  (await db()).countFromIndex('phrases', 'collection', id);
 
 /** How many there are at all. The delete-everything question asks this. */
 export const countPhrases = async (): Promise<number> => (await db()).count('phrases');
@@ -195,12 +334,19 @@ export const getPhrase = async (id: string): Promise<Phrase | undefined> =>
   shown(await (await db()).get('phrases', id));
 
 /**
- * A sentence like this one, or nothing. "Like" is normText's answer:
- * punctuation stays in, because "Nochmal!" and "Nochmal." are spoken
- * differently.
+ * Every sentence like this one. "Like" is normText's answer: punctuation stays
+ * in, because "Nochmal!" and "Nochmal." are spoken differently.
+ *
+ * All of them rather than one. It handed back the first until arity changed,
+ * and the first is no longer enough to answer with: the same text may sit in
+ * two Sammlungen as two rows now, and what a caller wants to know is whether
+ * one of them is in the Sammlung it is adding to. The index was never unique —
+ * editPhrase() has always been able to make two rows normalise alike — so this
+ * is the honest shape of the question.
  */
-export async function twinOf(text: string): Promise<Phrase | undefined> {
-  return shown(await (await db()).getFromIndex('phrases', 'norm', normText(text)));
+export async function twinsOf(text: string): Promise<Phrase[]> {
+  return (await (await db()).getAllFromIndex('phrases', 'norm', normText(text)))
+    .map((r) => shown(r)!);
 }
 
 /** Whether a sentence already has this id. A key lookup, not a scan — and the
@@ -230,7 +376,7 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
   const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
   const phrases = tx.objectStore('phrases');
   for (const item of items) await phrases.put({ ...item, norm: normText(item.text) });
-  await bump(tx, items.flatMap((item) => item.collections));
+  await bump(tx, items.map((item) => item.collection));
   await tx.done;
   touched();
 }
@@ -244,7 +390,7 @@ export async function dropPhrase(id: string): Promise<void> {
   // Sammlungen just changed, and afterwards there is nothing left to ask.
   const held = await phrases.get(id);
   await phrases.delete(id);
-  if (held) await bump(tx, held.collections);
+  if (held) await bump(tx, [held.collection]);
   await tx.done;
   touched();
 }
@@ -264,9 +410,11 @@ export async function dropPhrase(id: string): Promise<void> {
  */
 async function bump(
   tx: IDBPTransaction<MitredenDB, ('phrases' | 'collections')[], 'readwrite'>,
-  ids: readonly string[],
+  ids: readonly (string | undefined)[],
 ): Promise<void> {
-  const wanted = [...new Set(ids)];
+  // A sentence in no Sammlung moves nothing, and that is not a special case to
+  // guard against — it is one of the ids being absent.
+  const wanted = [...new Set(ids)].filter((id) => id !== undefined);
   if (!wanted.length) return;
   const collections = tx.objectStore('collections');
   let next = await nextStamp(collections.index('updatedAt'));
@@ -368,8 +516,9 @@ export async function dropCollection(id: string): Promise<boolean> {
   await collections.delete(id);
 
   const phrases = tx.objectStore('phrases');
-  for (const member of await phrases.index('collections').getAll(id)) {
-    await phrases.put({ ...member, collections: member.collections.filter((k) => k !== id) });
+  for (const member of await phrases.index('collection').getAll(id)) {
+    const { collection: _gone, ...rest } = member;
+    await phrases.put(rest);
   }
   await tx.done;
   touched();

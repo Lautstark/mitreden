@@ -3,22 +3,25 @@ import { expect, test } from '@playwright/test';
 /**
  * A browser holding an older database, meeting the current one.
  *
- * There is no carrying-across and there is not meant to be — conventions.md's
- * rule about its own rules: one user, disposable data, and the old shape
- * deleted in the change that adopts the new one. What has to hold is that the
- * drop is *clean*. An upgrade that throws leaves db() rejecting for the life of
- * the page, and what that looks like from the outside is an application that
- * loads, draws, and then does nothing when you type — no error, no dialog.
+ * For version 1 and version 2 there is no carrying-across and there is not
+ * meant to be — conventions.md's rule about its own rules: one user, disposable
+ * data, and the old shape deleted in the change that adopts the new one. What
+ * has to hold is that the drop is *clean*. An upgrade that throws leaves db()
+ * rejecting for the life of the page, and what that looks like from the outside
+ * is an application that loads, draws, and then does nothing when you type — no
+ * error, no dialog.
  *
- * It is here rather than in the unit suite because the unit suite runs against
- * fake-indexeddb, and the one thing being asserted is that a real browser's
- * IndexedDB accepts this upgrade: deleting every store inside a versionchange
- * transaction and creating four with three indexes. That is exactly the kind of
- * claim a stand-in can agree with while the real thing refuses.
+ * Version 3 is carried across, recordings and all, and the last test here is
+ * that one. It is the one where a real browser matters most: the migration
+ * rewrites every record, replaces an index, and copies Blobs between keys,
+ * all inside one versionchange transaction that commits the instant no request
+ * is outstanding.
  *
- * tests/unit/db-schema.test.ts is the same shape against the stand-in, and
- * checks what the upgrade leaves behind; this one checks that the page it
- * leaves behind works.
+ * Which is why this file exists beside the unit suite at all. That suite runs
+ * against fake-indexeddb, and a stand-in will happily agree to things a browser
+ * refuses. tests/unit/db-schema.test.ts and tests/unit/db-migration.test.ts are
+ * the same shapes against the stand-in and check what the upgrades leave
+ * behind; this one checks that the page they leave behind works.
  */
 
 /** Version 1, made the way version 1 made it: the whole library as two JSON
@@ -122,9 +125,9 @@ test('a browser holding the old database gets a working first visit', async ({ p
       keep({ version: database.version, stores, indexes });
     };
   }))).toEqual({
-    version: 3,
+    version: 4,
     stores: ['audio', 'collections', 'phrases', 'settings'],
-    indexes: ['collections', 'norm'],
+    indexes: ['collection', 'norm'],
   });
 });
 
@@ -225,5 +228,150 @@ test('a browser holding the keyed database gets a working first visit', async ({
       database.close();
       keep({ version: database.version, path });
     };
-  }))).toEqual({ version: 3, path: 'id' });
+  }))).toEqual({ version: 4, path: 'id' });
+});
+
+/** Version 3, made the way version 3 made it: the membership is an array and a
+ *  multiEntry index over it, and the voice is on the sentence. One sentence is
+ *  in two Sammlungen with a single recording behind both, which is the shape
+ *  version 4 has to split without losing the clip. */
+const SEED_V3 = `
+  new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden', 3);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
+      phrases.createIndex('collections', 'collections', { multiEntry: true });
+      phrases.createIndex('norm', 'norm');
+      database.createObjectStore('collections', { keyPath: 'id' })
+        .createIndex('updatedAt', 'updatedAt');
+      database.createObjectStore('settings');
+      database.createObjectStore('audio');
+    };
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const tx = database.transaction(
+        ['phrases', 'collections', 'settings', 'audio'], 'readwrite');
+      const phrases = tx.objectStore('phrases');
+      phrases.put({
+        id: 'hunger', text: 'Ich habe Hunger.', norm: 'ich habe hunger.',
+        collections: ['kueche'], voice: 'piper:de_DE-thorsten-medium',
+        fingerprint: 'aaaaaaaaaaaa',
+      });
+      phrases.put({
+        id: 'mude', text: 'Ich bin müde.', norm: 'ich bin müde.',
+        collections: ['kueche', 'schlafen'], voice: 'piper:de_DE-thorsten-medium',
+        fingerprint: 'bbbbbbbbbbbb',
+      });
+      const collections = tx.objectStore('collections');
+      collections.put({ id: 'kueche', name: 'Küche', updatedAt: 1 });
+      collections.put({ id: 'schlafen', name: 'Schlafen', updatedAt: 2 });
+      tx.objectStore('settings').put(
+        { voice: 'piper:de_DE-thorsten-medium', open: ['kueche'] }, 'settings');
+      const audio = tx.objectStore('audio');
+      audio.put(new Blob([new Uint8Array([1, 2, 3])]), 'hunger');
+      audio.put(new Blob([new Uint8Array([4, 5, 6])]), 'mude');
+      tx.oncomplete = () => { database.close(); keep(); };
+      tx.onerror = () => drop(tx.error);
+    };
+  })
+`;
+
+/*
+ * The one upgrade that keeps what it finds, and the one claim worth crossing
+ * into a real browser for: **no recording is lost**.
+ *
+ * Everything the migration does happens inside a versionchange transaction that
+ * commits the moment control reaches the event loop with nothing outstanding.
+ * A stand-in is forgiving about that. A browser is not, and a migration that
+ * committed halfway would leave a library that is half one shape and half the
+ * other — with, in the worst case, the clips of the second half gone.
+ */
+test('a version 3 library arrives whole, with every recording', async ({ page }) => {
+  await page.route('**/*.js', (route) => route.abort());
+  await page.goto('/?lang=de');
+  await page.evaluate(SEED_V3);
+
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const ask = database.transaction('phrases').objectStore('phrases').getAll();
+      ask.onsuccess = () => {
+        const version = database.version;
+        database.close();
+        keep({ version, kept: (ask.result as unknown[]).length });
+      };
+    };
+  })), 'the seed has to have landed before the app ever ran')
+    .toEqual({ version: 3, kept: 2 });
+
+  await page.unroute('**/*.js');
+  await page.reload();
+
+  // The Sammlungen came across — named, not seeded for the day — and so did
+  // what was open.
+  await page.waitForFunction(
+    () => document.querySelectorAll('#rows .collections__item').length > 0,
+  );
+  await expect(page.locator('#rows .collections__item')).toHaveCount(2);
+  await expect(page.locator('#rows .collections__name', { hasText: 'Küche' })).toBeVisible();
+
+  const errors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+
+  // The Küche holds both of its sentences, and the sentence that was also in
+  // Schlafen is there too — as a row of its own, which is what one-to-one means.
+  await expect(page.locator('.item')).toHaveCount(2);
+  await page.click('#rows .collections__item:has-text("Schlafen")');
+  await expect(page.locator('.item')).toHaveCount(1);
+  await expect(page.locator('.item .line')).toHaveText('Ich bin müde.');
+
+  // And it plays. A row only draws a player when it has a recording, so this is
+  // the split row's copied clip, on screen.
+  await expect(page.locator('.item audio')).toHaveCount(1);
+
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const tx = database.transaction(['phrases', 'collections', 'audio']);
+      const phrases = tx.objectStore('phrases').getAll();
+      const collections = tx.objectStore('collections').getAll();
+      const clips = tx.objectStore('audio').getAllKeys();
+      tx.oncomplete = () => {
+        const rows = (phrases.result as { id: string; text: string; collection?: string }[]);
+        database.close();
+        keep({
+          version: database.version,
+          // Three rows from two: the sentence that was in two Sammlungen is two
+          // sentences, and the original kept its id.
+          rows: rows.map((one) => [one.id, one.collection ?? null]).sort(),
+          voices: (collections.result as { name: string; voice?: string }[])
+            .map((one) => [one.name, one.voice ?? null]).sort(),
+          // Three clips from two. None was deleted and none was re-made.
+          clips: (clips.result as string[]).slice().sort(),
+        });
+      };
+      tx.onerror = () => drop(tx.error);
+    };
+  }))).toEqual({
+    version: 4,
+    rows: [['hunger', 'kueche'], ['ich-bin-muede', 'schlafen'], ['mude', 'kueche']],
+    voices: [
+      ['Küche', 'piper:de_DE-thorsten-medium'],
+      ['Schlafen', 'piper:de_DE-thorsten-medium'],
+    ],
+    clips: ['hunger', 'ich-bin-muede', 'mude'],
+  });
+
+  // And it takes a write, which is the half a failed upgrade would swallow.
+  await page.fill('#t', 'Ich möchte nach draußen.');
+  await page.press('#t', 'Enter');
+  await expect(page.locator('.item')).toHaveCount(2);
+
+  expect(errors, 'a rejected open shows up here first').toEqual([]);
 });
