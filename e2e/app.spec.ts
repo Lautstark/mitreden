@@ -209,15 +209,18 @@ test('the rail can be put away, and stays away', async ({ page }) => {
   await expect(rail).toBeInViewport();
 });
 
-test('the voice is named beside the composer and chosen in the settings', async ({ page }) => {
+test('the default voice is named beside the composer and chosen in the settings', async ({ page }) => {
   // Which voice records is a fact the page states, not a control beside every
   // sentence — and it says where the voice comes from and what it speaks.
   await expect(page.locator('#voicename')).not.toBeEmpty();
   await expect(page.locator('#voicefrom')).toContainText('Deutsch');
 
-  await page.click('#voicepick');
+  /* Through the gear rather than through the composer's „Ändern". That button
+     leads to whichever voice the line beside it named, and with one Sammlung
+     open that is the Sammlung's — e2e/collection-voice.spec.ts covers the
+     routing. This is the default, which is Einstellungen's. */
+  await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
-  // The way in from the composer unfolds the panel it is a way in to.
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
   const rows = page.locator('#voices .voice');
   await expect(rows.first()).toBeVisible();
@@ -249,6 +252,9 @@ test('the voice is named beside the composer and chosen in the settings', async 
   await expect(rows.nth(2)).toHaveAttribute('aria-checked', 'true');
   await rows.nth(2).press('ArrowUp');
   await expect(second).toHaveAttribute('aria-checked', 'true');
+  /* And the line outside follows, because this Sammlung has no voice of its own
+     yet and the default is what it falls back to — the same rule voiceFor() in
+     db/repo.ts applies when it decides what to record. */
   await expect(page.locator('#voicename')).toHaveText(name);
   await page.reload();
   await expect(page.locator('#voicename')).toHaveText(name);
@@ -266,7 +272,7 @@ test('the picker offers a German woman and an English man', async ({ page }) => 
   // speaks costs 63 MB, and audio.spec.ts already pays that once for the
   // shared path. What this catches is the claim going missing from the
   // catalogue call, which is what empties both slots again.
-  await page.click('#voicepick');
+  await page.click('#gear');
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
   await page.fill('#voiceq', 'kerstin');
@@ -297,7 +303,7 @@ test('a voice that rushes single words says so on its own row', async ({ page })
   // measurement is stimmquelle's to hold; what this covers is the flag reaching
   // the screen, which is the failure mode a note has — being rendered nowhere,
   // or being rendered on every row, and both look like working software.
-  await page.click('#voicepick');
+  await page.click('#gear');
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
   await page.fill('#voiceq', 'kerstin');
@@ -345,7 +351,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   // A chosen voice is nobody's guess. It stays through a change of words, in
   // either direction: a German voice on an English page is an arrangement
   // somebody made, not a mistake to be corrected on their behalf.
-  await page.click('#voicepick');
+  await page.click('#gear');
   await page.fill('#voiceq', 'Thorsten (emotional)');
   await page.locator('#voices .voice').first().click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
