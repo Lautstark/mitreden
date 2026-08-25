@@ -6,7 +6,7 @@
  * server of ours, because there is not one.
  */
 
-import { loadPhrases, wipe } from '../db/db.ts';
+import { countPhrases, phrasesIn, wipe } from '../db/db.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
 import { wireBackupFolder } from './backupFolder.ts';
@@ -337,7 +337,8 @@ async function forgetKey(): Promise<void> {
 
 /** One Sammlung as a file, named after it and dated. */
 export async function exportCollection(collection: Collection): Promise<void> {
-  const items = (await loadPhrases()).filter((item) => item.collections.includes(collection.key));
+  // Off the membership index rather than by filtering the whole library.
+  const items = await phrasesIn(collection.key);
   download({ collection: collection.name, items }, `mitreden-${safeName(collection.name)}`);
 }
 
@@ -456,7 +457,7 @@ async function importFile(file: File): Promise<void> {
 async function wipeEverything(): Promise<void> {
   if (!await confirmDialog({
     title: t('danger_title'),
-    body: t('danger_ask', { n: (await loadPhrases()).length }),
+    body: t('danger_ask', { n: await countPhrases() }),
     confirmLabel: t('danger_do'),
     cancelLabel: t('cancel'),
     // Never the same word as the button beside it.

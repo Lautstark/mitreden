@@ -6,7 +6,7 @@ import {
 import de from '../../src/i18n/de.json';
 import en from '../../src/i18n/en.json';
 import {
-  loadCollections, loadPhrases, saveCollections, savePhrases, saveSettings, wipe,
+  allCollections, allPhrases, putCollections, putPhrases, saveSettings, wipe,
 } from '../../src/db/db.ts';
 
 /**
@@ -75,12 +75,12 @@ describe('the round trip', () => {
 
   /** A library of three Sammlungen with sentences spread across them. */
   async function seed(): Promise<void> {
-    await saveCollections([
+    await putCollections([
       { key: 'kueche', name: 'Küche' },
       { key: 'schule', name: 'Schule' },
       { key: 'oma', name: 'Bei Oma' },
     ]);
-    await savePhrases([
+    await putPhrases([
       { id: 'p1', text: 'Ich möchte Wasser', collections: ['kueche'] },
       { id: 'p2', text: 'Ich habe Hunger', collections: ['kueche', 'oma'] },
       { id: 'p3', text: 'Wann ist Pause', collections: ['schule'] },
@@ -102,7 +102,7 @@ describe('the round trip', () => {
 
     expect(done.collections).toBe(3);
     expect(done.added).toBe(3);
-    expect((await loadCollections()).map((c) => c.name).sort())
+    expect((await allCollections()).map((c) => c.name).sort())
       .toEqual(['Bei Oma', 'Küche', 'Schule']);
   });
 
@@ -112,7 +112,7 @@ describe('the round trip', () => {
     await wipe();
     await importBackup(backup);
 
-    const restored = await loadPhrases();
+    const restored = await allPhrases();
     const hunger = restored.find((one) => one.text === 'Ich habe Hunger');
     expect(hunger?.collections.sort()).toEqual(['kueche', 'oma']);
   });
@@ -121,11 +121,11 @@ describe('the round trip', () => {
     await seed();
     const backup = await exportEverything(NOTICE);
     // Not a wipe: somebody restoring onto a library that already has something.
-    await savePhrases([{ id: 'own', text: 'Mein eigener Satz', collections: ['kueche'] }]);
+    await putPhrases([{ id: 'own', text: 'Mein eigener Satz', collections: ['kueche'] }]);
 
     await importBackup(backup);
 
-    const texts = (await loadPhrases()).map((one) => one.text);
+    const texts = (await allPhrases()).map((one) => one.text);
     expect(texts).toContain('Mein eigener Satz');
     expect(texts).toContain('Wann ist Pause');
   });
@@ -137,7 +137,7 @@ describe('the round trip', () => {
     const done = await importBackup(backup);
 
     expect(done.collections).toBe(3);
-    const names = (await loadCollections()).map((c) => c.name);
+    const names = (await allCollections()).map((c) => c.name);
     expect(names).toContain('Küche');
     expect(names).toContain('Küche (importiert)');
   });
@@ -149,7 +149,7 @@ describe('the round trip', () => {
 
     expect(done.merged).toBe(3);
     expect(done.added).toBe(0);
-    expect((await loadPhrases()).length).toBe(3);
+    expect((await allPhrases()).length).toBe(3);
   });
 
   it('refuses a file from a newer mitreden rather than reading it wrong', async () => {
@@ -188,10 +188,10 @@ describe('the round trip', () => {
   });
 
   it('keeps a voice and its fingerprint together or drops both', async () => {
-    await saveCollections([{ key: 'k', name: 'K' }]);
+    await putCollections([{ key: 'k', name: 'K' }]);
     // A fingerprint without the voice it was taken with cannot decide
     // staleness, and would make a missing recording look current.
-    await savePhrases([
+    await putPhrases([
       { id: 'a', text: 'Mit Stimme', collections: ['k'], voice: 'v1', fingerprint: 'f1' },
       { id: 'b', text: 'Ohne Stimme', collections: ['k'], fingerprint: 'verwaist' },
     ]);
@@ -199,7 +199,7 @@ describe('the round trip', () => {
     await wipe();
     await importBackup(backup);
 
-    const restored = await loadPhrases();
+    const restored = await allPhrases();
     expect(restored.find((o) => o.text === 'Mit Stimme')).toMatchObject({ voice: 'v1', fingerprint: 'f1' });
     expect(restored.find((o) => o.text === 'Ohne Stimme')?.fingerprint).toBeUndefined();
   });

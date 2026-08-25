@@ -33,8 +33,11 @@
  * otherwise.
  */
 
-import { loadCollections, loadPhrases, loadSettings, saveCollections, savePhrases, type Settings } from './db.ts';
-import { freeId, freeKey, findTwin, normTag } from '../core/ids.ts';
+import {
+  allCollections, allPhrases, idTaken, keyTaken, loadSettings, putCollections,
+  putPhrases, twinOf, type Settings,
+} from './db.ts';
+import { free, normTag, normText, slug } from '../core/ids.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
 export const BACKUP_FORMAT = 'mitreden-backup';
@@ -88,8 +91,8 @@ export async function exportEverything(notice: string): Promise<Backup> {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    collections: await loadCollections(),
-    phrases: await loadPhrases(),
+    collections: await allCollections(),
+    phrases: await allPhrases(),
     settings: stripSecrets(await loadSettings()),
     notice,
   };
@@ -119,19 +122,38 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     throw new Error(TOO_NEW);
   }
 
-  const declared = await loadCollections();
-  const items = await loadPhrases();
+  /* What this restore will write, so that a key or an id taken by something
+     earlier in the same file is seen as taken. The array version got that by
+     pushing into the arrays it was scanning; here the store is asked and this
+     is the other half of the answer. */
+  const arriving = new Set<string>();
+  const free_ = (base: string, taken: (k: string) => Promise<boolean>) =>
+    free(base, async (c) => arriving.has(c) || taken(c));
 
   // Old key -> the key it got here, so membership survives a renamed collision.
   const moved = new Map<string, string>();
+  const landed: Collection[] = [];
   for (const source of backup.collections ?? []) {
     if (!source?.key) continue;
     const name = source.name || source.key;
-    const taken = declared.some((one) => one.key === source.key);
-    const key = taken ? freeKey(declared, name) : (normTag(source.key) || freeKey(declared, name));
+    const taken = await keyTaken(source.key);
+    const key = taken
+      ? await free_(normTag(name), keyTaken)
+      : (normTag(source.key) || await free_(normTag(name), keyTaken));
+    arriving.add(key);
     moved.set(source.key, key);
-    declared.push({ key, name: taken ? `${name} (importiert)` : name });
+    landed.push({ key, name: taken ? `${name} (importiert)` : name });
   }
+
+  /* Same as the keys above: a sentence already merged into by this restore is
+     the twin of the next identical line in the file, and it is not in the store
+     yet. */
+  const writing = new Map<string, Phrase>();
+  const twinIn = async (text: string): Promise<Phrase | undefined> => {
+    const key = normText(text);
+    for (const held of writing.values()) if (normText(held.text) === key) return held;
+    return twinOf(text);
+  };
 
   let added = 0;
   let merged = 0;
@@ -143,14 +165,16 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     // keeps the tag, and shows up under it once that Sammlung exists again.
     const into = (source.collections ?? []).map((key) => moved.get(key) ?? key);
 
-    const twin = findTwin(items, text);
+    const twin = await twinIn(text);
     if (twin) {
       for (const key of into) if (!twin.collections.includes(key)) twin.collections.push(key);
+      writing.set(twin.id, twin);
       merged += 1;
       continue;
     }
 
-    const phrase: Phrase = { id: freeId(items, text), text, collections: into };
+    const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
+    const phrase: Phrase = { id, text, collections: into };
     // The voice and the fingerprint travel together or not at all: a
     // fingerprint without the voice it was taken with cannot decide staleness,
     // and would make a missing recording look current.
@@ -158,11 +182,11 @@ export async function importBackup(backup: Backup): Promise<Restored> {
       phrase.voice = source.voice;
       if (source.fingerprint) phrase.fingerprint = source.fingerprint;
     }
-    items.push(phrase);
+    writing.set(phrase.id, phrase);
     added += 1;
   }
 
-  await saveCollections(declared);
-  await savePhrases(items);
+  await putCollections(landed);
+  await putPhrases([...writing.values()]);
   return { collections: moved.size, added, merged };
 }

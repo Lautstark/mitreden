@@ -7,7 +7,6 @@
 
 import { ENGINE_VERSION, OUT } from './settings.ts';
 import { modelOf } from './voices.ts';
-import type { Collection, Phrase } from './types.ts';
 
 export const SLUG_WORDS = 6;
 export const SLUG_CHARS = 40;
@@ -42,29 +41,33 @@ export const normTag = (text: string): string =>
 export const normText = (text: string): string =>
   text.split(/\s+/).filter(Boolean).join(' ').toLowerCase();
 
-export const findTwin = (items: Phrase[], text: string): Phrase | null => {
-  const key = normText(text);
-  return items.find((item) => normText(item.text) === key) ?? null;
-};
+/* findTwin, freeKey and freeId used to live here, each taking the whole array
+ * and scanning it, because the whole array was the only thing there was to ask.
+ * They are questions about what the store already holds — "is there a sentence
+ * like this", "is this key taken" — so they are db.ts's now, as twinOf(),
+ * freeKey() and freeId(), answered by an index or a key lookup instead of a
+ * scan. What stays here is the part that is a rule about names rather than a
+ * question about storage: how a name becomes a key, and what "like this" means.
+ *
+ * The disambiguation they did is unchanged and still matters: normTag
+ * truncates, so two names differing only near the end — "Sammlung vom
+ * 22.08.2026" and the same with "(2)" — arrive at the same key, and creating
+ * the second one silently found the first. The number goes on the key.
+ */
 
 /**
- * A key nothing has taken. normTag truncates, so two names differing only near
- * the end — "Sammlung vom 22.08.2026" and the same with "(2)" — arrive at the
- * same key, and creating the second one silently found the first. The number
- * goes on the key, the way an id is disambiguated below.
+ * A name nothing has taken, numbered the way both of them numbered.
+ *
+ * `taken` is asked rather than a list handed in, which is the whole of what
+ * changed: a caller writing several at once has to count what it is about to
+ * write as well as what the store holds, and the array version got that for
+ * free by scanning the array it was appending to.
  */
-export function freeKey(declared: Collection[], name: string): string {
-  const base = normTag(name);
-  const taken = new Set(declared.map((c) => c.key));
-  if (!taken.has(base)) return base;
-  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
-}
-
-export function freeId(items: Phrase[], text: string): string {
-  const base = slug(text);
-  const taken = new Set(items.map((item) => item.id));
-  if (!taken.has(base)) return base;
-  for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
+export async function free(
+  base: string, taken: (candidate: string) => boolean | Promise<boolean>,
+): Promise<string> {
+  if (!(await taken(base))) return base;
+  for (let n = 2; ; n++) if (!(await taken(`${base}-${n}`))) return `${base}-${n}`;
 }
 
 /**

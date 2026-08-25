@@ -43,12 +43,15 @@ async function importJson(page: Page, name: string, data: unknown) {
  */
 async function stored(page: Page): Promise<[string, string | null][]> {
   return page.evaluate(() => new Promise((resolve, reject) => {
+    // No version: the page has already opened this database and knows which
+    // one it is at. The sentences are a store of their own now, one record
+    // each, rather than a JSON array under a key in `meta`.
     const open = indexedDB.open('mitreden');
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
-      const ask = open.result.transaction('meta').objectStore('meta').get('phrases');
+      const ask = open.result.transaction('phrases').objectStore('phrases').getAll();
       ask.onerror = () => reject(ask.error);
-      ask.onsuccess = () => resolve(((ask.result ?? []) as { text: string; voice?: string }[])
+      ask.onsuccess = () => resolve((ask.result as { text: string; voice?: string }[])
         .map((item) => [item.text, item.voice ?? null] as [string, string | null]));
     };
   }));
