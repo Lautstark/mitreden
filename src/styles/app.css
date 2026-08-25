@@ -27,7 +27,7 @@
 .rail__brand h1{flex:1;font-size:18px;font-weight:650;margin:0;display:flex;
   align-items:center;gap:9px;letter-spacing:-.02em}
 .rail__brand .logo{width:26px;height:26px}
-.rail__brand .icon{margin-left:auto}
+.rail__brand .btn.icon{margin-left:auto}
 .rail__part{padding:0 4px}
 .rail__part h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
   color:var(--text-faint);margin:0 6px 8px;font-weight:600}
@@ -82,11 +82,9 @@
 .workhead{display:flex;align-items:center;gap:14px;margin:26px 0 10px}
 /* The name is the control. Renaming a Sammlung is typing in its title, which
    is what bildhaft does — no menu entry, no dialog, no second place to look. */
-.title-input{flex:1;min-width:0;margin:0;padding:2px 6px;border:1px solid transparent;
-  border-radius:var(--radius-sm);background:none;color:var(--text);font:inherit;
-  font-size:19px;font-weight:650;letter-spacing:-.02em}
-.title-input:hover{border-color:var(--line)}
-.title-input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+/* The field is components.css's now, at 17px rather than the 19px this page
+   had. What is left is the tracking, which the wordmark shares. */
+.title-input{letter-spacing:-.02em}
 .workhead .count{margin-left:auto;font-size:13.5px;color:var(--text-faint)}
 /* Smaller than the prose under it, and bold: bildhaft's, so the reset sits in
    the Daten panel at the same weight in both products. */
@@ -136,10 +134,10 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   color:var(--text-dim);border-radius:4px;padding:1px 5px}
 .into--none{color:var(--text-faint)}
 
-.icon{display:inline-flex;align-items:center;justify-content:center;
-  background:none;border:0;color:var(--text-dim);font-size:17px;
-  cursor:pointer;padding:4px 6px;border-radius:8px}
-.icon:hover{background:var(--surface-2);color:var(--text)}
+/* The icon button is components.css's `.btn.quiet.icon`. This page had a class
+   of its own called `.icon` - its own padding, its own 8px radius, its own
+   17px - so the same control was a rounded square here and a pill in both
+   siblings. The shared one is the pill. */
 
 /* Put away, and the way back.
    The rail keeps its width in a variable and the page's left padding is written
@@ -188,7 +186,7 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
 }
 
 body{margin:0;background:var(--bg);color:var(--text);
-  font-family:var(--font);font-size:15px;line-height:1.55;
+  font-family:var(--font);font-size:15px;line-height:var(--leading);
   padding:var(--page-pad);padding-bottom:0;-webkit-font-smoothing:antialiased}
 /* The work sits to the right of the rail and keeps its comfortable measure. */
 body{min-height:100vh;display:flex;flex-direction:column}
@@ -219,8 +217,7 @@ textarea::placeholder,input::placeholder{color:var(--text-faint)}
    density step, and the 130ms rule for the controls that are not .btn and so
    no longer inherit it from a styled button element. */
 button,input,select,textarea{font:inherit;color:inherit}
-.btn.sm{font-size:13px;padding:6px 9px}
-.flat,.icon,.dots,.linklike,.item .collection{
+.flat,.dots,.linklike,.item .collection{
   transition:background .13s ease,color .13s ease}
 /* No placeholder line: an empty status reserves a gap for nothing. */
 .status{color:var(--text-dim);font-size:14px;margin:12px 2px 0}
@@ -370,9 +367,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 .voicenow__from{flex:0 1 auto;min-width:0;color:var(--text-faint);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* The right end is a word, not a box: a quiet button is transparent and sits
-   9px wider than the text inside it, so its padding has to come back out or
-   the caption ends 9px short of where it looks like it should. */
-.voicenow .btn{flex:none;margin-right:-9px}
+   its own horizontal padding wider than the text inside it, so that padding has
+   to come back out or the caption ends short of where it looks like it should.
+   The number is .btn.sm's padding-inline in components.css and has to track it
+   — it was 9px against this page's own .btn.sm rule, and moved when that rule
+   became the family's. e2e/app.spec.ts measures both ends against the composer,
+   which is what caught it. */
+.voicenow .btn{flex:none;margin-right:-11px}
 
 /* .menu-anchor's box and its .start variant were both here and are now
    components.css's, at v1.7.1: vorlaut's settings pickers became the second
@@ -410,7 +411,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   /* On its own row the button starts the line, so the same padding indents it
      instead. Both sides are pulled back; only one of them has anything beside
      it at a time. */
-  .voicenow .btn{margin-left:-9px}
+  .voicenow .btn{margin-left:-11px}
   /* Tighter margins on a phone, declared once: the composer's padding and the
      caption's indent both follow, so they cannot drift apart per breakpoint. */
   :root{--compose-l:16px;--compose-r:14px}

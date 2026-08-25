@@ -25,7 +25,7 @@
          rather than squeezing it, and the scrim closes it. mitreden is sold as
          usable from a phone, so this is not decoration. -->
     <div class="topbar">
-      <button id="railopen" class="icon" data-i18n-aria="collections_show"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <button id="railopen" class="btn quiet icon" data-i18n-aria="collections_show"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <h1><img class="logo" src="icon.svg" alt="" width="28" height="28">mitreden</h1>
     </div>
@@ -35,7 +35,7 @@
          the corner the rail vacated, which is where bildhaft puts it and where
          the eye is already looking for it. -->
     <div class="reveal" id="reveal" hidden>
-      <button id="railshow" class="icon" data-i18n-aria="collections_show"
+      <button id="railshow" class="btn quiet icon" data-i18n-aria="collections_show"
         data-i18n-title="collections_show"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <img class="reveal__logo" src="icon.svg" alt="" width="22" height="22">
@@ -47,10 +47,10 @@
         <!-- Two controls, because they answer two different questions: on a phone
              the rail is a layer over the work and ✕ dismisses it; on a desktop it
              is a column of the page and this puts the column away for good. -->
-        <button id="railhide" class="icon" data-i18n-aria="collections_hide"
+        <button id="railhide" class="btn quiet icon" data-i18n-aria="collections_hide"
           data-i18n-title="collections_hide"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
-        <button id="railclose" class="icon" data-i18n-aria="collections_hide">✕</button>
+        <button id="railclose" class="btn quiet icon" data-i18n-aria="collections_hide">✕</button>
       </div>
 
       <div class="rail__part">
@@ -73,7 +73,7 @@
     <dialog id="info" class="sheet">
     <div class="head">
       <h2 id="infotitle"></h2>
-      <button id="infoclose" class="icon" data-i18n-aria="close">✕</button>
+      <button id="infoclose" class="btn quiet icon" data-i18n-aria="close">✕</button>
     </div>
     <div id="infobody"></div>
   </dialog>
@@ -81,7 +81,7 @@
   <dialog id="setup" class="sheet">
       <div class="head">
         <h2 data-i18n="settings"></h2>
-        <button id="setupclose" class="icon" data-i18n-aria="close">✕</button>
+        <button id="setupclose" class="btn quiet icon" data-i18n-aria="close">✕</button>
       </div>
 
       <!-- Five panels, not three tabs. A tab hides two thirds of the settings
@@ -244,7 +244,7 @@
            draws belongs to no design language, and it sat next to a ⋯ that does. -->
       <span class="menu-anchor"><button id="dlall" class="btn quiet sm dropdown"
         aria-haspopup="menu" aria-expanded="false" data-i18n="download_all"></button></span>
-      <span class="menu-anchor"><button id="colmore" class="icon" aria-haspopup="menu"
+      <span class="menu-anchor"><button id="colmore" class="btn quiet icon" aria-haspopup="menu"
         aria-expanded="false" data-i18n-title="more_actions"
         data-i18n-aria="more_actions">⋯</button></span>
     </div>
