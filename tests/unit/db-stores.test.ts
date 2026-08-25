@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   allCollections, allPhrases, countIn, countPhrases, dropCollection, getPhrase,
-  phrasesIn, putCollection, putCollections, putPhrases, twinOf, wipe,
+  dropPhrase, phrasesIn, putCollection, putCollections, putPhrases, twinOf, wipe,
 } from '../../src/db/db.ts';
 import { collections, editPhrase } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
@@ -123,34 +123,70 @@ describe('a sentence like this one', () => {
   });
 });
 
-describe('the order the Sammlungen were made in', () => {
-  it('is the order they come back in', async () => {
+/* conventions.md §1.4. Creation order answers a question nobody asks; what the
+ * rail is for is getting back to what you were doing. */
+describe('last edited, first in the list', () => {
+  it('puts the newest at the top rather than the bottom', async () => {
     await putCollection({ id: 'dritte', name: 'Dritte' });
     expect((await allCollections()).map((c) => c.id))
-      .toEqual(['kueche', 'schlafen', 'dritte']);
+      .toEqual(['dritte', 'schlafen', 'kueche']);
   });
 
   /* Several arriving at once - a restore - keep the order the file had them in,
    * which one shared timestamp for the batch would throw away.
    *
-   * The keys run backwards through the alphabet on purpose. IndexedDB breaks a
+   * The ids run backwards through the alphabet on purpose. IndexedDB breaks a
    * tie on an index key with the primary key, so a batch that shared one stamp
-   * would come back in *key* order - and with keys a, b, c that is the order
-   * they went in, and this test would pass while asserting nothing. It did,
-   * until a deliberate break failed to fail. */
+   * would come back in *id* order - and this assertion would pass while
+   * asserting nothing. It did, until a deliberate break failed to fail. */
   it('holds for a batch that arrives inside one millisecond', async () => {
     await wipe();
     await putCollections([
       { id: 'zuletzt', name: 'C' }, { id: 'mitte', name: 'B' }, { id: 'auch', name: 'A' },
     ]);
+    // Reversed: the last one written is the most recently edited.
     expect((await allCollections()).map((c) => c.id))
-      .toEqual(['zuletzt', 'mitte', 'auch']);
+      .toEqual(['auch', 'mitte', 'zuletzt']);
   });
 
-  it('does not move when one is renamed, because renaming is not making', async () => {
+  it('moves a renamed Sammlung to the top, because renaming is working on it', async () => {
+    // The creation-ordered version deliberately did not move here. That is the
+    // rule changing rather than a detail.
     await putCollection({ id: 'kueche', name: 'Die Küche' });
     expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
     expect((await allCollections())[0]!.name).toBe('Die Küche');
+  });
+
+  /* The half that makes the order worth having. A rename is the one edit nobody
+   * actually does; what "last worked on" means in this product is a sentence
+   * added, recorded or corrected. An order that moved only on renames would
+   * look right and be useless. */
+  it('moves a Sammlung when a sentence lands in it', async () => {
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
+
+    await putPhrases([{ id: 'neu', text: 'Noch ein Satz.', collections: ['kueche'] }]);
+    expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
+  });
+
+  it('moves both when a sentence lands in two at once', async () => {
+    await putPhrases([{ id: 'beide', text: 'In zweien.', collections: ['schlafen', 'kueche'] }]);
+    // Both rose above nothing else here, and the write order inside the batch
+    // is what decides between them.
+    expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
+  });
+
+  it('moves a Sammlung when a sentence leaves it', async () => {
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
+
+    await dropPhrase('hunger');
+    expect((await allCollections()).map((c) => c.id)).toEqual(['kueche', 'schlafen']);
+  });
+
+  it('is unbothered by a sentence naming a Sammlung that is not here', async () => {
+    // importBackup keeps an unknown tag on purpose, so that the sentence shows
+    // up if that Sammlung ever comes back. There is nothing to move.
+    await putPhrases([{ id: 'fremd', text: 'Woanders.', collections: ['weg'] }]);
+    expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
   });
 });
 
@@ -158,16 +194,16 @@ describe('the order the Sammlungen were made in', () => {
  * than through the index underneath. §1.8's count is the reason that index
  * exists, and the row is where being wrong about it would show. */
 describe('every Sammlung with how much is in it', () => {
-  it('gives the name and the count, in the order they were made', async () => {
+  it('gives the name and the count, last edited first', async () => {
     expect(await collections()).toEqual([
-      { id: 'kueche', name: 'Küche', count: 3 },
       { id: 'schlafen', name: 'Schlafen', count: 2 },
+      { id: 'kueche', name: 'Küche', count: 3 },
     ]);
   });
 
   it('counts a new one as empty rather than leaving it out', async () => {
     await putCollection({ id: 'leer', name: 'Leer' });
-    expect((await collections()).at(-1)).toEqual({ id: 'leer', name: 'Leer', count: 0 });
+    expect((await collections())[0]).toEqual({ id: 'leer', name: 'Leer', count: 0 });
   });
 });
 

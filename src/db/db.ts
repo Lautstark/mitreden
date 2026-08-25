@@ -42,24 +42,21 @@
  *   below, rather than by each caller that happens to build a Phrase. Same
  *   reasoning as the change notifier: a derived field with three writers is a
  *   derived field that is wrong by next year.
- * - `createdAt` — the order the Sammlungen were made, which was the array's
- *   insertion order and is nothing at all once each is a record of its own.
- *   Preserved on rename rather than re-stamped, because renaming is not making.
- *
- * §1.4 (last-edited-first) is still open here and is deliberately not done in
- * this change: it is a different divergence, and the honest move was to keep
- * the order this product has rather than smuggle a second decision in. It is
- * now a second index away rather than a rewrite.
+ * - `updatedAt` — §1.4's order, last edited first. It replaced a `createdAt`
+ *   that carried the array's old insertion order, and the change is not just
+ *   which field is indexed: creation order was preserved on rename, and this
+ *   one is moved by every edit, including the sentences going in and out. See
+ *   bump() below for why that half matters more than the rename.
  *
  * ## No migration
  *
- * Version 2 drops every store it finds. conventions.md's rule about its own
+ * Version 3 drops every store it finds. conventions.md's rule about its own
  * rules: one user, disposable data, and the old shape deleted in the change
  * that adopts the new one. A library worth keeping across this goes out through
  * the Sicherung, which is what that file is for.
  */
 
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction } from 'idb';
 import { normText } from '../core/ids.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 
@@ -71,9 +68,8 @@ export interface Settings {
 /** A sentence as the store holds it: the program's shape, plus the index key
  *  that has to be in the record to be an index key. */
 type StoredPhrase = Phrase & { norm: string };
-/** A Sammlung as the store holds it, plus the stamp that carries the order the
- *  array used to carry for free. */
-type StoredCollection = Collection & { createdAt: number };
+/** A Sammlung as the store holds it, plus the stamp §1.4 orders by. */
+type StoredCollection = Collection & { updatedAt: number };
 
 const SETTINGS = 'settings';
 
@@ -95,7 +91,9 @@ interface MitredenDB extends DBSchema {
   collections: {
     key: string;
     value: StoredCollection;
-    indexes: { createdAt: number };
+    /** §1.4's order, and the source of the next stamp: newest is one cursor
+     *  step off the far end rather than a scan. */
+    indexes: { updatedAt: number };
   };
   settings: { key: typeof SETTINGS; value: Settings };
   audio: { key: string; value: Blob };
@@ -143,7 +141,7 @@ export function db(): Promise<IDBPDatabase<MitredenDB>> {
       phrases.createIndex('norm', 'norm');
 
       database.createObjectStore('collections', { keyPath: 'id' })
-        .createIndex('createdAt', 'createdAt');
+        .createIndex('updatedAt', 'updatedAt');
 
       // Out-of-line: a Settings object has no id of its own, and a Blob cannot
       // carry one.
@@ -209,11 +207,20 @@ export const idTaken = async (id: string): Promise<boolean> =>
  * in the library would have been a regression dressed as an improvement.
  *
  * `norm` is stamped here and nowhere else — see the head of this file.
+ *
+ * The Sammlungen these sentences are in rise to the top of §1.4's order, in the
+ * same transaction. Without that the order would only ever move on a rename,
+ * which is the one edit nobody does — "what I was last working on" is almost
+ * always a sentence that was added, recorded or corrected, and a list claiming
+ * to show that while ignoring it would be worse than creation order, because it
+ * would look right.
  */
 export async function putPhrases(items: readonly Phrase[]): Promise<void> {
   if (!items.length) return;
-  const tx = (await db()).transaction('phrases', 'readwrite');
-  for (const item of items) await tx.store.put({ ...item, norm: normText(item.text) });
+  const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
+  const phrases = tx.objectStore('phrases');
+  for (const item of items) await phrases.put({ ...item, norm: normText(item.text) });
+  await bump(tx, items.flatMap((item) => item.collections));
   await tx.done;
   touched();
 }
@@ -221,53 +228,111 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
 export const putPhrase = (item: Phrase): Promise<void> => putPhrases([item]);
 
 export async function dropPhrase(id: string): Promise<void> {
-  await (await db()).delete('phrases', id);
+  const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
+  const phrases = tx.objectStore('phrases');
+  // Read before the delete: what it was in is the only way to know which
+  // Sammlungen just changed, and afterwards there is nothing left to ask.
+  const held = await phrases.get(id);
+  await phrases.delete(id);
+  if (held) await bump(tx, held.collections);
+  await tx.done;
   touched();
 }
 
 /* ----------------------------------------------------------- collections --- */
 
+/**
+ * Moves the named Sammlungen to the top of §1.4's order, inside a transaction
+ * somebody else opened.
+ *
+ * Takes the transaction rather than opening its own, which is the whole reason
+ * it is written this way: a sentence landing and its Sammlung rising are one
+ * change, and two transactions could leave the second half unwritten. It also
+ * has to be *this* transaction because an IndexedDB transaction commits as soon
+ * as no request is outstanding on it — awaiting a second one from inside the
+ * first is the trap the head of this file describes.
+ */
+async function bump(
+  tx: IDBPTransaction<MitredenDB, ('phrases' | 'collections')[], 'readwrite'>,
+  ids: readonly string[],
+): Promise<void> {
+  const wanted = [...new Set(ids)];
+  if (!wanted.length) return;
+  const collections = tx.objectStore('collections');
+  let next = await nextStamp(collections.index('updatedAt'));
+  for (const id of wanted) {
+    const held = await collections.get(id);
+    // A sentence may name a Sammlung that is not here — importBackup keeps an
+    // unknown tag on purpose, so that it shows up if that Sammlung ever
+    // returns. Nothing to move in that case.
+    if (held) await collections.put({ ...held, updatedAt: next++ });
+  }
+}
+
 const declared = (record: StoredCollection | undefined): Collection | undefined => {
   if (!record) return undefined;
-  const { createdAt: _order, ...collection } = record;
+  const { updatedAt: _order, ...collection } = record;
   return collection;
 };
 
-/** In the order they were made, which is the order this product shows them in.
- *  Off the index; the array used to carry it as insertion order. */
+/**
+ * Last edited first — conventions.md §1.4.
+ *
+ * Creation order answers a question nobody asks. What the rail is for is
+ * getting back to what you were doing, and after a handful of Sammlungen
+ * creation order reliably puts that at the bottom.
+ *
+ * Read off the index and reversed rather than sorted: the index is already in
+ * the order, and `prev` on a cursor is the same walk the other way.
+ */
 export async function allCollections(): Promise<Collection[]> {
-  return (await (await db()).getAllFromIndex('collections', 'createdAt'))
-    .map((r) => declared(r)!);
+  const out: Collection[] = [];
+  let cursor = await (await db()).transaction('collections')
+    .store.index('updatedAt').openCursor(null, 'prev');
+  while (cursor) {
+    out.push(declared(cursor.value)!);
+    cursor = await cursor.continue();
+  }
+  return out;
 }
 
 export const getCollection = async (id: string): Promise<Collection | undefined> =>
   declared(await (await db()).get('collections', id));
 
 /**
- * Writes a Sammlung, keeping the order it was made in.
+ * The next stamp: now, or one past the highest there is, whichever is later.
  *
- * A rename is a put too, and it must not move the Sammlung in the list —
- * renaming is not making — so an existing record's stamp is read and kept.
- *
- * A new one gets now, or one past the highest there is, whichever is later.
  * Date.now() alone is a millisecond clock and the order is supposed to be a
- * total one: two made inside the same millisecond would sort by nothing, and
- * the list would fall back to whatever the index happens to give — which is the
- * order this is here to preserve. A person cannot click that fast; a test can,
- * and a rule that holds for people and not for machines is one nobody can
- * check. Off the end of the index, so it is one cursor step rather than a scan.
+ * total one: two writes inside the same millisecond would sort by nothing, and
+ * the list would fall back to whatever the index happens to give. A person
+ * cannot click that fast; a test can, and a rule that holds for people and not
+ * for machines is one nobody can check. Off the end of the index, so it is one
+ * cursor step rather than a scan.
+ */
+async function nextStamp(index: {
+  openKeyCursor(range: null, dir: 'prev'): Promise<{ key: number } | null>;
+}): Promise<number> {
+  const newest = await index.openKeyCursor(null, 'prev');
+  return Math.max(Date.now(), (newest ? newest.key : 0) + 1);
+}
+
+/**
+ * Writes a Sammlung, and moves it to the top of §1.4's order.
+ *
+ * A rename is a put too, and it *does* move the Sammlung now, where the
+ * creation-ordered version deliberately kept its place. That is the rule
+ * changing rather than a detail: editing the name is working on it, and the
+ * order is about what was last worked on. The rename is debounced and written
+ * on the way out (design/rename), so this is one move per rename rather than
+ * one per keystroke.
  */
 export async function putCollections(items: readonly Collection[]): Promise<void> {
   if (!items.length) return;
   const tx = (await db()).transaction('collections', 'readwrite');
   // Read once per call rather than once per record: several arriving together
-  // are several new ones, and they have to end up in the order they are given.
-  const newest = await tx.store.index('createdAt').openKeyCursor(null, 'prev');
-  let next = Math.max(Date.now(), (newest ? newest.key : 0) + 1);
-  for (const item of items) {
-    const held = await tx.store.get(item.id);
-    await tx.store.put({ ...item, createdAt: held ? held.createdAt : next++ });
-  }
+  // have to end up in the order they are given.
+  let next = await nextStamp(tx.store.index('updatedAt'));
+  for (const item of items) await tx.store.put({ ...item, updatedAt: next++ });
   await tx.done;
   touched();
 }
