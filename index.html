@@ -130,13 +130,17 @@
           <span class="state" id="langstate"></span>
         </summary>
         <div class="body">
-          <!-- The last native select in the program. It drew its own chevron from
-               a hex baked into a data URI, which cannot read a token — so it was
-               the one control that could not follow the theme. It is the same
-               button and the same menu as everything else now. -->
-          <span class="menu-anchor start"><button id="lang" class="btn quiet sm dropdown"
-            aria-haspopup="menu" aria-expanded="false"
-            aria-label="Sprache / Language"></button></span>
+          <!-- The same segmented control as the scheme below it, and that
+               pairing is the point: two facts about this page, offered the same
+               way. It was a native select first — it drew its own chevron from a
+               hex baked into a data URI, which cannot read a token, so it was
+               the one control that could not follow the theme — and then a
+               button and a menu, which put the choice behind a press. A menu is
+               for a list of things to do; this is a list of what the page is.
+               The accessible name is bilingual and fixed, because somebody who
+               cannot read the page is exactly who reaches for this. -->
+          <div class="segmented" id="lang" role="group"
+            aria-label="Sprache / Language"></div>
           <p class="hint" data-i18n="language_hint"></p>
         </div>
       </details>

@@ -93,32 +93,19 @@ test('a click elsewhere closes the menu without stealing focus', async ({ page }
   await expect(page.locator('#t')).toBeFocused();
 });
 
-test('the language menu is a choice, and shows which answer is in force', async ({ page }) => {
-  await page.click('#gear');
-  // The language lives in a folded panel; only the voice one opens by default.
-  await page.click('#p-lang summary');
-  await page.click('#lang');
+/* Two tests stood here and are gone rather than moved, which is worth saying.
+ *
+ * They asked whether a menu that is a *choice* marks the answer in force -
+ * exactly one aria-checked, and a colour that says so to somebody not using a
+ * reader. The language menu was their subject, and it is a segmented group now
+ * (see app.spec.ts), which left this page with no choice-menu at all: every
+ * remaining menu here is a list of things to do.
+ *
+ * Rewriting them against #colmore would have asserted a property that menu does
+ * not have and never did. So: the aria-checked half is held by the component's
+ * own suite, design/tests/menu.test.js, which is where a question about the
+ * shared function belongs. The visual half is CSS out of the same shared
+ * components.css, and vorlaut still asks it of the Sammlung's language picker,
+ * which stays a menu. Nothing about the shared menu went unguarded; the guard
+ * moved to where the thing it guards actually lives. */
 
-  const items = page.locator('.menu button');
-  await expect(items.first()).toHaveAttribute('role', 'menuitemradio');
-  // Exactly one, always: this is the assertion that separates a set of
-  // alternatives from the list of commands checked above.
-  await expect(page.locator('.menu button[aria-checked="true"]')).toHaveCount(1);
-  await expect(page.locator('.menu button[aria-checked="true"]')).toHaveText('Deutsch');
-});
-
-test('the checked item is visible and not only announced', async ({ page }) => {
-  await page.click('#gear');
-  // The language lives in a folded panel; only the voice one opens by default.
-  await page.click('#p-lang summary');
-  await page.click('#lang');
-
-  const [checked, plain] = await Promise.all([
-    page.locator('.menu button[aria-checked="true"]').evaluate((n) => getComputedStyle(n).color),
-    page.locator('.menu button[aria-checked="false"]').first()
-      .evaluate((n) => getComputedStyle(n).color),
-  ]);
-  // aria-checked alone leaves everyone who is not using a reader to infer the
-  // answer from the trigger behind the open list.
-  expect(checked).not.toBe(plain);
-});

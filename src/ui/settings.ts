@@ -20,7 +20,6 @@ import { openCollectionVoice } from './collectionVoice.ts';
 import { voicePicker } from './voicepicker.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
-import { menuOn } from '@lautstark/design/menu';
 import { confirmDialog } from '@lautstark/design/dialog';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 
@@ -363,6 +362,25 @@ const THEME_KEY = 'mitreden.theme';
 
 const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
 
+/** Both languages, with the one in force pressed.
+ *
+ * Each names itself whatever the page is set to. The control is what somebody
+ * reaches for when they cannot read the interface around it, so it must not
+ * depend on being able to read the interface around it. */
+function drawLang(): void {
+  const current = lang();
+  const box = el('lang');
+  box.innerHTML = '';
+  for (const [code, name] of Object.entries(LANGUAGES)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = name;
+    button.setAttribute('aria-pressed', String(code === current));
+    button.onclick = () => chooseLang(code as Lang);
+    box.appendChild(button);
+  }
+}
+
 /** The three answers, with the one in force pressed. */
 function drawTheme(): void {
   const current = readTheme(THEME_KEY);
@@ -401,7 +419,7 @@ function drawStates(): void {
     ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.lang)}`
     : t('voice_none');
   el('langstate').textContent = LANGUAGES[lang()];
-  el('lang').textContent = LANGUAGES[lang()];
+  drawLang();
   // ALL(), not loadPhrases(): the sentences are already in memory, and a
   // heading that carries state has to carry it from the first frame. Reading
   // the database here left this line blank at the moment somebody was reading
@@ -487,16 +505,6 @@ export function wireSettings(backup: Sicherung): void {
   // A pick redraws the list it was made in, so the mark moves with the click —
   // and the heading, which names the voice in force.
   onVoiceChange(() => { drawVoices(); drawStates(); });
-
-  el('lang').onclick = () => menuOn(el('lang'), (add) => {
-    // The one menu on this page that is a choice rather than a list of things
-    // to do, so its items are menuitemradio and one of them is checked. It
-    // read as five equal commands before, leaving the language in force to be
-    // inferred from the button behind the open list.
-    for (const [code, name] of Object.entries(LANGUAGES))
-      add(name, () => chooseLang(code as Lang),
-        { checked: code === lang() });
-  });
 
   el('export').onclick = () => void exportAll();
   el('import2').onclick = () => el('importfile').click();

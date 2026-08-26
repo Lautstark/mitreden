@@ -99,23 +99,32 @@ test('opening a panel closes the one open before it', async ({ page }) => {
   await expect(page.locator('#p-voice')).toHaveJSProperty('open', false);
 });
 
-test('the page language is a menu like every other choice on the page', async ({ page }) => {
+test('the page language is offered the way the scheme beside it is', async ({ page }) => {
   await page.click('#gear');
   await page.click('#p-lang > summary');
   // It was the last native <select>, drawing its own chevron from a hex baked
-  // into a data URI — the one control that could not follow the theme.
-  await expect(page.locator('#lang')).toHaveJSProperty('tagName', 'BUTTON');
-  await page.click('#lang');
-  // Hung from its own left edge: right-aligned, a 190px menu on a 90px button
-  // at the left of a panel reached back past the edge of the sheet.
-  const menu = page.locator('#p-lang .menu');
-  await expect(menu).toBeVisible();
-  const [box, sheet] = await Promise.all([menu.boundingBox(), page.locator('#setup').boundingBox()]);
+  // into a data URI — the one control that could not follow the theme. Then a
+  // button and a menu, which put the answers behind a press. Now the same
+  // segmented group as the scheme in the panel below, because both are facts
+  // about this page rather than lists of things to do.
+  const group = page.locator('#lang');
+  await expect(group).toHaveJSProperty('tagName', 'DIV');
+  await expect(group).toHaveAttribute('role', 'group');
+  // Every answer on screen, and the one in force marked rather than inferred
+  // from a closed control.
+  await expect(group.locator('button')).toHaveCount(2);
+  await expect(group.locator('button[aria-pressed="true"]')).toHaveText('Deutsch');
+  // It fits the sheet it is in: the menu it replaced had to be hung from its
+  // own left edge to stop a 190px list on a 90px button reaching back past the
+  // sheet's edge, and a control that lays its answers out in a row can fail
+  // the same way.
+  const [box, sheet] = await Promise.all([
+    group.boundingBox(), page.locator('#setup').boundingBox()]);
   expect(box!.x).toBeGreaterThanOrEqual(sheet!.x);
   expect(box!.x + box!.width).toBeLessThanOrEqual(sheet!.x + sheet!.width);
 
-  await menu.getByText('English').click();
-  await expect(page.locator('#lang')).toHaveText('English');
+  await group.getByText('English').click();
+  await expect(group.locator('button[aria-pressed="true"]')).toHaveText('English');
   await expect(page.locator('#langstate')).toHaveText('English');
   await expect(page.locator('#setup > .head h2')).toHaveText('Settings');
   // Without the ?lang= these tests open with — an explicit URL outranks the
@@ -337,8 +346,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
 
   await page.click('#gear');
   await page.click('#p-lang > summary');
-  await page.click('#lang');
-  await page.locator('#p-lang .menu').getByText('English').click();
+  await page.locator('#lang').getByText('English').click();
   // Nobody had said which voice, so the German one was this page's guess about
   // what it would be asked to read — and the guess has just been answered.
   await expect(page.locator('#voicename')).toHaveText('Kristin');
@@ -356,8 +364,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   await page.locator('#voices .voice').first().click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
   await page.click('#p-lang > summary');
-  await page.click('#lang');
-  await page.locator('#p-lang .menu').getByText('Deutsch').click();
+  await page.locator('#lang').getByText('Deutsch').click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
 });
 
