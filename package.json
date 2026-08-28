@@ -13,7 +13,8 @@
     "preflight": "node tools/installcheck.mjs",
     "test:e2e": "node tools/installcheck.mjs && npm run build && playwright test",
     "test:e2e:only": "playwright test",
-    "test": "node tools/installcheck.mjs && vitest run"
+    "test": "node tools/installcheck.mjs && vitest run",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@diffusionstudio/piper-wasm": "^1.0.0",
