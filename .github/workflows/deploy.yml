@@ -81,9 +81,11 @@ jobs:
       - run: npm ci
 
       - name: Build
-        # Project sites are served from /<repo>/, so the bundle needs that base.
+        # Served from a subdomain of lautstark.tech, so the bundle sits at the
+        # root rather than under /<repo>/. The CNAME file in the published
+        # output is what holds that domain across deploys.
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          BASE_PATH: /
         run: npm run build
 
       - uses: actions/configure-pages@v6
