@@ -9,7 +9,7 @@
 import { asFormat, asPenMp3 } from '../core/audio.ts';
 import { getAudio } from '../db/db.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
-import { CAPACITY, penProject, SHEET, type PenAudio } from '../core/anybook.ts';
+import { penProject, sheetsFor, SHEET, type PenAudio } from '../core/anybook.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
 import type { Format, PhraseWithState } from '../core/types.ts';
@@ -379,10 +379,6 @@ async function packPen(): Promise<void> {
     say(t('nothing_recorded'));
     return;
   }
-  if (items.length > CAPACITY) {
-    say(t('pen_too_many', { n: items.length, cap: CAPACITY }));
-    return;
-  }
   busy('busy_pen', { n: items.length });
   const audios: PenAudio[] = [];
   for (const item of items) {
@@ -402,14 +398,25 @@ async function packPen(): Promise<void> {
       thumbnail: await sheetThumbnail(),
       startCaption: t('pen_start'),
       // Two lines, which is what a full sheet has room for — see footer().
-      notes: [
-        t('pen_sheet_what', { title: safe, date: stamp, n: audios.length }),
+      // The first says which sheet this is, because a Sammlung past 87
+      // sentences comes out as several and they are otherwise identical.
+      notes: (sheet, sheets) => [
+        // Only the first sheet carries the start code, so only the first says
+        // so. Whole sentences per case rather than a stem with pieces bolted
+        // on, because the pieces do not sit in the same order in both
+        // languages.
+        sheets === 1
+          ? t('pen_sheet_what', { title: safe, date: stamp, n: audios.length })
+          : sheet === 1
+            ? t('pen_sheet_first', { title: safe, date: stamp, of: sheets })
+            : t('pen_sheet_more', { title: safe, date: stamp, n: sheet, of: sheets }),
         t('pen_sheet_paper'),
       ],
     }),
     `mitreden-${safe}-${stamp}.abs`,
   );
-  say(t('done_pen', { n: audios.length }));
+  // The plural count is the sheets, because that is the word that changes.
+  say(tn('done_pen', sheetsFor(audios.length), { sentences: audios.length }));
 }
 
 /**

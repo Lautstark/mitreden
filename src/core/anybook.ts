@@ -50,7 +50,8 @@ const CODE = 10;
 const CELLS = SHEET.cols * SHEET.rows;
 
 /**
- * How many sentences fit, the activation code having taken the first circle.
+ * How many sentences fit on one sheet, the activation code having taken the
+ * first circle of the first one.
  *
  * One sticker, and it buys the sheet the right to exist on more than one pen.
  * Without an activation code the audio is welded to whichever pen it was
@@ -58,7 +59,19 @@ const CELLS = SHEET.cols * SHEET.rows;
  * of thing that costs nothing today and costs a reprint of the whole sheet the
  * day a pen is lost, broken, or wanted at kindergarten as well as at home.
  */
-export const CAPACITY = CELLS - 1;
+export const PER_SHEET = CELLS - 1;
+
+/**
+ * How many sheets a Sammlung of this size needs.
+ *
+ * A Sammlung outgrows one sheet the moment it passes 87, and refusing at that
+ * line was this module's own limitation and never the format's: a project
+ * carries PageNo on every code and PdfPageCount beside them, and Studio has
+ * always read multi-page material. Only the first sheet loses a circle to the
+ * activation code, so the sheets after it hold a full 88.
+ */
+export const sheetsFor = (sentences: number): number =>
+  Math.max(1, Math.ceil((sentences + 1) / CELLS));
 
 /** One sticker: the audio it plays and the word printed under it. */
 export interface PenAudio {
@@ -79,6 +92,17 @@ function* cells(): Generator<{ x: number; y: number }> {
         x: SHEET.originX + col * SHEET.pitch + SHEET.diameter / 2,
         y: SHEET.originY + row * SHEET.pitch + SHEET.diameter / 2,
       };
+}
+
+const GRID = [...cells()];
+
+/**
+ * Where the nth code goes, counting the activation code as the first and
+ * running on across sheets. PageNo is 1-based because Studio's is.
+ */
+function slot(n: number): { page: number; x: number; y: number } {
+  const { x, y } = GRID[n % CELLS];
+  return { page: Math.floor(n / CELLS) + 1, x, y };
 }
 
 // ------------------------------------------------------------------- pdf
@@ -170,26 +194,41 @@ function footer(lines: readonly string[]): string {
   return `${out}0 g\n`;
 }
 
-/** The sheet: every cell outlined, the used ones captioned. */
-function sheetPdf(captions: readonly string[], notes: readonly string[]): Uint8Array<ArrayBuffer> {
+/** One sheet's drawing: every circle outlined, the used ones captioned. */
+function sheetBody(captions: readonly string[], notes: readonly string[]): Uint8Array<ArrayBuffer> {
   let body = '0.75 w 0.80 0.80 0.80 RG\n';
-  for (const { x, y } of cells()) body += circle(x, y, SHEET.diameter / 2);
+  for (const { x, y } of GRID) body += circle(x, y, SHEET.diameter / 2);
   body += '0 g\n';
-  let i = 0;
-  for (const { x, y } of cells()) {
-    if (i >= captions.length) break;
-    body += caption(x, y, captions[i++]);
-  }
+  captions.forEach((text, i) => {
+    body += caption(GRID[i].x, GRID[i].y, text);
+  });
   body += footer(notes);
-  const stream = latin1(body);
+  return latin1(body);
+}
+
+/**
+ * The sheets, as one PDF.
+ *
+ * Object numbering is worked out rather than written down, because it stops
+ * being three fixed numbers the moment there is a second page: the font is
+ * shared, each page needs its own dictionary and its own stream, and the page
+ * tree has to name them all.
+ */
+function sheetsPdf(sheets: readonly { captions: string[]; notes: string[] }[]): Uint8Array<ArrayBuffer> {
+  const n = sheets.length;
+  const FONT = 3;                        // catalog, page tree, font, then the pages
+  const page = (i: number) => FONT + 1 + i;
+  const content = (i: number) => FONT + 1 + n + i;
+  const box = `0 0 ${(SHEET.width * MM).toFixed(2)} ${(SHEET.height * MM).toFixed(2)}`;
 
   const objects: (string | Uint8Array<ArrayBuffer>)[] = [
     '<</Type/Catalog/Pages 2 0 R>>',
-    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
-    `<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${(SHEET.width * MM).toFixed(2)} ${(SHEET.height * MM).toFixed(2)}]`
-      + '/Resources<</Font<</F1 5 0 R>>>>/Contents 4 0 R>>',
-    stream,
+    `<</Type/Pages/Kids[${sheets.map((_, i) => `${page(i)} 0 R`).join(' ')}]/Count ${n}>>`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
+    ...sheets.map((_, i) =>
+      `<</Type/Page/Parent 2 0 R/MediaBox[${box}]`
+      + `/Resources<</Font<</F1 ${FONT} 0 R>>>>/Contents ${content(i)} 0 R>>`),
+    ...sheets.map((sheet) => sheetBody(sheet.captions, sheet.notes)),
   ];
 
   const parts: Uint8Array<ArrayBuffer>[] = [latin1('%PDF-1.4\n')];
@@ -226,18 +265,21 @@ function sheetPdf(captions: readonly string[], notes: readonly string[]): Uint8A
  */
 function projectJson(
   title: string, pdfName: string, audios: readonly PenAudio[], hasThumbnail: boolean,
+  sheets: number,
 ): string {
-  // The first circle is the activation code and the sentences follow it, so
-  // that it is always in the same corner of every sheet this program makes.
-  const positions = [...cells()].slice(0, audios.length + 1);
-  const at = (i: number) => ({
-    PageNo: 1,
-    X: Number(((positions[i].x - CODE / 2) / 10).toFixed(6)),
-    Y: Number(((positions[i].y - CODE / 2) / 10).toFixed(6)),
-    CodeNr: 0,
-    Empty: false,
-    ReadOnly: false,
-  });
+  // The first circle of the first sheet is the activation code and the
+  // sentences run on from there, across as many sheets as they need.
+  const at = (i: number) => {
+    const { page, x, y } = slot(i);
+    return {
+      PageNo: page,
+      X: Number(((x - CODE / 2) / 10).toFixed(6)),
+      Y: Number(((y - CODE / 2) / 10).toFixed(6)),
+      CodeNr: 0,
+      Empty: false,
+      ReadOnly: false,
+    };
+  };
   return JSON.stringify({
     Version: '1.6',
     Type: 0,
@@ -255,7 +297,7 @@ function projectJson(
     // chose, but two projects sharing one would be our doing rather than its.
     Id: Math.floor(Math.random() * 900000) + 100000,
     MinFwVersion: '1.0',
-    PdfPageCount: 1,
+    PdfPageCount: sheets,
     LastAppVersion: '',
     LastTechnicalUpdate: null,
     LastTechnicalUpdateReason: '',
@@ -303,31 +345,41 @@ function projectJson(
 export function penProject(
   title: string,
   audios: readonly PenAudio[],
-  { thumbnail, startCaption = 'Start', notes = [] }: {
+  { thumbnail, startCaption = 'Start', notes = () => [] }: {
     thumbnail?: Uint8Array<ArrayBuffer>;
     /** What is printed under the activation sticker. */
     startCaption?: string;
-    /** Printed along the bottom margin — see footer(). */
-    notes?: readonly string[];
+    /**
+     * Printed along the bottom margin of each sheet — see footer(). Asked per
+     * sheet rather than given once, because a sheet out of several has to be
+     * able to say which one it is; the wording stays the caller's, since this
+     * module has no language of its own.
+     */
+    notes?: (sheet: number, sheets: number) => readonly string[];
   } = {},
 ): Blob {
   if (!audios.length) throw new Error('An Anybook project needs at least one sentence.');
-  if (audios.length > CAPACITY)
-    throw new Error(`One sheet holds ${CAPACITY} stickers, not ${audios.length}.`);
+
+  // The activation code leads, the sentences follow, and the run is cut into
+  // sheets. A sheet that ends mid-Sammlung is not a special case: the codes
+  // carry their own page number and Studio reads them from it.
+  const all = [startCaption, ...audios.map((a) => a.caption)];
+  const count = sheetsFor(audios.length);
+  const sheets = Array.from({ length: count }, (_, i) => ({
+    captions: all.slice(i * CELLS, (i + 1) * CELLS),
+    notes: [...notes(i + 1, count)],
+  }));
 
   const pdfName = `${title}.pdf`;
-  const files: ZipEntry[] = [
-    {
-      name: pdfName,
-      bytes: sheetPdf([startCaption, ...audios.map((a) => a.caption)], notes),
-    },
-  ];
+  const files: ZipEntry[] = [{ name: pdfName, bytes: sheetsPdf(sheets) }];
   if (thumbnail) files.push({ name: '_Thumbnail_.jpeg', bytes: thumbnail });
   for (const audio of audios) files.push({ name: audio.name, bytes: audio.bytes });
   // Last, the way Studio writes it.
   files.push({
     name: '_Project_.json',
-    bytes: new TextEncoder().encode(projectJson(title, pdfName, audios, Boolean(thumbnail))),
+    bytes: new TextEncoder().encode(
+      projectJson(title, pdfName, audios, Boolean(thumbnail), count),
+    ),
   });
   return zip(files);
 }

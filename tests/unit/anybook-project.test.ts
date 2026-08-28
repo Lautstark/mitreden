@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAPACITY, penProject, SHEET, type PenAudio } from '../../src/core/anybook.ts';
+import { penProject, PER_SHEET, SHEET, sheetsFor, type PenAudio } from '../../src/core/anybook.ts';
 
 /*
  * What an Anybook project has to get right that nothing else would notice.
@@ -113,10 +113,39 @@ describe('an Anybook project', () => {
     expect(pdf.includes(0x3f)).toBe(false);     // and nothing fell off the map
   });
 
-  it('refuses more sentences than a sheet holds', () => {
-    // Silently dropping the tail would produce a sheet that looks finished.
-    expect(() => penProject('Test', audio(CAPACITY))).not.toThrow();
-    expect(() => penProject('Test', audio(CAPACITY + 1))).toThrow(/holds/);
+  it('runs a Sammlung past one sheet onto the next', async () => {
+    /*
+     * 96 sentences is where this was found, by somebody who had them. Refusing
+     * at 87 was this module's limit and never the format's: PageNo sits on
+     * every code and Studio has always read it.
+     *
+     * The seam is what the test is for. Only the first sheet spends a circle on
+     * the activation code, so sentence 88 is the last on sheet one and 89 is
+     * the first on sheet two, back at the top-left corner.
+     */
+    const project = await projectOf(penProject('Test', audio(96)));
+    expect(sheetsFor(96)).toBe(2);
+    expect(project.PdfPageCount).toBe(2);
+    expect(project.Codes).toHaveLength(97);
+
+    const pages = project.Codes.map((c: { PageNo: number }) => c.PageNo);
+    expect(pages.filter((p: number) => p === 1)).toHaveLength(88);
+    expect(pages.filter((p: number) => p === 2)).toHaveLength(9);
+
+    // The first code of sheet two sits where the activation code sits on sheet
+    // one: the top-left circle, not carried on from where sheet one stopped.
+    const corner = (SHEET.originX + SHEET.diameter / 2 - 5) / 10;
+    expect(project.Codes[88].PageNo).toBe(2);
+    expect(project.Codes[88].X).toBeCloseTo(corner, 3);
+    expect(project.Codes[88].Y).toBeCloseTo(project.Codes[0].Y, 6);
+    // And it is a sentence, not a second activation code.
+    expect(project.Codes[88].Type).toBe(1);
+    expect(project.Codes.filter((c: { Type: number }) => c.Type === 0)).toHaveLength(1);
+  });
+
+  it('fills exactly one sheet at the boundary and two just past it', () => {
+    expect(sheetsFor(PER_SHEET)).toBe(1);
+    expect(sheetsFor(PER_SHEET + 1)).toBe(2);
     expect(() => penProject('Test', [])).toThrow(/at least one/);
   });
 });
