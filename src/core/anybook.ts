@@ -337,10 +337,16 @@ function projectJson(
 /**
  * The whole project, ready for Studio's library.
  *
- * More sentences than a sheet holds is the caller's problem to have caught —
- * CAPACITY is exported so it can — and is refused here rather than silently
- * dropped, because a sticker sheet missing its last four sentences looks
- * finished.
+ * A run longer than one sheet holds is cut into as many as it needs —
+ * `sheetsFor()` counts them, `CELLS` is what one sheet holds — so length is
+ * not an error and nothing is dropped. The only refusal left is an empty list,
+ * which would otherwise write a project with a sheet of nothing in it.
+ *
+ * This used to say the opposite: that too many sentences was the caller's
+ * problem to have caught, that `CAPACITY` was exported so it could, and that
+ * this function refused rather than silently dropping the overflow — because a
+ * sticker sheet missing its last four sentences looks finished. That reasoning
+ * is why the multi-sheet path exists; there is no `CAPACITY` to import.
  */
 export function penProject(
   title: string,

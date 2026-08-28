@@ -49,7 +49,7 @@ export const normText = (text: string): string =>
 /* findTwin, freeKey and freeId used to live here, each taking the whole array
  * and scanning it, because the whole array was the only thing there was to ask.
  * They are questions about what the store already holds — "is there a sentence
- * like this", "is this id taken" — so they are db.ts's now, as twinOf() and
+ * like this", "is this id taken" — so they are db.ts's now, as twinsOf() and
  * idTaken(), answered by an index or a key lookup instead of a scan. What
  * stays here is the part that is a rule about names rather than a question
  * about storage: how a sentence becomes a file name, and what "like this"

@@ -3,13 +3,13 @@
  * Stored rather than deflated: mp3 and wav-from-mp3 do not compress, so the
  * only thing deflate would buy is a dependency.
  *
- * One piece of mitreden's browser backend; app/backend.js assembles them.
+ * (Two things used to stand here that no longer do: this paragraph a second
+ * time a few lines down, and a note calling this "one piece of mitreden's
+ * browser backend, which app/backend.js assembles". There is no app/backend.js
+ * — it went with the container, and the callers are src/ui/list.ts and
+ * src/ui/settings.ts.)
  */
 
-// ------------------------------------------------------------------- zip
-//
-// Stored, not deflated: mp3 and wav-from-mp3 do not compress, so the only
-// thing deflate would buy is a dependency.
 const CRC = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
