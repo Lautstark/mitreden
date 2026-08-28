@@ -401,6 +401,11 @@ async function packPen(): Promise<void> {
     penProject(safe, audios, {
       thumbnail: await sheetThumbnail(),
       startCaption: t('pen_start'),
+      // Two lines, which is what a full sheet has room for — see footer().
+      notes: [
+        t('pen_sheet_what', { title: safe, date: stamp, n: audios.length }),
+        t('pen_sheet_paper'),
+      ],
     }),
     `mitreden-${safe}-${stamp}.abs`,
   );

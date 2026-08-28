@@ -142,8 +142,36 @@ function latin1(text: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/**
+ * What the sheet has to say for itself, along its bottom margin.
+ *
+ * This is the only part of the export that reaches the person at the printer.
+ * mitreden's own screens are long gone by then — the file has been opened in
+ * Studio, possibly days later and possibly by somebody else — and the two
+ * things that ruin a sheet are both decided at that moment: printing it on the
+ * wrong paper, and printing it scaled. A page that says which paper it wants
+ * cannot be separated from the answer.
+ */
+function footer(lines: readonly string[]): string {
+  let out = '0.45 0.45 0.45 rg\n';
+  lines.forEach((line, i) => {
+    const escaped = line.replace(/[\\()]/g, (c) => `\\${c}`);
+    /*
+     * Stacked upwards from the last line rather than down from the first, and
+     * the numbers are the two margins it has to fit between. Below: 282.7 mm
+     * leaves 14 mm of paper, and few printers put ink nearer than 10. Above: a
+     * full sheet's last row of captions sits at 274.7 mm, so two lines clear
+     * them and three do not — which is why the caller is given two.
+     */
+    const from = 282.7 - (lines.length - 1 - i) * 3.2;
+    const y = (SHEET.height - from) * MM;
+    out += `BT /F1 7 Tf ${(SHEET.originX * MM).toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET\n`;
+  });
+  return `${out}0 g\n`;
+}
+
 /** The sheet: every cell outlined, the used ones captioned. */
-function sheetPdf(captions: readonly string[]): Uint8Array<ArrayBuffer> {
+function sheetPdf(captions: readonly string[], notes: readonly string[]): Uint8Array<ArrayBuffer> {
   let body = '0.75 w 0.80 0.80 0.80 RG\n';
   for (const { x, y } of cells()) body += circle(x, y, SHEET.diameter / 2);
   body += '0 g\n';
@@ -152,6 +180,7 @@ function sheetPdf(captions: readonly string[]): Uint8Array<ArrayBuffer> {
     if (i >= captions.length) break;
     body += caption(x, y, captions[i++]);
   }
+  body += footer(notes);
   const stream = latin1(body);
 
   const objects: (string | Uint8Array<ArrayBuffer>)[] = [
@@ -274,10 +303,12 @@ function projectJson(
 export function penProject(
   title: string,
   audios: readonly PenAudio[],
-  { thumbnail, startCaption = 'Start' }: {
+  { thumbnail, startCaption = 'Start', notes = [] }: {
     thumbnail?: Uint8Array<ArrayBuffer>;
     /** What is printed under the activation sticker. */
     startCaption?: string;
+    /** Printed along the bottom margin — see footer(). */
+    notes?: readonly string[];
   } = {},
 ): Blob {
   if (!audios.length) throw new Error('An Anybook project needs at least one sentence.');
@@ -286,7 +317,10 @@ export function penProject(
 
   const pdfName = `${title}.pdf`;
   const files: ZipEntry[] = [
-    { name: pdfName, bytes: sheetPdf([startCaption, ...audios.map((a) => a.caption)]) },
+    {
+      name: pdfName,
+      bytes: sheetPdf([startCaption, ...audios.map((a) => a.caption)], notes),
+    },
   ];
   if (thumbnail) files.push({ name: '_Thumbnail_.jpeg', bytes: thumbnail });
   for (const audio of audios) files.push({ name: audio.name, bytes: audio.bytes });

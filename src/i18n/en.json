@@ -122,6 +122,8 @@
   "panel_language": "Language",
   "panel_theme": "Appearance",
   "panel_voice_default": "Default voice",
+  "pen_sheet_paper": "Avery Zweckform 6222 · Ø 20 mm · print at 100%, no scaling · avery-zweckform.com/vorlage-6222",
+  "pen_sheet_what": "{title} · mitreden · {date} · {n} sentences · the first sticker is the start code",
   "pen_start": "Start",
   "pen_too_many": "One sheet holds {cap} stickers, and there are {n} here.",
   "region_field": "Region",

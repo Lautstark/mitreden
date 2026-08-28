@@ -13,6 +13,7 @@ import { el } from './dom.ts';
 const REPO = 'https://github.com/Lautstark/mitreden';
 const ORG = 'https://github.com/Lautstark';
 const BILDHAFT = 'https://lautstark.github.io/bildhaft/';
+const AVERY = 'https://www.avery-zweckform.com/vorlage-6222';
 const ISSUES = 'https://github.com/Lautstark/mitreden/issues';
 
 /** The one line to change if a different address should be public. */
@@ -55,6 +56,21 @@ const ABOUT = {
       ${ext('https://github.com/Lautstark/stimmquelle', 'stimmquelle')}, damit
       keine Stimme mit unklarer Lizenz auf einem Gerät landet.
     </p>
+    ${h3('Der Anybook-Stift')}
+    <p style="margin:0">
+      mitreden kann den Stift nicht selbst beschreiben. Er meldet sich als
+      serielle Schnittstelle und spricht ein Protokoll, das nur Anybook Studio
+      kennt. Was mitreden abnimmt, ist alles davor: die Aufnahmen im richtigen
+      Format, der fertige Bogen, und jeder Code schon an seinem Satz. In Studio
+      bleibt öffnen, übertragen, drucken.
+    </p>
+    <p style="margin:8px 0 0">
+      Gedruckt wird ohne Skalierung auf
+      ${ext(AVERY, 'Avery Zweckform 6222')} (Ø 20 mm, 88 Etiketten je Bogen).
+      Der erste Aufkleber ist der Startcode. Er trägt kein Wort, und ohne ihn
+      lässt sich der Bogen später auf keinem zweiten Stift verwenden, weder auf
+      einem Ersatzstift noch auf dem im Kindergarten.
+    </p>
     ${h3('Quellcode und Schwesterprojekt')}
     <p style="margin:0">
       mitreden ist quelloffen (MIT): ${ext(REPO, 'github.com/Lautstark/mitreden')}.
@@ -84,6 +100,21 @@ const ABOUT = {
       use; which ones qualify is decided by
       ${ext('https://github.com/Lautstark/stimmquelle', 'stimmquelle')}, so no
       voice with an unclear licence ends up on a child's device.
+    </p>
+    ${h3('The Anybook pen')}
+    <p style="margin:0">
+      mitreden cannot write to the pen itself. It appears as a serial port and
+      speaks a protocol only Anybook Studio knows. What mitreden takes off you
+      is everything before that: the recordings in the right format, the finished
+      sheet, and every code already bound to its sentence. What is left in Studio
+      is open, transfer, print.
+    </p>
+    <p style="margin:8px 0 0">
+      Print without scaling on
+      ${ext(AVERY, 'Avery Zweckform 6222')} (Ø 20 mm, 88 labels per sheet). The
+      first sticker is the start code. It carries no word, and without it the
+      sheet can never be used on a second pen, neither a replacement nor the one
+      at kindergarten.
     </p>
     ${h3('Source code and sister project')}
     <p style="margin:0">

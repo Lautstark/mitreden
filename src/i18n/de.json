@@ -122,6 +122,8 @@
   "panel_language": "Sprache",
   "panel_theme": "Erscheinungsbild",
   "panel_voice_default": "Standardstimme",
+  "pen_sheet_paper": "Avery Zweckform 6222 · Ø 20 mm · ohne Skalierung drucken (100 %) · avery-zweckform.com/vorlage-6222",
+  "pen_sheet_what": "{title} · mitreden · {date} · {n} Sätze · der erste Aufkleber ist der Startcode",
   "pen_start": "Start",
   "pen_too_many": "Auf einen Bogen passen {cap} Aufkleber, hier sind es {n}.",
   "region_field": "Region",
