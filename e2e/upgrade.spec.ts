@@ -51,7 +51,7 @@ const SEED_V1 = `
   })
 `;
 
-test('a browser holding the old database gets a working first visit', async ({ page }) => {
+test('a browser holding the old database is asked before anything goes', async ({ page }) => {
   /* The application's own scripts are blocked for this first load, and that is
      not belt and braces: opening the app is what triggers the upgrade, so if
      any of it ran first the database would already be at the current version
@@ -86,6 +86,41 @@ test('a browser holding the old database gets a working first visit', async ({ p
   await page.unroute('**/*.js');
   await page.reload();
 
+  // It stops and says so, rather than opening onto an empty library. This test
+  // asserted the opposite until 2026-08-28 - that the drop was clean and the
+  // first visit worked - and the drop being clean is exactly what made it
+  // invisible to the person it happened to.
+  await expect(page.getByRole('heading', { name: 'Ältere Bibliothek gefunden' }))
+    .toBeVisible();
+  await expect(page.locator('#rows .collections__item')).toHaveCount(0);
+
+  // And the library is still on disk, untouched, while it asks. This is the
+  // whole claim: `meta` is a store no current version has ever heard of, so
+  // its being here means the upgrade did not get far enough to have an
+  // opinion about it.
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const ask = database.transaction('meta').objectStore('meta').get('phrases');
+      ask.onsuccess = () => {
+        const version = database.version;
+        database.close();
+        keep({ version, kept: (ask.result as unknown[]).length });
+      };
+    };
+  })), 'the old library is still there while the question is open')
+    .toEqual({ version: 1, kept: 2 });
+
+  const errors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+
+  // Starting again is still available - it is what used to happen without
+  // being asked for. Taken here, so the rest of this test is about the state
+  // on the far side of that decision.
+  await page.getByRole('button', { name: 'Neu anfangen und alles löschen' }).click();
+
   // The application comes up: there is always somewhere to be (§1.9), so the
   // empty library it now has is seeded with one Sammlung rather than nothing.
   await page.waitForFunction(
@@ -95,9 +130,6 @@ test('a browser holding the old database gets a working first visit', async ({ p
   // Named for the day rather than "Küche": nothing came across.
   await expect(page.locator('#rows .collections__name')).not.toHaveText('Küche');
   await expect(page.locator('.item')).toHaveCount(0);
-
-  const errors: string[] = [];
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
   // And it takes a write, which is the half a failed upgrade would swallow: the
   // page would look exactly like this and then do nothing at all.
@@ -171,7 +203,7 @@ const SEED_V2 = `
  * it is also the sort of thing that works against a stand-in and is refused by
  * a browser — which is the whole reason this file exists beside the unit test.
  */
-test('a browser holding the keyed database gets a working first visit', async ({ page }) => {
+test('a browser holding the keyed database is asked before anything goes', async ({ page }) => {
   await page.route('**/*.js', (route) => route.abort());
   await page.goto('/?lang=de');
   await page.evaluate(SEED_V2);
@@ -196,6 +228,28 @@ test('a browser holding the keyed database gets a working first visit', async ({
   await page.unroute('**/*.js');
   await page.reload();
 
+  // Refused, and the keyed store is still keyed the old way underneath the
+  // question - which is the half a clean drop would not prove either way.
+  await expect(page.getByRole('heading', { name: 'Ältere Bibliothek gefunden' }))
+    .toBeVisible();
+  expect(await page.evaluate(() => new Promise((keep, drop) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => drop(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const store = database.transaction('collections').objectStore('collections');
+      const path = store.keyPath;
+      database.close();
+      keep({ version: database.version, path });
+    };
+  })), 'the version 2 library is still there while the question is open')
+    .toEqual({ version: 2, path: 'key' });
+
+  const errors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+
+  await page.getByRole('button', { name: 'Neu anfangen und alles löschen' }).click();
+
   await page.waitForFunction(
     () => document.querySelectorAll('#rows .collections__item').length > 0,
   );
@@ -204,9 +258,6 @@ test('a browser holding the keyed database gets a working first visit', async ({
   await expect(page.locator('#rows .collections__item')).toHaveCount(1);
   await expect(page.locator('#rows .collections__name')).not.toHaveText('Küche');
   await expect(page.locator('.item')).toHaveCount(0);
-
-  const errors: string[] = [];
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
 
   await page.fill('#t', 'Ich möchte nach draußen.');
   await page.press('#t', 'Enter');
