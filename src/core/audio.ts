@@ -13,7 +13,7 @@ import {
   type OnnxModule, type Progress, type Spoken,
 } from '@lautstark/stimmquelle/browser';
 import { piperRuntime } from '@lautstark/stimmquelle/runtime';
-import { OUT } from './settings.ts';
+import { OUT, PEN } from './settings.ts';
 import type { Format } from './types.ts';
 
 /**
@@ -115,4 +115,24 @@ export async function asFormat(blob: Blob, format: Format): Promise<Blob> {
     ? decoded.getChannelData(0)
     : resample(decoded.getChannelData(0), decoded.sampleRate, OUT.sampleRate);
   return new Blob([encodeWav(samples, OUT.sampleRate) as BlobPart], { type: 'audio/wav' });
+}
+
+/**
+ * The same recording at the rate the reading pen keeps its audio in.
+ *
+ * A decode and a re-encode, which is a loss — and the same loss Studio applies
+ * on its own if this is skipped, so the choice is not whether it happens but
+ * whether it happens somewhere the result can be seen. Doing it here also lets
+ * the project claim `IsPipelineCompliant`, which is the difference between
+ * Studio importing sixty files and Studio converting sixty files.
+ */
+export async function asPenMp3(blob: Blob): Promise<Blob> {
+  const ctx = new AudioContext();
+  const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+  await ctx.close();
+  const samples = decoded.sampleRate === PEN.sampleRate
+    ? decoded.getChannelData(0)
+    : resample(decoded.getChannelData(0), decoded.sampleRate, PEN.sampleRate);
+  const mp3 = await encodeMp3(samples, PEN.sampleRate, PEN.bitrate);
+  return new Blob([mp3 as BlobPart], { type: 'audio/mpeg' });
 }

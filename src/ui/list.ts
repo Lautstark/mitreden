@@ -6,9 +6,10 @@
  * model: an act is either on the one you clicked or on all of them.
  */
 
-import { asFormat } from '../core/audio.ts';
+import { asFormat, asPenMp3 } from '../core/audio.ts';
 import { getAudio } from '../db/db.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
+import { CAPACITY, penProject, SHEET, type PenAudio } from '../core/anybook.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
 import type { Format, PhraseWithState } from '../core/types.ts';
@@ -40,6 +41,7 @@ function openDownload(button: HTMLElement): void {
   menuOn(button, (add) => {
     add(t('download_mp3'), () => void packAll('mp3'));
     add(t('download_wav'), () => void packAll('wav'));
+    add(t('download_pen'), () => void packPen());
   });
 }
 
@@ -332,6 +334,77 @@ async function packAll(format: Format): Promise<void> {
   const safe = (current?.name ?? 'sammlung').replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'sammlung';
   save(zip(files), `mitreden-${safe}-${stamp}.zip`);
   say(t('done_pack', { n: files.length, format: format.toUpperCase() }));
+}
+
+/**
+ * The library tile Studio draws beside the project's name.
+ *
+ * Cosmetic, and made here rather than in core/anybook.ts because it wants a
+ * canvas and that module is meant to stay checkable without a browser.
+ */
+async function sheetThumbnail(): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  const width = 600;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = Math.round(width * SHEET.height / SHEET.width);
+  const pen = canvas.getContext('2d');
+  if (!pen) return undefined;
+  const scale = width / SHEET.width;
+  pen.fillStyle = '#fff';
+  pen.fillRect(0, 0, canvas.width, canvas.height);
+  pen.strokeStyle = '#c8c8c8';
+  for (let row = 0; row < SHEET.rows; row++)
+    for (let col = 0; col < SHEET.cols; col++) {
+      pen.beginPath();
+      pen.arc(
+        (SHEET.originX + col * SHEET.pitch + SHEET.diameter / 2) * scale,
+        (SHEET.originY + row * SHEET.pitch + SHEET.diameter / 2) * scale,
+        SHEET.diameter / 2 * scale, 0, Math.PI * 2,
+      );
+      pen.stroke();
+    }
+  const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/jpeg', 0.85));
+  return blob ? new Uint8Array(await blob.arrayBuffer()) : undefined;
+}
+
+/**
+ * A whole Sammlung as an Anybook project, for Studio to number and transfer.
+ *
+ * The sentences go on in the order the list shows them, which is the order the
+ * stickers come off the sheet — so the sheet reads the way the Sammlung does.
+ */
+async function packPen(): Promise<void> {
+  const items = shown().filter((item) => item.state !== 'missing');
+  if (!items.length) {
+    say(t('nothing_recorded'));
+    return;
+  }
+  if (items.length > CAPACITY) {
+    say(t('pen_too_many', { n: items.length, cap: CAPACITY }));
+    return;
+  }
+  busy('busy_pen', { n: items.length });
+  const audios: PenAudio[] = [];
+  for (const item of items) {
+    const stored = await getAudio(item.id);
+    if (!stored) continue;
+    audios.push({
+      name: `${item.id}.mp3`,
+      bytes: new Uint8Array(await (await asPenMp3(stored)).arrayBuffer()),
+      caption: item.text,
+    });
+  }
+  const current = here();
+  const stamp = new Date().toISOString().slice(0, 10);
+  const safe = (current?.name ?? 'sammlung').replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'sammlung';
+  save(
+    penProject(safe, audios, {
+      thumbnail: await sheetThumbnail(),
+      startCaption: t('pen_start'),
+    }),
+    `mitreden-${safe}-${stamp}.abs`,
+  );
+  say(t('done_pen', { n: audios.length }));
 }
 
 /**
