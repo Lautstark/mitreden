@@ -45,6 +45,7 @@ const ALLOWED = new Map([
   ['lautstark.github.io', 'the sister projects'],
   ['creativecommons.org', 'the licence the symbols carry'],
   ['www.caito.de', 'the source of a bundled word list'],
+  ['www.avery-zweckform.com', 'the label sheet an Anybook export is printed on'],
   // Never fetched and never linked: licence headers, XML namespaces and a
   // documentation link that travel inside third-party code.
   ['www.mp3dev.org', 'a licence header in lamejs'],
