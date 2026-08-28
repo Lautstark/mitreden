@@ -1,0 +1,74 @@
+// Renovate, for this repository.
+//
+// Everything general - when updates arrive, what groups with what, what may
+// merge itself - lives in Lautstark/.github and names no package. What is here
+// is the part that is true of mitreden and would be wrong to inherit.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // The .json5 is spelled out on purpose: the //path/to/file syntax implies a
+  // .json extension, so omitting it looks for a file that is not there and
+  // Renovate stops before it does anything. The shorter "owner/repo:name" form
+  // implies it too.
+  extends: ["github>Lautstark/.github//renovate-shared.json5"],
+
+  packageRules: [
+    // -----------------------------------------------------------------------
+    // The three shared packages: Renovate does not touch them
+    // -----------------------------------------------------------------------
+    //
+    // @lautstark/design, sicherung and stimmquelle are pinned as github:
+    // dependencies by release tag, and none is on npm:
+    //
+    //     "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#v2.7.0"
+    //
+    // Renovate can be made to follow those, but not with the npm manager that
+    // finds them: it needs git-refs or github-tags wired up by hand, with a
+    // versioning scheme told to it, per package.
+    //
+    // It is disabled rather than configured, for a reason that is not about
+    // the plumbing: **a bump of these is a decision, not an update.** A
+    // stimmquelle release that moves the loudness contract re-records every
+    // sentence in every library the next time somebody builds one, and its
+    // CHANGELOG says which edits a consumer has to make. A pull request that
+    // arrives on a Monday morning and merges itself is the wrong shape for
+    // that. tools/installcheck.mjs exists because a *stale* copy of one of
+    // these produces a plausible test failure somewhere far away; an
+    // unattended bump is the same problem pointed the other way.
+    //
+    // What keeps the pins from going stale is a check rather than a service:
+    //
+    //     node node_modules/@lautstark/design/pins.js
+    //
+    // runs in the deploy workflow, asks each repository for its newest tag,
+    // and names the pins that are behind. It warns and never fails.
+    {
+      matchPackageNames: ["@lautstark/**"],
+      enabled: false,
+    },
+
+    // -----------------------------------------------------------------------
+    // onnxruntime-web: the exact pin is somebody else's contract
+    // -----------------------------------------------------------------------
+    //
+    // "onnxruntime-web": "1.18.0" - exact, no caret, and that is deliberate.
+    // @lautstark/stimmquelle declares the same version as a peerDependency at
+    // exactly 1.18.0, and this repository is the consumer that satisfies it.
+    // Bumping it here alone leaves the two disagreeing.
+    //
+    // It is also not only a version in a manifest. piperVendor() in
+    // vite.config.ts copies onnxruntime's wasm binaries out of node_modules
+    // and serves them from /wasm/, next to the phonemizer's, and src/core/
+    // audio.ts imports the runtime from the same install. So the binaries on
+    // the page and the module that drives them come from whatever is pinned
+    // here, and stimmquelle's runtime answers were established against 1.18.0
+    // specifically - see LIBRARY and CHECKED in its catalogue.
+    //
+    // Nothing fails at build time if that moves. The first sentence somebody
+    // tries to record does.
+    {
+      matchPackageNames: ["onnxruntime-web"],
+      enabled: false,
+    },
+  ],
+}
