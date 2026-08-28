@@ -82,6 +82,8 @@
   "folder_choose": "Ordner wählen",
   "folder_confirm": "Zugriff bestätigen",
   "folder_failed": "Sicherung fehlgeschlagen: {reason} — {age}.",
+  "folder_held": "Dieser Browser hat keine Sammlungen. In „{folder}“ wurde nichts überschrieben — {age}.",
+  "folder_save-empty": "Trotzdem leer sichern",
   "folder_forget": "Ordner vergessen",
   "folder_forgotten": "Der Ordner wird nicht mehr beschrieben.",
   "folder_idle": "Ordner „{folder}“ · gesichert {age}",

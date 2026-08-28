@@ -82,6 +82,8 @@
   "folder_choose": "Choose folder",
   "folder_confirm": "Confirm access",
   "folder_failed": "Backup failed: {reason} — {age}.",
+  "folder_held": "This browser has no collections. Nothing in “{folder}” was overwritten — {age}.",
+  "folder_save-empty": "Save it empty anyway",
   "folder_forget": "Forget folder",
   "folder_forgotten": "The folder will no longer be written to.",
   "folder_idle": "Folder „{folder}“ · saved {age}",

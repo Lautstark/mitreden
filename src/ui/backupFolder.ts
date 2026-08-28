@@ -65,6 +65,11 @@ export function sentence(status: Status): string {
       return t('folder_permission', { folder: status.folder, age: lastCopy(status.lastWrite) });
     case 'failed':
       return t('folder_failed', { reason: status.reason, age: lastCopy(status.lastWrite) });
+    // Nothing went wrong, so this does not read like it did: the copy in the
+    // folder is whole, and the only question is whether this browser being
+    // empty is the truth.
+    case 'held':
+      return t('folder_held', { folder: status.folder, age: lastCopy(status.lastWrite) });
   }
 }
 
