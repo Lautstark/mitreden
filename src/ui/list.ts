@@ -397,7 +397,7 @@ async function packPen(): Promise<void> {
     penProject(safe, audios, {
       thumbnail: await sheetThumbnail(),
       startCaption: t('pen_start'),
-      // Two lines, which is what a full sheet has room for — see footer().
+      // Two lines, which is what the top margin has room for — see notesBlock().
       // The first says which sheet this is, because a Sammlung past 87
       // sentences comes out as several and they are otherwise identical.
       notes: (sheet, sheets) => [

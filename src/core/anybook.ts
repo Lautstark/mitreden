@@ -26,16 +26,28 @@ import { zip, type ZipEntry } from './zip.ts';
  * Avery Zweckform 6222: 88 round labels, 20 mm across, eight by eleven.
  *
  * Measured out of Avery's own Word template rather than their spec sheet,
- * which gives the diameter and the count and not the grid. The pitch is exact.
- * The origin is where a printer's own drift shows up, which is what the
- * calibration sheet is for — it is a default here, not a fact.
+ * which gives the diameter and the count and not the grid.
+ *
+ * originY is not the 12.33 the template appears to say. Each label sits in a
+ * floating table whose vertical offset — 699 twips, 12.33 mm — is anchored to
+ * the text body and not to the page: `vertAnchor="text"`. The body starts at
+ * the top margin, 345 twips, 6.09 mm, and that has to be added back. Taking the
+ * raw number printed every circle 6 mm high, which is how it was caught: on
+ * paper, against a real sheet, after the arithmetic had looked right twice.
+ *
+ * The corrected origin also makes the sheet symmetric — 18.42 mm of paper above
+ * the first row and 18.58 below the last — where the raw one gave a lopsided
+ * 12.3 and 24.7. The asymmetry was visible from the start and should have been
+ * believed.
+ *
+ * What is left is a printer's own drift, which no template can answer.
  */
 export const SHEET = {
   width: 210, height: 297,          // A4, mm
   cols: 8, rows: 11,
   diameter: 20,
   pitch: 24,
-  originX: 12.01, originY: 12.33,   // to the first label's left and top edge
+  originX: 12.01, originY: 18.42,   // to the first label's left and top edge
 } as const;
 
 /**
@@ -167,7 +179,7 @@ function latin1(text: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * What the sheet has to say for itself, along its bottom margin.
+ * What the sheet has to say for itself, along its top margin.
  *
  * This is the only part of the export that reaches the person at the printer.
  * mitreden's own screens are long gone by then — the file has been opened in
@@ -175,19 +187,20 @@ function latin1(text: string): Uint8Array<ArrayBuffer> {
  * things that ruin a sheet are both decided at that moment: printing it on the
  * wrong paper, and printing it scaled. A page that says which paper it wants
  * cannot be separated from the answer.
+ *
+ * At the top because correcting originY moved the room. A full sheet's last row
+ * of captions now sits at 280.8 mm, leaving too little beneath it to clear both
+ * the captions and the 10-odd millimetres at the foot of the page that printers
+ * will not put ink on. Above the first row there are 18.4 mm and nothing else
+ * competing for them.
  */
-function footer(lines: readonly string[]): string {
+function notesBlock(lines: readonly string[]): string {
   let out = '0.45 0.45 0.45 rg\n';
   lines.forEach((line, i) => {
     const escaped = line.replace(/[\\()]/g, (c) => `\\${c}`);
-    /*
-     * Stacked upwards from the last line rather than down from the first, and
-     * the numbers are the two margins it has to fit between. Below: 282.7 mm
-     * leaves 14 mm of paper, and few printers put ink nearer than 10. Above: a
-     * full sheet's last row of captions sits at 274.7 mm, so two lines clear
-     * them and three do not — which is why the caller is given two.
-     */
-    const from = 282.7 - (lines.length - 1 - i) * 3.2;
+    // 9.5 mm down for the first line, and the last still clears the top row of
+    // circles by about 5 mm.
+    const from = 9.5 + i * 3.2;
     const y = (SHEET.height - from) * MM;
     out += `BT /F1 7 Tf ${(SHEET.originX * MM).toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET\n`;
   });
@@ -196,13 +209,21 @@ function footer(lines: readonly string[]): string {
 
 /** One sheet's drawing: every circle outlined, the used ones captioned. */
 function sheetBody(captions: readonly string[], notes: readonly string[]): Uint8Array<ArrayBuffer> {
-  let body = '0.75 w 0.80 0.80 0.80 RG\n';
+  /*
+   * A hairline in the palest grey that still develops.
+   *
+   * The outline is a guide for lining the page up against a sheet of labels,
+   * and once it is lined up the guide prints onto the labels themselves: a
+   * grey ring around every sticker, on everything the stickers are then stuck
+   * to. Light enough to find when looking for it and to disappear when not.
+   */
+  let body = '0.25 w 0.92 0.92 0.92 RG\n';
   for (const { x, y } of GRID) body += circle(x, y, SHEET.diameter / 2);
   body += '0 g\n';
   captions.forEach((text, i) => {
     body += caption(GRID[i].x, GRID[i].y, text);
   });
-  body += footer(notes);
+  body += notesBlock(notes);
   return latin1(body);
 }
 
@@ -356,7 +377,7 @@ export function penProject(
     /** What is printed under the activation sticker. */
     startCaption?: string;
     /**
-     * Printed along the bottom margin of each sheet — see footer(). Asked per
+     * Printed along the top margin of each sheet — see notesBlock(). Asked per
      * sheet rather than given once, because a sheet out of several has to be
      * able to say which one it is; the wording stays the caller's, since this
      * module has no language of its own.
