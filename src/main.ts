@@ -46,6 +46,18 @@ const backup = new Sicherung({
   // The notice is written in the language the page is in — it travels inside
   // the file, and this app ships in two.
   produce: () => exportEverything(t('backup_notice')),
+  // Nothing in this browser. @lautstark/sicherung v1.3.0 holds a write that
+  // would put that over a folder holding the real thing, but only because this
+  // line says what mitreden's emptiness looks like — the package deliberately
+  // knows nothing about phrases or collections.
+  //
+  // Both, not either: a collection with no phrases in it is a name somebody
+  // typed and nothing more, and a phrase belongs to a collection, so neither
+  // alone means there is something here worth protecting.
+  looksEmpty: (produced) => {
+    const it = produced as { collections?: unknown[]; phrases?: unknown[] };
+    return it.collections?.length === 0 && it.phrases?.length === 0;
+  },
 });
 
 // Every write that changes what a Sicherung would contain, through the one
