@@ -22,33 +22,95 @@
 
 import { zip, type ZipEntry } from './zip.ts';
 
+/** One kind of label sheet: its grid, and what to call it on the page. */
+export interface Sheet {
+  /** What the export is asked for, and what a saved choice remembers. */
+  id: string;
+  /** Named on the printed sheet, so more can be bought without going looking. */
+  product: string;
+  /** Short enough for a menu: `Ø 20 mm · 6222`. */
+  label: string;
+  /** Avery's own page for it, so more paper can be bought without hunting. */
+  url: string;
+  width: number; height: number;     // the page, mm
+  cols: number; rows: number;
+  diameter: number;
+  pitch: number;
+  originX: number; originY: number;  // to the first label's left and top edge
+  /**
+   * Whether a word is printed under each circle.
+   *
+   * It needs a gutter to sit in. 6222 leaves 4 mm between labels and a caption
+   * is legible there; L6019 leaves 2.7 mm, which is not enough for type anyone
+   * could read while peeling. So that sheet goes out bare and the order of the
+   * stickers is the only thing that says which is which.
+   */
+  captions: boolean;
+}
+
 /**
- * Avery Zweckform 6222: 88 round labels, 20 mm across, eight by eleven.
+ * The sheets this can print, both measured out of Avery's own Word template
+ * rather than their spec pages, which give the diameter and the count and not
+ * the grid.
  *
- * Measured out of Avery's own Word template rather than their spec sheet,
- * which gives the diameter and the count and not the grid.
- *
- * originY is not the 12.33 the template appears to say. Each label sits in a
- * floating table whose vertical offset — 699 twips, 12.33 mm — is anchored to
- * the text body and not to the page: `vertAnchor="text"`. The body starts at
- * the top margin, 345 twips, 6.09 mm, and that has to be added back. Taking the
- * raw number printed every circle 6 mm high, which is how it was caught: on
- * paper, against a real sheet, after the arithmetic had looked right twice.
- *
- * The corrected origin also makes the sheet symmetric — 18.42 mm of paper above
- * the first row and 18.58 below the last — where the raw one gave a lopsided
- * 12.3 and 24.7. The asymmetry was visible from the start and should have been
- * believed.
+ * Each origin is checked against the other margin before it is believed. A
+ * die-cut sheet is symmetric, so if the numbers put more paper on one side than
+ * the other, the numbers are wrong — which is exactly what 6222 did for a while,
+ * and the printed sheet came out 6 mm high before anyone noticed the tell.
  *
  * What is left is a printer's own drift, which no template can answer.
  */
-export const SHEET = {
-  width: 210, height: 297,          // A4, mm
-  cols: 8, rows: 11,
-  diameter: 20,
-  pitch: 24,
-  originX: 12.01, originY: 18.42,   // to the first label's left and top edge
-} as const;
+export const SHEETS: Record<string, Sheet> = {
+  /*
+   * 88 round labels, 20 mm across, eight by eleven.
+   *
+   * originY is not the 12.33 the template appears to say. Each label sits in a
+   * floating table whose vertical offset — 699 twips, 12.33 mm — is anchored to
+   * the text body and not to the page: `vertAnchor="text"`. The body starts at
+   * the top margin, 345 twips, 6.09 mm, and that has to be added back. Corrected
+   * it leaves 18.42 mm of paper above the first row and 18.58 below the last.
+   */
+  '6222': {
+    id: '6222',
+    product: 'Avery Zweckform 6222',
+    label: 'Ø 20 mm · 6222',
+    url: 'https://www.avery-zweckform.com/vorlage-6222',
+    width: 210, height: 297,
+    cols: 8, rows: 11,
+    diameter: 20,
+    pitch: 24,
+    originX: 12.01, originY: 18.42,
+    captions: true,
+  },
+  /*
+   * 315 round labels, 10 mm across, fifteen by twenty-one.
+   *
+   * This one Avery publishes only as binary Word, which no converter here reads
+   * — so the numbers come from the OLE `Data` stream itself: 21 table
+   * definitions of 29 cells, alternating a 566 twip label with a 153 twip
+   * gutter. 566 is 9.984 mm and 566 + 153 is a pitch of 12.682, the same on
+   * both axes because round labels tile square.
+   *
+   * The origin is the page's left margin, 715 twips, plus the table's own
+   * -76 twip inset: 11.27 mm. It leaves 11.19 mm on the right, which is the
+   * symmetry check passing.
+   */
+  L6019: {
+    id: 'L6019',
+    product: 'Avery Zweckform L6019',
+    label: 'Ø 10 mm · L6019',
+    url: 'https://www.avery-zweckform.com/vorlage-l6019',
+    width: 210, height: 297,
+    cols: 15, rows: 21,
+    diameter: 9.984,
+    pitch: 12.682,
+    originX: 11.27, originY: 16.42,
+    captions: false,
+  },
+};
+
+/** What an export uses when nobody has said otherwise. */
+export const DEFAULT_SHEET = '6222';
 
 /**
  * Studio anchors a code by its top-left corner and draws it about 10 mm wide,
@@ -58,8 +120,8 @@ export const SHEET = {
  */
 const CODE = 10;
 
-/** Every circle on the sheet. */
-const CELLS = SHEET.cols * SHEET.rows;
+/** Every circle on one sheet of this kind. */
+const cellCount = (sheet: Sheet): number => sheet.cols * sheet.rows;
 
 /**
  * How many sentences fit on one sheet, the activation code having taken the
@@ -71,19 +133,19 @@ const CELLS = SHEET.cols * SHEET.rows;
  * of thing that costs nothing today and costs a reprint of the whole sheet the
  * day a pen is lost, broken, or wanted at kindergarten as well as at home.
  */
-export const PER_SHEET = CELLS - 1;
+export const perSheet = (sheet: Sheet): number => cellCount(sheet) - 1;
 
 /**
  * How many sheets a Sammlung of this size needs.
  *
- * A Sammlung outgrows one sheet the moment it passes 87, and refusing at that
- * line was this module's own limitation and never the format's: a project
- * carries PageNo on every code and PdfPageCount beside them, and Studio has
- * always read multi-page material. Only the first sheet loses a circle to the
- * activation code, so the sheets after it hold a full 88.
+ * A Sammlung outgrows one sheet the moment it passes what one holds, and
+ * refusing at that line was this module's own limitation and never the
+ * format's: a project carries PageNo on every code and PdfPageCount beside
+ * them, and Studio has always read multi-page material. Only the first sheet
+ * loses a circle to the activation code, so the ones after it are full.
  */
-export const sheetsFor = (sentences: number): number =>
-  Math.max(1, Math.ceil((sentences + 1) / CELLS));
+export const sheetsFor = (sheet: Sheet, sentences: number): number =>
+  Math.max(1, Math.ceil((sentences + 1) / cellCount(sheet)));
 
 /** One sticker: the audio it plays and the word printed under it. */
 export interface PenAudio {
@@ -97,24 +159,25 @@ export interface PenAudio {
 const MM = 72 / 25.4;
 
 /** Every label position, left to right then down, in mm from the top left. */
-function* cells(): Generator<{ x: number; y: number }> {
-  for (let row = 0; row < SHEET.rows; row++)
-    for (let col = 0; col < SHEET.cols; col++)
-      yield {
-        x: SHEET.originX + col * SHEET.pitch + SHEET.diameter / 2,
-        y: SHEET.originY + row * SHEET.pitch + SHEET.diameter / 2,
-      };
+export function cells(sheet: Sheet): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  for (let row = 0; row < sheet.rows; row++)
+    for (let col = 0; col < sheet.cols; col++)
+      out.push({
+        x: sheet.originX + col * sheet.pitch + sheet.diameter / 2,
+        y: sheet.originY + row * sheet.pitch + sheet.diameter / 2,
+      });
+  return out;
 }
-
-const GRID = [...cells()];
 
 /**
  * Where the nth code goes, counting the activation code as the first and
  * running on across sheets. PageNo is 1-based because Studio's is.
  */
-function slot(n: number): { page: number; x: number; y: number } {
-  const { x, y } = GRID[n % CELLS];
-  return { page: Math.floor(n / CELLS) + 1, x, y };
+function slot(sheet: Sheet, grid: { x: number; y: number }[], n: number):
+{ page: number; x: number; y: number } {
+  const { x, y } = grid[n % cellCount(sheet)];
+  return { page: Math.floor(n / cellCount(sheet)) + 1, x, y };
 }
 
 // ------------------------------------------------------------------- pdf
@@ -124,9 +187,9 @@ function slot(n: number): { page: number; x: number; y: number } {
 // program makes.
 
 /** A circle as four Béziers. y arrives measured from the top and flips here. */
-function circle(cx: number, cy: number, r: number): string {
+function circle(sheet: Sheet, cx: number, cy: number, r: number): string {
   const k = 0.5523 * r * MM;
-  const x = cx * MM, y = (SHEET.height - cy) * MM, rr = r * MM;
+  const x = cx * MM, y = (sheet.height - cy) * MM, rr = r * MM;
   return `${(x + rr).toFixed(3)} ${y.toFixed(3)} m `
     + `${(x + rr).toFixed(3)} ${(y + k).toFixed(3)} ${(x + k).toFixed(3)} ${(y + rr).toFixed(3)} ${x.toFixed(3)} ${(y + rr).toFixed(3)} c `
     + `${(x - k).toFixed(3)} ${(y + rr).toFixed(3)} ${(x - rr).toFixed(3)} ${(y + k).toFixed(3)} ${(x - rr).toFixed(3)} ${y.toFixed(3)} c `
@@ -142,11 +205,11 @@ function circle(cx: number, cy: number, r: number): string {
  * sheet is being peeled and is not on the sticker once it is stuck. A sticker
  * carrying its own text would be a sticker you cannot put on a photograph.
  */
-function caption(cx: number, cy: number, text: string): string {
+function caption(sheet: Sheet, cx: number, cy: number, text: string): string {
   const cut = text.length > 16 ? `${text.slice(0, 15)}…` : text;
   const width = cut.length * 1.35;                 // Helvetica at 5pt, near enough
   const x = (cx - width / 2) * MM;
-  const y = (SHEET.height - (cy + SHEET.diameter / 2 + 2.4)) * MM;
+  const y = (sheet.height - (cy + sheet.diameter / 2 + 2.4)) * MM;
   const escaped = cut.replace(/[\\()]/g, (c) => `\\${c}`);
   return `BT /F1 5 Tf ${x.toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET\n`;
 }
@@ -194,21 +257,24 @@ function latin1(text: string): Uint8Array<ArrayBuffer> {
  * will not put ink on. Above the first row there are 18.4 mm and nothing else
  * competing for them.
  */
-function notesBlock(lines: readonly string[]): string {
+function notesBlock(sheet: Sheet, lines: readonly string[]): string {
   let out = '0.45 0.45 0.45 rg\n';
   lines.forEach((line, i) => {
     const escaped = line.replace(/[\\()]/g, (c) => `\\${c}`);
     // 9.5 mm down for the first line, and the last still clears the top row of
     // circles by about 5 mm.
     const from = 9.5 + i * 3.2;
-    const y = (SHEET.height - from) * MM;
-    out += `BT /F1 7 Tf ${(SHEET.originX * MM).toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET\n`;
+    const y = (sheet.height - from) * MM;
+    out += `BT /F1 7 Tf ${(sheet.originX * MM).toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET\n`;
   });
   return `${out}0 g\n`;
 }
 
 /** One sheet's drawing: every circle outlined, the used ones captioned. */
-function sheetBody(captions: readonly string[], notes: readonly string[]): Uint8Array<ArrayBuffer> {
+function sheetBody(
+  sheet: Sheet, grid: { x: number; y: number }[],
+  captions: readonly string[], notes: readonly string[],
+): Uint8Array<ArrayBuffer> {
   /*
    * A hairline in the palest grey that still develops.
    *
@@ -218,12 +284,14 @@ function sheetBody(captions: readonly string[], notes: readonly string[]): Uint8
    * to. Light enough to find when looking for it and to disappear when not.
    */
   let body = '0.25 w 0.92 0.92 0.92 RG\n';
-  for (const { x, y } of GRID) body += circle(x, y, SHEET.diameter / 2);
+  for (const { x, y } of grid) body += circle(sheet, x, y, sheet.diameter / 2);
   body += '0 g\n';
-  captions.forEach((text, i) => {
-    body += caption(GRID[i].x, GRID[i].y, text);
+  // A sheet whose gutter is too narrow for type goes out bare — see
+  // Sheet.captions. The notes still fit: they live in the top margin.
+  if (sheet.captions) captions.forEach((text, i) => {
+    body += caption(sheet, grid[i].x, grid[i].y, text);
   });
-  body += notesBlock(notes);
+  body += notesBlock(sheet, notes);
   return latin1(body);
 }
 
@@ -235,21 +303,24 @@ function sheetBody(captions: readonly string[], notes: readonly string[]): Uint8
  * shared, each page needs its own dictionary and its own stream, and the page
  * tree has to name them all.
  */
-function sheetsPdf(sheets: readonly { captions: string[]; notes: string[] }[]): Uint8Array<ArrayBuffer> {
-  const n = sheets.length;
+function sheetsPdf(
+  sheet: Sheet, grid: { x: number; y: number }[],
+  pages: readonly { captions: string[]; notes: string[] }[],
+): Uint8Array<ArrayBuffer> {
+  const n = pages.length;
   const FONT = 3;                        // catalog, page tree, font, then the pages
   const page = (i: number) => FONT + 1 + i;
   const content = (i: number) => FONT + 1 + n + i;
-  const box = `0 0 ${(SHEET.width * MM).toFixed(2)} ${(SHEET.height * MM).toFixed(2)}`;
+  const box = `0 0 ${(sheet.width * MM).toFixed(2)} ${(sheet.height * MM).toFixed(2)}`;
 
   const objects: (string | Uint8Array<ArrayBuffer>)[] = [
     '<</Type/Catalog/Pages 2 0 R>>',
-    `<</Type/Pages/Kids[${sheets.map((_, i) => `${page(i)} 0 R`).join(' ')}]/Count ${n}>>`,
+    `<</Type/Pages/Kids[${pages.map((_, i) => `${page(i)} 0 R`).join(' ')}]/Count ${n}>>`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>',
-    ...sheets.map((_, i) =>
+    ...pages.map((_, i) =>
       `<</Type/Page/Parent 2 0 R/MediaBox[${box}]`
       + `/Resources<</Font<</F1 ${FONT} 0 R>>>>/Contents ${content(i)} 0 R>>`),
-    ...sheets.map((sheet) => sheetBody(sheet.captions, sheet.notes)),
+    ...pages.map((page) => sheetBody(sheet, grid, page.captions, page.notes)),
   ];
 
   const parts: Uint8Array<ArrayBuffer>[] = [latin1('%PDF-1.4\n')];
@@ -285,13 +356,14 @@ function sheetsPdf(sheets: readonly { captions: string[]; notes: string[] }[]): 
  * inventing numbers that belong to somebody else's book.
  */
 function projectJson(
+  sheet: Sheet, grid: { x: number; y: number }[],
   title: string, pdfName: string, audios: readonly PenAudio[], hasThumbnail: boolean,
   sheets: number,
 ): string {
   // The first circle of the first sheet is the activation code and the
   // sentences run on from there, across as many sheets as they need.
   const at = (i: number) => {
-    const { page, x, y } = slot(i);
+    const { page, x, y } = slot(sheet, grid, i);
     return {
       PageNo: page,
       X: Number(((x - CODE / 2) / 10).toFixed(6)),
@@ -359,23 +431,21 @@ function projectJson(
  * The whole project, ready for Studio's library.
  *
  * A run longer than one sheet holds is cut into as many as it needs —
- * `sheetsFor()` counts them, `PER_SHEET` is how many sentences the first one
+ * `sheetsFor()` counts them, `perSheet()` is how many sentences the first one
  * has room for once the activation code has taken a circle — so length is not
  * an error and nothing is dropped. The only refusal left is an empty list,
  * which would otherwise write a project with a sheet of nothing in it.
  *
- * This used to say the opposite: that too many sentences was the caller's
- * problem to have caught, that `CAPACITY` was exported so it could, and that
- * this function refused rather than silently dropping the overflow — because a
- * sticker sheet missing its last four sentences looks finished. `PER_SHEET` is
- * the constant that answers that question now; `CAPACITY` never existed under
- * that name. That reasoning
- * is why the multi-sheet path exists; there is no `CAPACITY` to import.
+ * That refusal-on-overflow is what this used to do, and the reasoning behind it
+ * is why the multi-sheet path exists: a sticker sheet missing its last four
+ * sentences looks finished.
  */
 export function penProject(
   title: string,
   audios: readonly PenAudio[],
-  { thumbnail, startCaption = 'Start', notes = () => [] }: {
+  { sheet = SHEETS[DEFAULT_SHEET], thumbnail, startCaption = 'Start', notes = () => [] }: {
+    /** Which label sheet this is printed on. */
+    sheet?: Sheet;
     thumbnail?: Uint8Array<ArrayBuffer>;
     /** What is printed under the activation sticker. */
     startCaption?: string;
@@ -393,22 +463,24 @@ export function penProject(
   // The activation code leads, the sentences follow, and the run is cut into
   // sheets. A sheet that ends mid-Sammlung is not a special case: the codes
   // carry their own page number and Studio reads them from it.
+  const grid = cells(sheet);
   const all = [startCaption, ...audios.map((a) => a.caption)];
-  const count = sheetsFor(audios.length);
-  const sheets = Array.from({ length: count }, (_, i) => ({
-    captions: all.slice(i * CELLS, (i + 1) * CELLS),
+  const count = sheetsFor(sheet, audios.length);
+  const per = grid.length;
+  const pages = Array.from({ length: count }, (_, i) => ({
+    captions: all.slice(i * per, (i + 1) * per),
     notes: [...notes(i + 1, count)],
   }));
 
   const pdfName = `${title}.pdf`;
-  const files: ZipEntry[] = [{ name: pdfName, bytes: sheetsPdf(sheets) }];
+  const files: ZipEntry[] = [{ name: pdfName, bytes: sheetsPdf(sheet, grid, pages) }];
   if (thumbnail) files.push({ name: '_Thumbnail_.jpeg', bytes: thumbnail });
   for (const audio of audios) files.push({ name: audio.name, bytes: audio.bytes });
   // Last, the way Studio writes it.
   files.push({
     name: '_Project_.json',
     bytes: new TextEncoder().encode(
-      projectJson(title, pdfName, audios, Boolean(thumbnail), count),
+      projectJson(sheet, grid, title, pdfName, audios, Boolean(thumbnail), count),
     ),
   });
   return zip(files);

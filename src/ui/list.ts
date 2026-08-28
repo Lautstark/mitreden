@@ -9,7 +9,9 @@
 import { asFormat, asPenMp3 } from '../core/audio.ts';
 import { getAudio } from '../db/db.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
-import { penProject, sheetsFor, SHEET, type PenAudio } from '../core/anybook.ts';
+import {
+  cells, penProject, sheetsFor, SHEETS, type PenAudio, type Sheet,
+} from '../core/anybook.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
 import type { Format, PhraseWithState } from '../core/types.ts';
@@ -41,7 +43,10 @@ function openDownload(button: HTMLElement): void {
   menuOn(button, (add) => {
     add(t('download_mp3'), () => void packAll('mp3'));
     add(t('download_wav'), () => void packAll('wav'));
-    add(t('download_pen'), () => void packPen());
+    // One entry per sheet rather than a picker behind a picker: there are two,
+    // and which paper is in the printer is the whole of the question.
+    for (const sheet of Object.values(SHEETS))
+      add(t('download_pen', { label: sheet.label }), () => void packPen(sheet));
   });
 }
 
@@ -342,27 +347,22 @@ async function packAll(format: Format): Promise<void> {
  * Cosmetic, and made here rather than in core/anybook.ts because it wants a
  * canvas and that module is meant to stay checkable without a browser.
  */
-async function sheetThumbnail(): Promise<Uint8Array<ArrayBuffer> | undefined> {
+async function sheetThumbnail(sheet: Sheet): Promise<Uint8Array<ArrayBuffer> | undefined> {
   const width = 600;
   const canvas = document.createElement('canvas');
   canvas.width = width;
-  canvas.height = Math.round(width * SHEET.height / SHEET.width);
+  canvas.height = Math.round(width * sheet.height / sheet.width);
   const pen = canvas.getContext('2d');
   if (!pen) return undefined;
-  const scale = width / SHEET.width;
+  const scale = width / sheet.width;
   pen.fillStyle = '#fff';
   pen.fillRect(0, 0, canvas.width, canvas.height);
   pen.strokeStyle = '#c8c8c8';
-  for (let row = 0; row < SHEET.rows; row++)
-    for (let col = 0; col < SHEET.cols; col++) {
-      pen.beginPath();
-      pen.arc(
-        (SHEET.originX + col * SHEET.pitch + SHEET.diameter / 2) * scale,
-        (SHEET.originY + row * SHEET.pitch + SHEET.diameter / 2) * scale,
-        SHEET.diameter / 2 * scale, 0, Math.PI * 2,
-      );
-      pen.stroke();
-    }
+  for (const { x, y } of cells(sheet)) {
+    pen.beginPath();
+    pen.arc(x * scale, y * scale, sheet.diameter / 2 * scale, 0, Math.PI * 2);
+    pen.stroke();
+  }
   const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/jpeg', 0.85));
   return blob ? new Uint8Array(await blob.arrayBuffer()) : undefined;
 }
@@ -373,7 +373,7 @@ async function sheetThumbnail(): Promise<Uint8Array<ArrayBuffer> | undefined> {
  * The sentences go on in the order the list shows them, which is the order the
  * stickers come off the sheet — so the sheet reads the way the Sammlung does.
  */
-async function packPen(): Promise<void> {
+async function packPen(sheet: Sheet): Promise<void> {
   const items = shown().filter((item) => item.state !== 'missing');
   if (!items.length) {
     say(t('nothing_recorded'));
@@ -395,28 +395,35 @@ async function packPen(): Promise<void> {
   const safe = (current?.name ?? 'sammlung').replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'sammlung';
   save(
     penProject(safe, audios, {
-      thumbnail: await sheetThumbnail(),
+      sheet,
+      thumbnail: await sheetThumbnail(sheet),
       startCaption: t('pen_start'),
       // Two lines, which is what the top margin has room for — see notesBlock().
       // The first says which sheet this is, because a Sammlung past 87
       // sentences comes out as several and they are otherwise identical.
-      notes: (sheet, sheets) => [
+      notes: (page, pages) => [
         // Only the first sheet carries the start code, so only the first says
         // so. Whole sentences per case rather than a stem with pieces bolted
         // on, because the pieces do not sit in the same order in both
         // languages.
-        sheets === 1
+        pages === 1
           ? t('pen_sheet_what', { title: safe, date: stamp, n: audios.length })
-          : sheet === 1
-            ? t('pen_sheet_first', { title: safe, date: stamp, of: sheets })
-            : t('pen_sheet_more', { title: safe, date: stamp, n: sheet, of: sheets }),
-        t('pen_sheet_paper'),
+          : page === 1
+            ? t('pen_sheet_first', { title: safe, date: stamp, of: pages })
+            : t('pen_sheet_more', { title: safe, date: stamp, n: page, of: pages }),
+        t('pen_sheet_paper', {
+          product: sheet.product,
+          n: sheet.cols * sheet.rows,
+          // The address without its scheme: it is being read off paper, not
+          // clicked.
+          url: sheet.url.replace(/^https?:\/\/(www\.)?/, ''),
+        }),
       ],
     }),
     `mitreden-${safe}-${stamp}.abs`,
   );
   // The plural count is the sheets, because that is the word that changes.
-  say(tn('done_pen', sheetsFor(audios.length), { sentences: audios.length }));
+  say(tn('done_pen', sheetsFor(sheet, audios.length), { sentences: audios.length }));
 }
 
 /**

@@ -13,7 +13,8 @@ import { el } from './dom.ts';
 const REPO = 'https://github.com/Lautstark/mitreden';
 const ORG = 'https://github.com/Lautstark';
 const BILDHAFT = 'https://lautstark.github.io/bildhaft/';
-const AVERY = 'https://www.avery-zweckform.com/vorlage-6222';
+const AVERY_6222 = 'https://www.avery-zweckform.com/vorlage-6222';
+const AVERY_L6019 = 'https://www.avery-zweckform.com/vorlage-l6019';
 const ISSUES = 'https://github.com/Lautstark/mitreden/issues';
 
 /** The one line to change if a different address should be public. */
@@ -65,8 +66,12 @@ const ABOUT = {
       bleibt öffnen, übertragen, drucken.
     </p>
     <p style="margin:8px 0 0">
-      Gedruckt wird ohne Skalierung auf
-      ${ext(AVERY, 'Avery Zweckform 6222')} (Ø 20 mm, 88 Etiketten je Bogen).
+      Gedruckt wird ohne Skalierung, auf
+      ${ext(AVERY_6222, 'Avery Zweckform 6222')} (Ø 20 mm, 88 Etiketten je Bogen)
+      oder ${ext(AVERY_L6019, 'L6019')} (Ø 10 mm, 315 je Bogen). Der Bogen wird
+      beim Export gewählt. Auf dem kleinen ist zwischen den Etiketten kein Platz
+      für ein Wort, die Aufkleber tragen also keine Beschriftung und stehen in
+      der Reihenfolge der Liste.
       Der erste Aufkleber ist der Startcode. Er trägt kein Wort, und ohne ihn
       lässt sich der Bogen später auf keinem zweiten Stift verwenden, weder auf
       einem Ersatzstift noch auf dem im Kindergarten.
@@ -110,8 +115,12 @@ const ABOUT = {
       is open, transfer, print.
     </p>
     <p style="margin:8px 0 0">
-      Print without scaling on
-      ${ext(AVERY, 'Avery Zweckform 6222')} (Ø 20 mm, 88 labels per sheet). The
+      Print without scaling, on
+      ${ext(AVERY_6222, 'Avery Zweckform 6222')} (Ø 20 mm, 88 labels per sheet)
+      or ${ext(AVERY_L6019, 'L6019')} (Ø 10 mm, 315 per sheet). The sheet is
+      chosen at export. On the small one there is no room between labels for a
+      word, so those stickers carry no caption and stand in the order of the
+      list. The
       first sticker is the start code. It carries no word, and without it the
       sheet can never be used on a second pen, neither a replacement nor the one
       at kindergarten.

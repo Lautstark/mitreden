@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { penProject, PER_SHEET, SHEET, sheetsFor, type PenAudio } from '../../src/core/anybook.ts';
+import {
+  penProject, perSheet, SHEETS, sheetsFor, type PenAudio,
+} from '../../src/core/anybook.ts';
+
+const SHEET = SHEETS['6222'];
 
 /*
  * What an Anybook project has to get right that nothing else would notice.
@@ -124,7 +128,7 @@ describe('an Anybook project', () => {
      * the first on sheet two, back at the top-left corner.
      */
     const project = await projectOf(penProject('Test', audio(96)));
-    expect(sheetsFor(96)).toBe(2);
+    expect(sheetsFor(SHEET, 96)).toBe(2);
     expect(project.PdfPageCount).toBe(2);
     expect(project.Codes).toHaveLength(97);
 
@@ -144,8 +148,35 @@ describe('an Anybook project', () => {
   });
 
   it('fills exactly one sheet at the boundary and two just past it', () => {
-    expect(sheetsFor(PER_SHEET)).toBe(1);
-    expect(sheetsFor(PER_SHEET + 1)).toBe(2);
+    expect(sheetsFor(SHEET, perSheet(SHEET))).toBe(1);
+    expect(sheetsFor(SHEET, perSheet(SHEET) + 1)).toBe(2);
     expect(() => penProject('Test', [])).toThrow(/at least one/);
+  });
+
+  it('lays the small sheet out on its own grid, and bare', async () => {
+    /*
+     * L6019 is 315 labels of 10 mm, so a Sammlung that needed two sheets of
+     * 6222 fits on one of these — and 2.7 mm of gutter is not enough type for
+     * anyone to read while peeling, so it goes out without captions. Both facts
+     * come from the sheet rather than from this module knowing about products.
+     */
+    const small = SHEETS.L6019;
+    expect(perSheet(small)).toBe(314);
+    expect(sheetsFor(small, 96)).toBe(1);
+
+    const blob = penProject('Test', audio(96), { sheet: small });
+    const project = await projectOf(blob);
+    expect(project.PdfPageCount).toBe(1);
+    expect(project.Codes).toHaveLength(97);
+    expect(project.Codes.every((c: { PageNo: number }) => c.PageNo === 1)).toBe(true);
+
+    // Its own grid: the first circle's centre, less the code's half-width.
+    expect(project.Codes[0].X).toBeCloseTo((small.originX + small.diameter / 2 - 5) / 10, 3);
+    expect(project.Codes[1].X)
+      .toBeCloseTo((small.originX + small.pitch + small.diameter / 2 - 5) / 10, 3);
+
+    // Bare: no caption text reaches the page.
+    const pdf = (await entries(blob)).get('Test.pdf')!;
+    expect(new TextDecoder('latin1').decode(pdf)).not.toContain('Satz 1');
   });
 });
