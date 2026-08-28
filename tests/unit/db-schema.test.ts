@@ -1,41 +1,39 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /* The database somebody already had, and what the current version does with it:
- * nothing.
+ * nothing at all, until somebody says otherwise.
  *
- * There is no carrying-across from version 1 and there is not meant to be —
- * conventions.md's rule about its own rules: one user, disposable data, and the
- * old shape deleted in the change that adopts the new one. A library worth
- * keeping across this goes out through the Sicherung, which is what that file is
- * for and is a better answer than a migration nobody reads a second time.
+ * This file used to assert the opposite, and the change is worth recording
+ * rather than quietly rewriting. The rule was conventions.md's rule about its
+ * own rules — one user, disposable data, and the old shape deleted in the
+ * change that adopts the new one — with a Sicherung as the way to carry a
+ * library across. Under it, a version 1 database was dropped cleanly and the
+ * page opened empty and working.
  *
- * Version 3 is the exception, and the reason it is one is in db-migration.test.ts
- * beside the migration it tests: that upgrade carries recordings, which no
- * Sicherung holds.
+ * "One user" is not one browser once this is served from a domain. Versions 1
+ * and 2 were live between 2026-08-22 and 2026-08-25, so a browser still
+ * holding one is one that has not been back since — the browser least likely
+ * to have a Sicherung and least likely to be watched while it loses its
+ * library. The drop was clean, which was the old claim under test, and that is
+ * exactly what made it invisible.
  *
- * So what is under test is that the drop is *clean*, not that it happens. An
- * upgrade that threw would leave db() rejecting forever, on a page that looks
- * fine until the first write — and only a browser that had been here before
- * would ever see it. Every other test in this suite starts from no database at
- * all and cannot.
+ * So the claim now is that the records are still there afterwards, and that
+ * the discard still exists but has to be asked for. db-refusal.test.ts makes
+ * the same case from version 2, which is the other shape that shipped; the
+ * carrying-across from version 3 is in db-migration.test.ts.
  */
 
 const DB_NAME = 'mitreden';
 
 /** Version 1, made the way version 1 made it: one `meta` store holding the
- *  whole library as two JSON arrays under two keys, the settings beside them,
- *  and `audio` as a loose key-value store. Written out here rather than
- *  imported, because the point is to reproduce what is already on somebody's
- *  disk — a helper that moved with the code would test the new shape against
- *  itself. */
+ *  whole library as two arrays, and an `audio` store beside it. */
 function seedVersionOne(): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = () => {
       const database = request.result;
-      for (const name of ['meta', 'audio']) {
-        if (!database.objectStoreNames.contains(name)) database.createObjectStore(name);
-      }
+      database.createObjectStore('meta');
+      database.createObjectStore('audio');
     };
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
@@ -48,14 +46,31 @@ function seedVersionOne(): Promise<void> {
       ], 'phrases');
       meta.put([{ key: 'kueche', name: 'Küche' }], 'collections');
       meta.put({ voice: 'piper:de_DE-thorsten-medium' }, 'settings');
-      // A recording, in a store whose shape did not change, so that "every
-      // store is dropped" is a claim with something behind it.
+      // A recording, in a store whose shape did not change, so that "nothing
+      // was touched" is a claim with something behind it.
       tx.objectStore('audio').put(new Blob([new Uint8Array([1, 2, 3])]), 'hunger');
       tx.oncomplete = () => { database.close(); resolve(); };
       tx.onerror = () => reject(tx.error);
     };
   });
 }
+
+/** Opens whatever is on disk without upgrading it, so the test can look at a
+ *  database this version has refused to touch. */
+function openAsIs(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
+const get = <T>(store: string, key: string, database: IDBDatabase): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const request = database.transaction(store).objectStore(store).get(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result as T);
+  });
 
 /* Imported after the old database exists, not before: db.ts opens lazily, but a
  * top-level import that ever grew an eager open would make this file quietly
@@ -68,28 +83,39 @@ beforeAll(async () => {
 });
 
 describe('opening a database left behind by version 1', () => {
-  /* The upgrade deletes every store it finds and creates the schema. Both
-   * halves can throw — deleteObjectStore outside a versionchange transaction,
-   * createIndex on a name already there — and a throw in there rejects the
-   * open, which every call in this file is waiting on. */
-  it('upgrades without throwing, so the store answers at all', async () => {
-    await expect(store.allCollections()).resolves.toBeTruthy();
+  it('refuses, rather than opening onto an empty library', async () => {
+    await expect(store.db()).rejects.toSatisfy(store.isRefusal);
   });
 
-  it('hands back an empty library rather than the one that was there', async () => {
+  /* The whole point, and the half that used to be false. `meta` is a store no
+   * current version has ever heard of, which is the strongest form of the
+   * claim: the upgrade did not get far enough to have an opinion about it. */
+  it('leaves the library and the recording exactly where they were', async () => {
+    const database = await openAsIs();
+    try {
+      expect(database.version, 'the version was not moved').toBe(1);
+      expect(await get<unknown[]>('meta', 'phrases', database)).toHaveLength(2);
+      expect(await get<unknown[]>('meta', 'collections', database)).toHaveLength(1);
+      expect(await get('meta', 'settings', database)).toBeTruthy();
+      expect(await get('audio', 'hunger', database), 'the recording too').toBeTruthy();
+    } finally {
+      database.close();
+    }
+  });
+
+  it('refuses again on a second open, rather than caching a broken handle', async () => {
+    await expect(store.db()).rejects.toSatisfy(store.isRefusal);
+  });
+
+  /* The old behaviour is still reachable — it is what somebody who has been
+   * told what is there and wants to start again gets. What changed is that it
+   * is now a decision rather than the price of visiting the page. */
+  it('hands back an empty library once the old one is discarded on purpose', async () => {
+    await store.discardEverything();
     expect(await store.allPhrases()).toEqual([]);
     expect(await store.allCollections()).toEqual([]);
     expect(await store.countPhrases()).toBe(0);
-  });
-
-  /* audio/ has the same shape in both versions and is dropped anyway. Keeping
-   * it would leave a browser holding recordings for sentences that no longer
-   * exist — half-old, which is the state this change exists to not leave. */
-  it('drops the recordings too, rather than keeping them half-old', async () => {
     expect(await store.getAudio('hunger')).toBeUndefined();
-  });
-
-  it('drops the settings, which nothing else carried', async () => {
     expect(await store.loadSettings()).toEqual({});
   });
 

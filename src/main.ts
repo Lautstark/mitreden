@@ -11,8 +11,9 @@ import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';
 import { exportEverything } from './db/backup.ts';
-import { onChanged } from './db/db.ts';
+import { discardEverything, isRefusal, onChanged } from './db/db.ts';
 import { Sicherung } from '@lautstark/sicherung';
+import { confirmDialog } from '@lautstark/design/dialog';
 import { lang, setLang, t, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
@@ -96,6 +97,35 @@ export async function start(): Promise<void> {
   await backup.restore().catch(() => undefined);
 }
 
-void start();
+/**
+ * The one failure that has to be spoken to rather than logged.
+ *
+ * A library this version has no step for leaves the database untouched and the
+ * page with nothing on it, which on its own reads as a broken app — and the
+ * one thing somebody must not do in that state is assume it is empty and go
+ * looking for their backup. So it says what happened, and offers the discard
+ * that used to happen silently on this exact path. Declining leaves everything
+ * where it is: a step can be written later, and the records will still be
+ * there for it.
+ */
+async function refused(): Promise<void> {
+  chooseLang();
+  if (!await confirmDialog({
+    title: t('db_refused_title'),
+    body: t('db_refused_body'),
+    confirmLabel: t('db_refused_do'),
+    cancelLabel: t('cancel'),
+    closeLabel: t('close'),
+    danger: true,
+  })) return;
+
+  await discardEverything();
+  location.reload();
+}
+
+void start().catch((error: unknown) => {
+  if (isRefusal(error)) return refused();
+  throw error;
+});
 
 export type { Lang };

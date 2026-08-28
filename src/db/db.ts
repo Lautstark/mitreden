@@ -48,27 +48,43 @@
  *   one is moved by every edit, including the sentences going in and out. See
  *   bump() below for why that half matters more than the rename.
  *
- * ## Migration, and where the rule about not having one stops
+ * ## Migration: a step for every version crossed, or nothing happens
  *
- * Version 3 dropped every store it found, and version 4 still does that for
- * anything older than 3. conventions.md's rule about its own rules: one user,
- * disposable data, and the old shape deleted in the change that adopts the new
- * one. A library worth keeping across that goes out through the Sicherung.
+ * Version 4 carries a version 3 library across, recordings and all: `migrate`
+ * below copies blobs where it splits a sentence and deletes none. Nothing is
+ * re-recorded and nothing is lost.
  *
- * Version 4 is different, and the difference is the `audio` store. Dropping
- * version 1 and 2 cost recordings that a Sicherung could not have carried
- * anyway — it holds no audio, by design, because the audio is reproducible.
- * "Reproducible" was cheap when the change was a schema: restore the file, press
- * record, wait. It is not cheap here, because this change moves the voice from
- * the sentence to the Sammlung, and re-recording a library *in the new
- * arrangement* is exactly the thing the person would want to check before
- * agreeing to. So version 4 carries the library across rather than asking for it
- * back, and it carries every clip: `migrate` below copies blobs where it splits a
- * sentence and deletes none. Nothing is re-recorded and nothing is lost.
+ * Every other old version is **refused**, and the upgrade transaction is
+ * aborted so the database keeps its version and its records. That is a change
+ * of rule, and it is worth saying what it replaced. This file used to drop
+ * every store it found for anything older than 3, on conventions.md's rule
+ * about its own rules: one user, disposable data, and the old shape deleted in
+ * the change that adopts the new one. A library worth keeping went out through
+ * the Sicherung.
+ *
+ * That rule stopped being true when this went to a domain. "One user" is not
+ * one browser: versions 1 and 2 were live between 2026-08-22 and 2026-08-25,
+ * and a browser still holding one is a browser that has not been back since —
+ * which is exactly the browser that would have lost its library on the next
+ * visit, silently, to a page that then worked perfectly. bildhaft reached the
+ * same place first and wrote it down; its adr/0001 is the argument, and this
+ * is mitreden agreeing with it.
+ *
+ * Version 4 itself already conceded the principle. The reason it carries a v3
+ * library rather than asking for it back is that re-recording a library *in a
+ * new arrangement* is the thing a person would want to check before agreeing
+ * to — and "the audio is reproducible" is cheap to say and expensive to do. A
+ * v1 or v2 library is no more disposable than a v3 one; it is only older.
+ *
+ * What a refusal costs is that the app cannot open until somebody decides. It
+ * says so, and offers to start again — the same discard as before, made once,
+ * out loud, by the person whose recordings they are. A step can still be
+ * written later; the refusal is what keeps the records alive long enough for
+ * that to be possible.
  */
 
 import {
-  openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames,
+  deleteDB, openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames,
 } from 'idb';
 import { normText, slug } from '../core/ids.ts';
 import { commonest } from '../core/voices.ts';
@@ -268,37 +284,95 @@ async function migrate(
   }
 }
 
+/** The stores a database that has never been here starts with. */
+function createStores(database: IDBPDatabase<MitredenDB>): void {
+  const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
+  phrases.createIndex('collection', 'collection');
+  phrases.createIndex('norm', 'norm');
+
+  database.createObjectStore('collections', { keyPath: 'id' })
+    .createIndex('updatedAt', 'updatedAt');
+
+  // Out-of-line: a Settings object has no id of its own, and a Blob cannot
+  // carry one.
+  database.createObjectStore(SETTINGS);
+  database.createObjectStore('audio');
+}
+
+/**
+ * Thrown when a database has to cross a version nothing here knows how to
+ * carry. A code rather than a sentence: this file has no language, and the
+ * caller has the text table. What it means at the call site is *the library is
+ * still there and nothing has touched it.*
+ */
+export const MISSING_STEP = 'db:no-migration';
+
+/** Whether an error is the refusal above, wherever it surfaced. */
+export const isRefusal = (error: unknown): boolean =>
+  error instanceof Error && error.message === MISSING_STEP;
+
+/**
+ * Why the last open refused, put aside where db() can pick it up.
+ *
+ * A throw does not abort an *async* upgrade callback the way it aborts a
+ * synchronous one: the rejection escapes into nothing idb is watching and the
+ * transaction commits regardless. So the refusal is an explicit abort(), and
+ * the reason has to travel out of band — what openDB rejects with is an
+ * AbortError, which says nothing about why.
+ */
+let refusal: Error | null = null;
+
 let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
+  refusal = null;
   handle ??= openDB<MitredenDB>('mitreden', 4, {
     async upgrade(database, from, _to, tx) {
-      // A version 3 library is carried across, recordings and all. Anything
-      // older is dropped, which is the rule this file has always followed and
-      // the head of it says why version 4 is the exception.
-      if (from === 3) {
-        await migrate(tx);
-        return;
+      try {
+        // A browser that has never been here — and the way back in after
+        // discardEverything(), which deletes the database and so arrives as
+        // this same case.
+        if (from === 0) {
+          createStores(database);
+          return;
+        }
+
+        // A version 3 library is carried across, recordings and all.
+        if (from === 3) {
+          await migrate(tx);
+          return;
+        }
+
+        // Every other version, including any added after this one without a
+        // step to go with it. Refusing is the whole point: see the head of
+        // this file.
+        throw new Error(MISSING_STEP);
+      } catch (error) {
+        refusal = error instanceof Error ? error : new Error(MISSING_STEP);
+        // The abort rejects tx.done, and nothing else is listening to it.
+        tx.done.catch(() => undefined);
+        tx.abort();
       }
-
-      // Snapshotted before the loop: objectStoreNames is live, and deleting
-      // through it skips every other name.
-      for (const name of [...database.objectStoreNames]) database.deleteObjectStore(name);
-
-      const phrases = database.createObjectStore('phrases', { keyPath: 'id' });
-      phrases.createIndex('collection', 'collection');
-      phrases.createIndex('norm', 'norm');
-
-      database.createObjectStore('collections', { keyPath: 'id' })
-        .createIndex('updatedAt', 'updatedAt');
-
-      // Out-of-line: a Settings object has no id of its own, and a Blob cannot
-      // carry one.
-      database.createObjectStore(SETTINGS);
-      database.createObjectStore('audio');
     },
+  }).catch((error: unknown) => {
+    // Let the next call try again rather than caching a rejected promise — the
+    // one after a discard has to be able to succeed.
+    handle = null;
+    throw refusal ?? error;
   });
   return handle;
+}
+
+/**
+ * Deletes the database outright, for the one case that cannot be answered any
+ * other way: a library this version has no step for, whose owner has been told
+ * what it is and has asked to start again anyway. Nothing else in the program
+ * calls this — wipe() empties the stores of a database that opens.
+ */
+export async function discardEverything(): Promise<void> {
+  handle = null;
+  await deleteDB('mitreden');
+  touched();
 }
 
 /* --------------------------------------------------------------- phrases --- */
