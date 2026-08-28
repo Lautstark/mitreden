@@ -294,8 +294,8 @@ describe('the round trip', () => {
     // A fingerprint without the voice it was taken with cannot decide
     // staleness, and would make a missing recording look current.
     await putPhrases([
-      { id: 'a', text: 'Mit Stimme', collections: ['k'], voice: 'v1', fingerprint: 'f1' },
-      { id: 'b', text: 'Ohne Stimme', collections: ['k'], fingerprint: 'verwaist' },
+      { id: 'a', text: 'Mit Stimme', collection: 'k', voice: 'v1', fingerprint: 'f1' },
+      { id: 'b', text: 'Ohne Stimme', collection: 'k', fingerprint: 'verwaist' },
     ]);
     const backup = await exportEverything(NOTICE);
     await wipe();

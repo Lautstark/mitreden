@@ -19,9 +19,16 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "types": [
+      "vite/client",
+      "node"
+    ]
   },
+  "//": "The suites are checked too, not just src. They were outside this list until 2026-08-28, so `npm run typecheck` never read a line of them and vitest and Playwright only ever transpiled them - which is how tests/unit/backup-payload.test.ts came to build a Phrase with `collections: [...]`, a field version 4 removed. It stored two sentences in no Sammlung at all, passed, and said it was testing two in one.",
   "include": [
-    "src"
+    "src",
+    "tests",
+    "e2e"
   ]
 }
