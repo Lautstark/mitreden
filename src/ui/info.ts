@@ -16,7 +16,7 @@ const BILDHAFT = 'https://lautstark.github.io/bildhaft/';
 const ISSUES = 'https://github.com/Lautstark/mitreden/issues';
 
 /** The one line to change if a different address should be public. */
-const EMAIL = 'lautstark@grewenig.online';
+const EMAIL = 'steffi@lautstark.tech';
 
 const ext = (href: string, text: string): string =>
   `<a href="${href}" target="_blank" rel="noreferrer noopener">${text}</a>`;
