@@ -88,20 +88,21 @@ test('every setting states itself in its own heading, before it is opened', asyn
 
 test('opening a panel closes the one open before it', async ({ page }) => {
   await page.click('#gear');
-  // Voice starts open, so a second panel is enough to show the group at work.
-  await expect(page.locator('#p-voice')).toHaveJSProperty('open', true);
+  // Sprache starts open, so a second panel is enough to show the group at work.
+  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
 
   await page.click('#p-theme > summary');
   await expect(page.locator('#p-theme')).toHaveJSProperty('open', true);
   // The browser does this, not us: the panels share a name, which makes them
   // one group with radio semantics. Asserting the effect rather than the
   // attribute, so a scripted accordion would keep this green.
-  await expect(page.locator('#p-voice')).toHaveJSProperty('open', false);
+  await expect(page.locator('#p-lang')).toHaveJSProperty('open', false);
 });
 
 test('the page language is offered the way the scheme beside it is', async ({ page }) => {
   await page.click('#gear');
-  await page.click('#p-lang > summary');
+  // No click: this panel is the one that opens on arrival.
+  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
   // It was the last native <select>, drawing its own chevron from a hex baked
   // into a data URI — the one control that could not follow the theme. Then a
   // button and a menu, which put the answers behind a press. Now the same
@@ -238,6 +239,10 @@ test('the default voice is named beside the composer and chosen in the settings'
      routing. This is the default, which is Einstellungen's. */
   await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
+  // Sprache is the panel that opens on arrival now, so this one is opened the
+  // way a person opens it. See index.html, which says why that panel and not
+  // this one.
+  await page.locator('#p-voice summary').click();
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
   const rows = page.locator('#voices .voice');
   await expect(rows.first()).toBeVisible();
@@ -290,6 +295,10 @@ test('the picker offers a German woman and an English man', async ({ page }) => 
   // shared path. What this catches is the claim going missing from the
   // catalogue call, which is what empties both slots again.
   await page.click('#gear');
+  // Sprache is the panel that opens on arrival now, so this one is opened the
+  // way a person opens it. See index.html, which says why that panel and not
+  // this one.
+  await page.locator('#p-voice summary').click();
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
   await page.fill('#voiceq', 'kerstin');
@@ -321,6 +330,10 @@ test('a voice that rushes single words says so on its own row', async ({ page })
   // the screen, which is the failure mode a note has — being rendered nowhere,
   // or being rendered on every row, and both look like working software.
   await page.click('#gear');
+  // Sprache is the panel that opens on arrival now, so this one is opened the
+  // way a person opens it. See index.html, which says why that panel and not
+  // this one.
+  await page.locator('#p-voice summary').click();
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
   await page.fill('#voiceq', 'kerstin');
@@ -353,7 +366,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   await expect(page.locator('#voicefrom')).toContainText('Deutsch');
 
   await page.click('#gear');
-  await page.click('#p-lang > summary');
+  // Already open on arrival, so no click - one would close it.
   await page.locator('#lang').getByText('English').click();
   // Nobody had said which voice, so the German one was this page's guess about
   // what it would be asked to read — and the guess has just been answered.
@@ -368,6 +381,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   // either direction: a German voice on an English page is an arrangement
   // somebody made, not a mistake to be corrected on their behalf.
   await page.click('#gear');
+  await page.locator('#p-voice summary').click();
   await page.fill('#voiceq', 'Thorsten (emotional)');
   await page.locator('#voices .voice').first().click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');

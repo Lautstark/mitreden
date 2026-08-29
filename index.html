@@ -97,13 +97,43 @@
            everything anybody has ever opened, and the state in each heading,
            which is the whole reason they are folded, stops being readable at a
            glance. @lautstark/design conventions.md §3.5. -->
+      <!-- First, and open on arrival. Somebody who cannot read this page needs
+           this panel before any of the others, and the two options below name
+           themselves - „Deutsch" and „English" are the same words whichever
+           language the rest of the sheet is in. vorlaut put it here first and
+           said why; the reasoning is not vorlaut's, it is the page's.
+
+           It is also why nothing else opens on arrival: one panel open is a
+           choice about which one somebody most needs, and this is the only one
+           where not reading the page is the case being answered. -->
+      <details class="panel" name="settings" id="p-lang" open>
+        <summary>
+          <span class="section" data-i18n="panel_language"></span>
+          <span class="state" id="langstate"></span>
+        </summary>
+        <div class="body">
+          <!-- The same segmented control as the scheme below it, and that
+               pairing is the point: two facts about this page, offered the same
+               way. It was a native select first — it drew its own chevron from a
+               hex baked into a data URI, which cannot read a token, so it was
+               the one control that could not follow the theme — and then a
+               button and a menu, which put the choice behind a press. A menu is
+               for a list of things to do; this is a list of what the page is.
+               The accessible name is bilingual and fixed, because somebody who
+               cannot read the page is exactly who reaches for this. -->
+          <div class="segmented" id="lang" role="group"
+            aria-label="Sprache / Language"></div>
+          <p class="hint" data-i18n="language_hint"></p>
+        </div>
+      </details>
+
       <!-- The default a new Sammlung starts with, and not the voice the next
            sentence gets — which is what this panel used to say and what it
            stopped being when the voice moved onto the Sammlung. What one
            particular Sammlung records in is behind the ⋯ beside its name;
            conventions.md §3.10 is the test that put it there, and the hint
            below is how somebody standing in front of this list finds it. -->
-      <details class="panel" name="settings" id="p-voice" open>
+      <details class="panel" name="settings" id="p-voice">
         <summary>
           <span class="section" data-i18n="panel_voice_default"></span>
           <span class="state" id="voicestate"></span>
@@ -124,26 +154,6 @@
         <div class="body" id="cloud"></div>
       </details>
 
-      <details class="panel" name="settings" id="p-lang">
-        <summary>
-          <span class="section" data-i18n="panel_language"></span>
-          <span class="state" id="langstate"></span>
-        </summary>
-        <div class="body">
-          <!-- The same segmented control as the scheme below it, and that
-               pairing is the point: two facts about this page, offered the same
-               way. It was a native select first — it drew its own chevron from a
-               hex baked into a data URI, which cannot read a token, so it was
-               the one control that could not follow the theme — and then a
-               button and a menu, which put the choice behind a press. A menu is
-               for a list of things to do; this is a list of what the page is.
-               The accessible name is bilingual and fixed, because somebody who
-               cannot read the page is exactly who reaches for this. -->
-          <div class="segmented" id="lang" role="group"
-            aria-label="Sprache / Language"></div>
-          <p class="hint" data-i18n="language_hint"></p>
-        </div>
-      </details>
 
       <!-- Beside the language, because both are what this page is rather than
            what is in it. The three answers are one control: "follows the OS" is
