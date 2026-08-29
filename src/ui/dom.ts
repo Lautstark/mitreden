@@ -13,6 +13,23 @@
  */
 
 import { lang, t, type Key, type Vars } from '../i18n/index.ts';
+import { announcer, type Announcer } from '@lautstark/design/toast';
+
+/**
+ * The one live region, wrapped once.
+ *
+ * Lazily, because #s is in index.html and this module is imported before the
+ * document is necessarily ready to be asked for it - and once, because an
+ * announcer holds the pending timer and a second one would not know about the
+ * first one's.
+ *
+ * No `rest`: this line keeps what it last said. bildhaft's empties after 3.2
+ * seconds and vorlaut's dims after four, and all three are right about their
+ * own page - see the module, which leaves that to the caller on purpose.
+ */
+let line: Announcer | undefined;
+const status = (): Announcer =>
+  (line ??= announcer(el('s'), { busyClass: 'working' }));
 
 export function el<T extends HTMLElement = HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -29,11 +46,15 @@ export function el<T extends HTMLElement = HTMLElement>(id: string): T {
  * region cannot work under. "42 Sätze hinzugefügt", a saved key and every error
  * this page reports were all silent. Setting the text is the whole of it now;
  * #s is a live region in the markup and stays one.
+ *
+ * bildhaft had the same bug by another route - it appended the node with the
+ * message on it and removed it again - which is why the rule is
+ * @lautstark/design/toast's now rather than three separate retellings of it.
+ * The module refuses to make a node at all, so there is nothing left here that
+ * could put one into the tree at the moment it speaks.
  */
 export function say(message: string): void {
-  const line = el('s');
-  line.textContent = message;
-  line.classList.remove('working');
+  status().say(message);
 }
 
 /**
@@ -48,9 +69,7 @@ export function say(message: string): void {
  * page claiming to be busy for the rest of the session.
  */
 export const busy = (key: Key, vars?: Vars): void => {
-  const line = el('s');
-  line.textContent = t(key, vars);
-  line.classList.add('working');
+  status().busy(t(key, vars));
 };
 
 /** Applies the words to the markup. Redrawing the data is somebody else's job. */
