@@ -27,6 +27,8 @@ import {
 import { busy, el, say } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
 import { confirmDialog } from '@lautstark/design/dialog';
+import { download } from '@lautstark/werkzeuge/download';
+import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
 let showAll = false;
 
@@ -241,19 +243,9 @@ async function grab(item: PhraseWithState, format: Format): Promise<void> {
     say(t('nothing_recorded'));
     return;
   }
-  save(await asFormat(stored, format), `${item.id}.${format}`);
-}
-
-function save(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // A blob URL holds its blob until it is let go of.
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  // The id is already a file name — core/ids.ts made it one, and the file it
+  // names may be on a talker — so it goes out as it stands.
+  download(await asFormat(stored, format), `${item.id}.${format}`);
 }
 
 /**
@@ -334,8 +326,8 @@ async function packAll(format: Format): Promise<void> {
   }
   const current = here();
   const stamp = new Date().toISOString().slice(0, 10);
-  const safe = (current?.name ?? 'sammlung').replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'sammlung';
-  save(zip(files), `mitreden-${safe}-${stamp}.zip`);
+  const safe = downloadSlug(current?.name ?? 'sammlung', 'sammlung');
+  download(zip(files), `mitreden-${safe}-${stamp}.zip`);
   say(t('done_pack', { n: files.length, format: format.toUpperCase() }));
 }
 
@@ -395,8 +387,9 @@ async function packPen(): Promise<void> {
   }
   const current = here();
   const stamp = new Date().toISOString().slice(0, 10);
-  const safe = (current?.name ?? 'sammlung').replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'sammlung';
-  save(
+  const name = current?.name ?? 'sammlung';
+  const safe = downloadSlug(name, 'sammlung');
+  download(
     penProject(safe, audios, {
       sheet,
       startCode,
@@ -406,8 +399,11 @@ async function packPen(): Promise<void> {
       // Two lines, which is what the top margin has room for — see notesBlock().
       // The first says which sheet this is, because a Sammlung past 87
       // sentences comes out as several and they are otherwise identical.
+      // The Sammlung's own name here rather than the swept one: this is a line
+      // printed on a sheet of paper, and nothing reads it back. `safe` above is
+      // a file name — the project's, and its PDF's inside the .abs.
       notes: (page, pages) => sheetNotes({
-        title: safe, date: stamp, sentences: audios.length,
+        title: name, date: stamp, sentences: audios.length,
         product: sheet.product, per: sheet.cols * sheet.rows, url: sheet.url,
         startCode, start, page, pages,
       }),

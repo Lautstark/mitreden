@@ -21,6 +21,8 @@ import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
 import { confirmDialog } from '@lautstark/design/dialog';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
+import { downloadJson } from '@lautstark/werkzeuge/download';
+import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
 /**
  * Azure's own region names. A datalist suggests rather than restricts, so a
@@ -209,7 +211,8 @@ async function forgetKey(): Promise<void> {
 export async function exportCollection(collection: Collection): Promise<void> {
   // Off the membership index rather than by filtering the whole library.
   const items = await phrasesIn(collection.id);
-  download({ collection: collection.name, items }, `mitreden-${safeName(collection.name)}`);
+  downloadJson({ collection: collection.name, items },
+               `mitreden-${downloadSlug(collection.name, 'sammlung')}-${stamp()}.json`);
 }
 
 /**
@@ -224,24 +227,13 @@ export async function exportCollection(collection: Collection): Promise<void> {
 async function exportAll(): Promise<void> {
   // The notice travels inside the file, so it is written in the language the
   // page is in rather than in whichever one the db layer happened to hold.
-  download(await exportEverything(t('backup_notice')), 'mitreden-sicherung');
+  downloadJson(await exportEverything(t('backup_notice')), `mitreden-sicherung-${stamp()}.json`);
 }
 
-const safeName = (name: string): string =>
-  name.replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replaceAll(' ', '-').toLowerCase() || 'sammlung';
-
-function download(data: unknown, stem: string): void {
-  const stamp = new Date().toISOString().slice(0, 10);
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${stem}-${stamp}.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+/* The date every export here carries. vorlaut deliberately stamps none of its
+ * package exports, so this is the product's and not the package's — see
+ * @lautstark/werkzeuge/download, which takes a filename whole. */
+const stamp = (): string => new Date().toISOString().slice(0, 10);
 
 /**
  * What a file may contain: our own export, a bare list, or a bildhaft archive,

@@ -89,6 +89,7 @@ import {
 import { normText, slug } from '../core/ids.ts';
 import { commonest } from '../core/voices.ts';
 import type { Collection, Phrase } from '../core/types.ts';
+import { changes } from '@lautstark/werkzeuge/changed';
 
 export interface Settings {
   azure?: { key: string; region: string };
@@ -184,17 +185,14 @@ interface MitredenDB extends DBSchema {
  * the backup — they are reproducible, and they are three orders of magnitude
  * the size — so a build of two hundred sentences would otherwise rewrite the
  * file two hundred times to say nothing new.
+ *
+ * The Set behind it is @lautstark/werkzeuge/changed's now; three products had
+ * written the same ten lines. What stays here is the rule above, which is the
+ * part that is about mitreden — which writes announce and which two do not.
  */
-const watchers = new Set<() => void>();
-
-export function onChanged(listener: () => void): () => void {
-  watchers.add(listener);
-  return () => watchers.delete(listener);
-}
-
-function touched(): void {
-  for (const listener of watchers) listener();
-}
+const changed = changes();
+export const onChanged = changed.onChanged;
+const touched = changed.touched;
 
 /**
  * The library as version 3 left it: a sentence names every Sammlung it is in.

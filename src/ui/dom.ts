@@ -107,7 +107,3 @@ export function speaks(locale: string): string {
     return tag;
   }
 }
-
-/** What this voice costs to have before it will speak. */
-export const weighs = (bytes: number): string =>
-  `${Math.round(bytes / 1e6)} MB`;

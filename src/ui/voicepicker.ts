@@ -21,7 +21,8 @@
 import { lang, t } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
 import { knownVoices } from './composer.ts';
-import { el, sourceOf, speaks, weighs } from './dom.ts';
+import { el, sourceOf, speaks } from './dom.ts';
+import { weighs } from '@lautstark/werkzeuge/bytes';
 
 /**
  * stimmquelle publishes three, and a corpus of several speakers is `mixed`
