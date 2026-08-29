@@ -273,7 +273,7 @@ function notesBlock(sheet: Sheet, lines: readonly string[]): string {
 /** One sheet's drawing: every circle outlined, the used ones captioned. */
 function sheetBody(
   sheet: Sheet, grid: { x: number; y: number }[],
-  captions: readonly string[], notes: readonly string[],
+  captions: readonly (string | null)[], notes: readonly string[],
 ): Uint8Array<ArrayBuffer> {
   /*
    * A hairline in the palest grey that still develops.
@@ -288,8 +288,10 @@ function sheetBody(
   body += '0 g\n';
   // A sheet whose gutter is too narrow for type goes out bare — see
   // Sheet.captions. The notes still fit: they live in the top margin.
+  // A null is a circle this run does not touch: peeled before it started, or
+  // past its end. It gets no word.
   if (sheet.captions) captions.forEach((text, i) => {
-    body += caption(sheet, grid[i].x, grid[i].y, text);
+    if (text !== null) body += caption(sheet, grid[i].x, grid[i].y, text);
   });
   body += notesBlock(sheet, notes);
   return latin1(body);
@@ -305,7 +307,7 @@ function sheetBody(
  */
 function sheetsPdf(
   sheet: Sheet, grid: { x: number; y: number }[],
-  pages: readonly { captions: string[]; notes: string[] }[],
+  pages: readonly { captions: (string | null)[]; notes: string[] }[],
 ): Uint8Array<ArrayBuffer> {
   const n = pages.length;
   const FONT = 3;                        // catalog, page tree, font, then the pages
@@ -358,7 +360,7 @@ function sheetsPdf(
 function projectJson(
   sheet: Sheet, grid: { x: number; y: number }[],
   title: string, pdfName: string, audios: readonly PenAudio[], hasThumbnail: boolean,
-  sheets: number,
+  sheets: number, startCode: boolean, start: number,
 ): string {
   // The first circle of the first sheet is the activation code and the
   // sentences run on from there, across as many sheets as they need.
@@ -411,11 +413,16 @@ function projectJson(
       // Type 0 is the activation code and carries no audio of its own. Read off
       // a project after Studio had one placed in it by hand; the assembly names
       // a CodeType enum but not its numbers.
-      { Type: 0, ...at(0), AudioFileName: '', HasAudioFileName: false },
+      ...(startCode
+        ? [{ Type: 0, ...at(start - 1), AudioFileName: '', HasAudioFileName: false }]
+        : []),
       ...audios.map((audio, i) => ({
         // Centimetres from the top left, and the corner rather than the centre —
         // see CODE.
-        Type: 1, ...at(i + 1), AudioFileName: audio.name, HasAudioFileName: true,
+        Type: 1,
+        ...at(start - 1 + (startCode ? 1 : 0) + i),
+        AudioFileName: audio.name,
+        HasAudioFileName: true,
       })),
     ],
     AudioFiles: audios.map((audio) => ({
@@ -443,9 +450,28 @@ function projectJson(
 export function penProject(
   title: string,
   audios: readonly PenAudio[],
-  { sheet = SHEETS[DEFAULT_SHEET], thumbnail, startCaption = 'Start', notes = () => [] }: {
+  {
+    sheet = SHEETS[DEFAULT_SHEET], startCode = true, start = 1,
+    thumbnail, startCaption = 'Start', notes = () => [],
+  }: {
     /** Which label sheet this is printed on. */
     sheet?: Sheet;
+    /**
+     * Whether a circle is spent on the activation code.
+     *
+     * Optional because a part-used sheet usually has one on it already: the
+     * code activates the package, and printing a second would cost a sticker
+     * and give the pen two answers to the same question.
+     */
+    startCode?: boolean;
+    /**
+     * The first circle this run may use, 1-based.
+     *
+     * A sheet is not used up in one go. Starting at the top of a sheet whose
+     * first three rows are gone prints onto backing paper and wastes what is
+     * left, so the run begins where the reader says it does.
+     */
+    start?: number;
     thumbnail?: Uint8Array<ArrayBuffer>;
     /** What is printed under the activation sticker. */
     startCaption?: string;
@@ -464,11 +490,21 @@ export function penProject(
   // sheets. A sheet that ends mid-Sammlung is not a special case: the codes
   // carry their own page number and Studio reads them from it.
   const grid = cells(sheet);
-  const all = [startCaption, ...audios.map((a) => a.caption)];
-  const count = sheetsFor(sheet, audios.length);
   const per = grid.length;
+  if (start < 1 || start > per)
+    throw new Error(`A sheet of ${per} has no circle ${start}.`);
+
+  /* Every circle this run touches, in order, with the ones already peeled left
+     empty ahead of them. The activation code leads when there is one, which is
+     the first circle of *this* run and not of the sheet — on a part-used sheet
+     circle one is long gone. */
+  const placed: (string | null)[] = Array.from({ length: start - 1 }, () => null);
+  if (startCode) placed.push(startCaption);
+  for (const audio of audios) placed.push(audio.caption);
+
+  const count = Math.max(1, Math.ceil(placed.length / per));
   const pages = Array.from({ length: count }, (_, i) => ({
-    captions: all.slice(i * per, (i + 1) * per),
+    captions: placed.slice(i * per, (i + 1) * per),
     notes: [...notes(i + 1, count)],
   }));
 
@@ -480,7 +516,8 @@ export function penProject(
   files.push({
     name: '_Project_.json',
     bytes: new TextEncoder().encode(
-      projectJson(sheet, grid, title, pdfName, audios, Boolean(thumbnail), count),
+      projectJson(sheet, grid, title, pdfName, audios, Boolean(thumbnail), count,
+        startCode, start),
     ),
   });
   return zip(files);

@@ -112,6 +112,17 @@ export interface Settings {
    * phone has no rail to collapse, only one to dismiss. conventions.md §1.3.
    */
   railOpen?: boolean;
+  /**
+   * What the Anybook export was asked for last time.
+   *
+   * `next` is where the last run ended, offered as the starting point for the
+   * one after it — a guess and never a claim. Nothing here can know which
+   * stickers were actually printed, let alone which were peeled, so it is a
+   * pre-selection the dialog shows and one click moves. Being right most of the
+   * time and visibly wrong the rest beats starting at one on every part-used
+   * sheet.
+   */
+  pen?: { sheet: string; next: number };
 }
 
 /** A sentence as the store holds it: the program's shape, plus the index key

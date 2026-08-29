@@ -9,9 +9,9 @@
 import { asFormat, asPenMp3 } from '../core/audio.ts';
 import { getAudio } from '../db/db.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
-import {
-  cells, penProject, sheetsFor, SHEETS, type PenAudio, type Sheet,
-} from '../core/anybook.ts';
+import { cells, penProject, sheetsFor, type PenAudio, type Sheet } from '../core/anybook.ts';
+import { askPenExport } from './penExport.ts';
+import { savePen } from '../db/repo.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
 import type { Format, PhraseWithState } from '../core/types.ts';
@@ -43,10 +43,7 @@ function openDownload(button: HTMLElement): void {
   menuOn(button, (add) => {
     add(t('download_mp3'), () => void packAll('mp3'));
     add(t('download_wav'), () => void packAll('wav'));
-    // One entry per sheet rather than a picker behind a picker: there are two,
-    // and which paper is in the printer is the whole of the question.
-    for (const sheet of Object.values(SHEETS))
-      add(t('download_pen', { label: sheet.label }), () => void packPen(sheet));
+    add(t('download_pen'), () => void packPen());
   });
 }
 
@@ -373,12 +370,17 @@ async function sheetThumbnail(sheet: Sheet): Promise<Uint8Array<ArrayBuffer> | u
  * The sentences go on in the order the list shows them, which is the order the
  * stickers come off the sheet — so the sheet reads the way the Sammlung does.
  */
-async function packPen(sheet: Sheet): Promise<void> {
+async function packPen(): Promise<void> {
   const items = shown().filter((item) => item.state !== 'missing');
   if (!items.length) {
     say(t('nothing_recorded'));
     return;
   }
+  // Asked before anything is encoded: the answers decide the geometry, and
+  // sixty re-encodings behind a dialog nobody confirmed would be sixty wasted.
+  const choice = await askPenExport(items.length);
+  if (!choice) return;
+  const { sheet, startCode, start } = choice;
   busy('busy_pen', { n: items.length });
   const audios: PenAudio[] = [];
   for (const item of items) {
@@ -396,6 +398,8 @@ async function packPen(sheet: Sheet): Promise<void> {
   save(
     penProject(safe, audios, {
       sheet,
+      startCode,
+      start,
       thumbnail: await sheetThumbnail(sheet),
       startCaption: t('pen_start'),
       // Two lines, which is what the top margin has room for — see notesBlock().
@@ -406,11 +410,16 @@ async function packPen(sheet: Sheet): Promise<void> {
         // so. Whole sentences per case rather than a stem with pieces bolted
         // on, because the pieces do not sit in the same order in both
         // languages.
-        pages === 1
-          ? t('pen_sheet_what', { title: safe, date: stamp, n: audios.length })
-          : page === 1
-            ? t('pen_sheet_first', { title: safe, date: stamp, of: pages })
-            : t('pen_sheet_more', { title: safe, date: stamp, n: page, of: pages }),
+        [
+          pages === 1
+            ? t('pen_sheet_what', { title: safe, date: stamp, n: audios.length })
+            : page === 1
+              ? t('pen_sheet_first', { title: safe, date: stamp, of: pages })
+              : t('pen_sheet_more', { title: safe, date: stamp, n: page, of: pages }),
+          // Only worth saying on the sheet it is true of: the runs after the
+          // first begin at the top of their own sheet.
+          start > 1 && page === 1 ? t('pen_sheet_from', { n: start }) : '',
+        ].filter(Boolean).join(' · '),
         t('pen_sheet_paper', {
           product: sheet.product,
           n: sheet.cols * sheet.rows,
@@ -423,6 +432,11 @@ async function packPen(sheet: Sheet): Promise<void> {
     `mitreden-${safe}-${stamp}.abs`,
   );
   // The plural count is the sheets, because that is the word that changes.
+  // Where this run ended, offered as where the next one starts. A guess about
+  // a sheet of paper, which is why the dialog shows it rather than assuming it.
+  const per = sheet.cols * sheet.rows;
+  const ended = start - 1 + (startCode ? 1 : 0) + audios.length;
+  await savePen({ sheet: sheet.id, next: (ended % per) + 1 });
   say(tn('done_pen', sheetsFor(sheet, audios.length), { sentences: audios.length }));
 }
 

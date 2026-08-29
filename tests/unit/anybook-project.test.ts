@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  penProject, perSheet, SHEETS, sheetsFor, type PenAudio,
+  cells, penProject, perSheet, SHEETS, sheetsFor, type PenAudio,
 } from '../../src/core/anybook.ts';
 
 const SHEET = SHEETS['6222'];
@@ -178,5 +178,38 @@ describe('an Anybook project', () => {
     // Bare: no caption text reaches the page.
     const pdf = (await entries(blob)).get('Test.pdf')!;
     expect(new TextDecoder('latin1').decode(pdf)).not.toContain('Satz 1');
+  });
+
+  it('starts where a part-used sheet has room left', async () => {
+    /*
+     * The case this exists for: twenty stickers came off for something else and
+     * sixty-eight are still good. Starting at circle one would print onto
+     * backing paper and waste every one of them.
+     */
+    const project = await projectOf(penProject('Test', audio(3), { start: 21 }));
+    const grid = cells(SHEET);
+    const corner = (p: { x: number; y: number }) => (p.x - 5) / 10;
+    // The activation code takes the first circle of the run, not of the sheet.
+    expect(project.Codes[0].Type).toBe(0);
+    expect(project.Codes[0].X).toBeCloseTo(corner(grid[20]), 3);
+    expect(project.Codes[1].X).toBeCloseTo(corner(grid[21]), 3);
+    // And nothing is written onto the twenty already gone: four captions are
+    // drawn, one per circle this run touches, not twenty-four.
+    const pdf = (await entries(penProject('Test', audio(3), { start: 21 }))).get('Test.pdf')!;
+    const drawn = new TextDecoder('latin1').decode(pdf).match(/BT \/F1 5 Tf/g) ?? [];
+    expect(drawn).toHaveLength(4);
+  });
+
+  it('can leave the start code off, for a sheet that already carries one', async () => {
+    const project = await projectOf(penProject('Test', audio(4), { startCode: false, start: 5 }));
+    expect(project.Codes).toHaveLength(4);
+    expect(project.Codes.every((c: { Type: number }) => c.Type === 1)).toBe(true);
+    // The first sentence takes the first free circle itself.
+    expect(project.Codes[0].X).toBeCloseTo((cells(SHEET)[4].x - 5) / 10, 3);
+  });
+
+  it('refuses a circle the sheet does not have', () => {
+    expect(() => penProject('Test', audio(1), { start: 89 })).toThrow(/no circle/);
+    expect(() => penProject('Test', audio(1), { start: 0 })).toThrow(/no circle/);
   });
 });

@@ -406,6 +406,10 @@ export const saveOpen = async (open: readonly string[]): Promise<void> =>
 
 export const saveRailOpen = async (railOpen: boolean): Promise<void> =>
   saveSettings({ ...(await loadSettings()), railOpen });
+
+/** Which sheet the export was for, and the circle the run ended on. */
+export const savePen = async (pen: Settings['pen']): Promise<void> =>
+  saveSettings({ ...(await loadSettings()), pen });
 export async function saveAzure(azure: Settings['azure']): Promise<void> {
   const now = await loadSettings();
   if (azure) await saveSettings({ ...now, azure });
