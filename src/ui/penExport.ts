@@ -56,7 +56,11 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
   return new Promise<PenChoice | null>((done) => {
     let answer: PenChoice | null = null;
 
-    const sheetRow = node('div', 'display:flex;gap:0;margin:0 0 16px');
+    // Named on screen, not only to a screen reader: the control below it is a
+    // row of product codes, and the row beside the number field has a visible
+    // label. One of the two having none was the inconsistency.
+    const sheetName = node('p', 'margin:0 0 6px', t('pen_ask_sheet'));
+    const sheetRow = node('div', 'margin:0 0 16px');
     sheetRow.className = 'segmented';
     sheetRow.setAttribute('role', 'group');
     sheetRow.setAttribute('aria-label', t('pen_ask_sheet'));
@@ -66,7 +70,7 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
     codeInput.type = 'checkbox';
     codeInput.checked = startCode;
 
-    const startLabel = node('label', 'font-size:13px;color:var(--text-secondary)', t('pen_ask_start'));
+    const startLabel = node('label', '', t('pen_ask_start'));
     startLabel.setAttribute('for', 'penstart');
     const startInput = document.createElement('input');
     startInput.type = 'number';
@@ -76,8 +80,10 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
 
     const map = node('div', 'display:grid;gap:4px;background:var(--surface-2);padding:12px;'
       + 'border-radius:var(--radius-sm);margin:8px 0 0');
-    const summary = node('p', 'font-size:13px;color:var(--text-dim);margin:16px 0 0');
-    const paper = node('p', 'font-size:13px;color:var(--text-dim);margin:8px 0 0');
+    const summary = node('p', 'margin:16px 0 0');
+    summary.className = 'hint';
+    const paper = node('p', '');
+    paper.className = 'hint';
 
     function draw(): void {
       const total = sheet.cols * sheet.rows;
@@ -154,9 +160,10 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
     }
 
     codeInput.onchange = () => { startCode = codeInput.checked; draw(); };
-    const codeText = node('span', 'font-size:14px;line-height:1.5', t('pen_ask_code'));
-    codeText.appendChild(node('span',
-      'display:block;font-size:13px;color:var(--text-secondary)', t('pen_ask_code_why')));
+    const codeText = node('span', '', t('pen_ask_code'));
+    const why = node('span', 'display:block', t('pen_ask_code_why'));
+    why.className = 'hint';
+    codeText.appendChild(why);
     codeBox.append(codeInput, codeText);
 
     startInput.oninput = () => {
@@ -169,17 +176,21 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
       'display:flex;align-items:center;justify-content:space-between;gap:12px');
     startRow.append(startLabel, startInput);
 
+    /* The classes confirmDialog gives its own two, so this dialog's foot looks
+       like every other dialog's foot rather than like the browser's. */
     const cancel = document.createElement('button');
     cancel.type = 'button';
+    cancel.className = 'btn';
     cancel.textContent = t('cancel');
     const confirm = document.createElement('button');
     confirm.type = 'button';
+    confirm.className = 'btn primary';
     confirm.textContent = t('pen_ask_do');
 
     const open = openDialog({
       title: t('pen_ask_title'),
       closeLabel: t('close'),
-      body: [sheetRow, codeBox, startRow, map, summary, paper],
+      body: [sheetName, sheetRow, codeBox, startRow, map, summary, paper],
       footer: [cancel, confirm],
       onClose: () => done(answer),
     });
