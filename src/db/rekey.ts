@@ -1,18 +1,21 @@
 /**
  * Carrying a library across the day its recordings got a new name.
  *
- * core/ids.ts stopped assembling CONTRACT.md §3 by hand on 2026-08-29 and now
- * asks `@lautstark/stimmquelle` for it. Same six inputs, one of them corrected
- * — §3.5 was missing from every `azure:` name — but a different formula over
- * them, so every fingerprint already stored disagrees with what this page now
- * computes. Left alone, the whole library would read *geändert seit der
- * Aufnahme* and the only way back would be speaking all of it again: minutes of
- * piper, or a bill from Azure, for audio that is in fact perfectly current.
+ * The names have changed twice on 2026-08-29. core/ids.ts stopped assembling
+ * CONTRACT.md §3 by hand and asked `@lautstark/stimmquelle` for it — same six
+ * inputs, one corrected, §3.5 having been missing from every `azure:` name —
+ * and then §3.4's engine term stopped saying `stimmquelle@<version>` and started
+ * naming the pair that actually renders. Either way every fingerprint already
+ * stored disagrees with what this page now computes. Left alone, the whole
+ * library would read *geändert seit der Aufnahme* and the only way back would be
+ * speaking all of it again: minutes of piper, or a bill from Azure, for audio
+ * that is in fact perfectly current.
  *
  * It is current because nothing about the *sound* moved. No §1 rule, no §2
- * rule, no §3a rule; `PIPELINE_VERSION` is 3 on both sides of this change. Only
- * the arithmetic that names the audio changed. So the honest repair is to
- * rename, not to re-record.
+ * rule, no §3a rule; `PIPELINE_VERSION` is 3 across all of it. Only the
+ * arithmetic that names the audio changed. So the honest repair is to rename,
+ * not to re-record — which is the whole point of the second change, since
+ * naming the package meant paying this cost on every release of it.
  *
  * ## Why it is not a database migration
  *
@@ -32,26 +35,27 @@
  * something else. Recomputing from the current text would erase that and leave
  * audio nobody can tell is wrong.
  *
- * So the old formula decides. `formerFingerprint` says what this sentence's name
- * *was* under the scheme that wrote it; if the stored name matches, the
- * recording was current and the new name is written. If it does not, the
- * sentence was already stale and is left exactly as it is — its stored name
- * matches neither scheme, so it stays stale, which is what it was.
+ * So the old formulas decide. `formerNames` says every name this sentence could
+ * already be filed under; if the stored one is among them, the recording was
+ * current and the new name is written. If it is not, the sentence was already
+ * stale and is left exactly as it is — its stored name matches no scheme, so it
+ * stays stale, which is what it was.
  */
 
 import { allPhrases, loadSettings, putPhrases, saveSettings } from './db.ts';
-import { fingerprint, formerFingerprint } from '../core/ids.ts';
+import { fingerprint, formerNames } from '../core/ids.ts';
 import type { Phrase } from '../core/types.ts';
 
 /**
  * Which naming scheme the stored fingerprints are in.
  *
- * A number rather than a boolean because this will happen again: §3 is stable
- * but the truncation, the `out` term and the engine term are all things a
- * product may yet reconsider, and each would want the same pass with a
- * different pair of formulas.
+ * A number rather than a boolean, and it has already earned that: 2 was asking
+ * stimmquelle for §3 instead of assembling it here, and 3 is naming the engine
+ * that actually renders — piper-wasm and onnxruntime-web — rather than the
+ * package that drives them, so that a stimmquelle release which changes no
+ * audio stops re-recording the library.
  */
-export const KEY_SCHEME = 2;
+export const KEY_SCHEME = 3;
 
 /**
  * Renames every recording that is still current, and reports how many.
@@ -74,7 +78,10 @@ export async function rekeyIfNeeded(): Promise<number> {
 
     // The load-bearing line. Only a recording whose old name still matches its
     // own text and voice is current, and only a current one may be renamed.
-    if (await formerFingerprint(item.text, item.voice) !== item.fingerprint) continue;
+    // Several old names, because there have been two schemes before this one
+    // and the first of them spelled the engine differently in each stimmquelle
+    // release — see formerNames().
+    if (!(await formerNames(item.text, item.voice)).includes(item.fingerprint)) continue;
 
     moved.push({ ...item, fingerprint: await fingerprint(item.text, item.voice) });
   }

@@ -6,8 +6,12 @@
  */
 
 import { keyFor } from '@lautstark/stimmquelle/browser';
-import { ENGINE_VERSION, OUT } from './settings.ts';
+import { ENGINE, OUT } from './settings.ts';
 import { modelOf } from './voices.ts';
+
+/** What every name this program writes is built from — §3.4's engine term and
+ *  §3.6's output settings, in one place so the two callers cannot disagree. */
+const ENGINE_KEY = { rate: OUT.sampleRate, out: OUT, engine: ENGINE } as const;
 
 export const SLUG_WORDS = 6;
 export const SLUG_CHARS = 40;
@@ -99,23 +103,60 @@ export async function free(
  * share a cache directory, so the length never has to agree.
  */
 export async function fingerprint(text: string, voiceId: string): Promise<string> {
-  return (await keyFor(text, voiceId, { rate: OUT.sampleRate, out: OUT })).slice(0, 12);
+  return (await keyFor(text, voiceId, ENGINE_KEY)).slice(0, 12);
 }
 
 /**
- * The name this file used to give, kept for exactly one job: deciding whether a
- * recording made under the old scheme is still current, so that db/rekey.ts can
- * carry it across without speaking it again.
+ * The engine strings this program has ever named itself by, while §1, §2 and
+ * §3a stood where they stand now.
  *
- * Not exported beyond that, and due for deletion once no library in the wild
- * still carries an old name. It is `ENGINE_VERSION` — a string pairing the
- * package version with the pipeline number — that dates it.
+ * Only stimmquelle 2.7.0 and 2.8.0 shipped `PIPELINE_VERSION` 3, so only those
+ * two can have written a name whose audio is still current. A recording made
+ * under pipeline 2 sounds different from one made today, and *should* read as
+ * stale — that is what the number is for.
+ *
+ * The list dies when no library in the wild still carries one of these, and
+ * nothing but a guess says when that is. It costs two hashes per sentence on
+ * one boot.
  */
-export async function formerFingerprint(text: string, voiceId: string): Promise<string> {
+const FORMER_ENGINES = ['stimmquelle@2.8.0 pipeline@3', 'stimmquelle@2.7.0 pipeline@3'];
+
+/**
+ * Every name this recording could already be filed under, across the two
+ * schemes that came before the one in force.
+ *
+ * db/rekey.ts uses it for one job: deciding whether a stored name belongs to a
+ * recording that is still current, so it can be renamed rather than spoken
+ * again.
+ *
+ * **Scheme 1 needs the list above, and that is the bug this function was
+ * written a second time to fix.** Its first version recomputed the old formula
+ * using the *live* `stimmquelle@<VERSION>`, which by then said 2.8.0 — so a
+ * library recorded under 2.7.0 matched nothing, was left alone as though it
+ * were stale, and re-recorded itself for no reason. Precisely the cost the
+ * move off a package version was meant to end, paid one last time on the way
+ * out. The engine string has to be the one that *wrote* the name, so the
+ * candidates are enumerated rather than derived.
+ */
+export async function formerNames(text: string, voiceId: string): Promise<string[]> {
   const cloud = voiceId.startsWith('azure:');
-  const payload = JSON.stringify(cloud
-    ? [text, 'azure', voiceId.slice(6), OUT]
-    : [text, 'piper', modelOf(voiceId), ENGINE_VERSION, OUT]);
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+  const short = async (payload: string): Promise<string> => {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+    return [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+  };
+
+  // Scheme 1: this file's own payload, before it asked stimmquelle for §3. A
+  // cloud name had no engine term in it and no pipeline term either — the
+  // second of those was the bug — so one candidate covers every version.
+  const first = cloud
+    ? [await short(JSON.stringify([text, 'azure', voiceId.slice(6), OUT]))]
+    : await Promise.all(FORMER_ENGINES.map((engine) =>
+      short(JSON.stringify([text, 'piper', modelOf(voiceId), engine, OUT]))));
+
+  // Scheme 2: keyFor, but still naming stimmquelle as the engine — which is
+  // its default, so this is what a name looked like between the two commits.
+  const second = (await keyFor(text, voiceId, { rate: OUT.sampleRate, out: OUT })).slice(0, 12);
+
+  return [...first, second];
 }

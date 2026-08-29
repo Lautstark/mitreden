@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { allPhrases, loadSettings, putPhrases, saveSettings, wipe } from '../../src/db/db.ts';
 import { KEY_SCHEME, rekeyIfNeeded } from '../../src/db/rekey.ts';
-import { fingerprint, formerFingerprint } from '../../src/core/ids.ts';
+import { fingerprint, formerNames } from '../../src/core/ids.ts';
+import { OUT } from '../../src/core/settings.ts';
 
 /**
  * Carrying a library across the day its recordings got a new name.
@@ -27,9 +28,28 @@ const CLOUD = 'azure:de-DE-KatjaNeural';
 // from an emptied one rather than a fresh handle.
 beforeEach(async () => { await wipe(); });
 
+
+/**
+ * A scheme-1 name, built here rather than asked for.
+ *
+ * Deliberately a second implementation of the old formula: a test that gets the
+ * name from `formerNames()` passes whatever that function currently returns,
+ * which is not a claim about anything. The first version of the test below did
+ * exactly that — it picked the second entry by index — and went on passing when
+ * the older engine was deleted from the list, because the entry at that index
+ * was simply something else. This spells the engine out, so deleting it is red.
+ */
+async function nameUnder(text: string, voice: string, engine: string): Promise<string> {
+  const payload = JSON.stringify([text, 'piper', voice.replace(/^piper:/, ''), engine, OUT]);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+}
+
 /** A sentence as the old scheme left it: recorded, and named by that scheme. */
 async function recorded(id: string, text: string, voice: string): Promise<void> {
-  await putPhrases([{ id, text, voice, fingerprint: await formerFingerprint(text, voice) }]);
+  const [oldest] = await formerNames(text, voice);
+  await putPhrases([{ id, text, voice, fingerprint: oldest! }]);
 }
 
 describe('the pass', () => {
@@ -72,6 +92,30 @@ describe('the pass', () => {
     expect(after!.fingerprint)
       .not.toBe(await fingerprint('Ich will noch nicht ins Bett.', VOICE));
   });
+
+  it('carries a library recorded under an older stimmquelle, not just the newest',
+    async () => {
+      /* The bug this test was written for, and it shipped for a few hours.
+         Scheme 1 spelled the engine `stimmquelle@<version>`, and the first
+         version of this pass recomputed it with the *live* version — 2.8.0 by
+         the time it ran. A library recorded under 2.7.0 therefore matched
+         nothing, was left alone as though it were stale, and re-recorded itself
+         for no reason: exactly the cost that moving off a package version was
+         meant to end, paid one last time on the way out.
+
+         So the candidates are enumerated. This asserts the older one, which is
+         the one that was being dropped; `recorded()` above uses whichever
+         formerNames() lists first, so without this the older spelling has no
+         cover at all. */
+      await putPhrases([{
+        id: 'alt', text: 'Ich habe Hunger.', voice: VOICE,
+        fingerprint: await nameUnder('Ich habe Hunger.', VOICE, 'stimmquelle@2.7.0 pipeline@3'),
+      }]);
+
+      expect(await rekeyIfNeeded()).toBe(1);
+      expect((await allPhrases())[0]!.fingerprint)
+        .toBe(await fingerprint('Ich habe Hunger.', VOICE));
+    });
 
   it('skips a sentence that was never recorded', async () => {
     await putPhrases([{ id: 'neu', text: 'Ganz neu.' }]);
