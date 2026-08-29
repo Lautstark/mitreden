@@ -5,6 +5,7 @@
  * file name, and the file it names may long since be sitting on a talker.
  */
 
+import { keyFor } from '@lautstark/stimmquelle/browser';
 import { ENGINE_VERSION, OUT } from './settings.ts';
 import { modelOf } from './voices.ts';
 
@@ -80,11 +81,37 @@ export async function free(
  * What "still counts as recorded" means: the text, the voice, and how it was
  * made. Change any of them and the recording is stale rather than wrong.
  *
- * Azure renders on somebody else's machine, so which engine is bundled here
- * says nothing about how those recordings came out. Naming it would re-record
- * every cloud-spoken sentence on an upgrade that cannot have changed them.
+ * **stimmquelle's since 2.8.0, and this file had it wrong.** CONTRACT.md §3 has
+ * specified these six inputs since 1.0.0 and this function assembled them
+ * itself. It read §3.4's "omitted for cloud backends" as covering both version
+ * terms and so dropped §3.5, the pipeline version, from every `azure:` name.
+ * §3.5 has no such exemption, and should not: §1's levelling and §2's trim are
+ * applied *here*, by this machine, to whatever Azure sends back — so a change
+ * to either alters a cloud recording exactly as much as a local one, and this
+ * page would have gone on calling it current. vorlaut had the mirror-image
+ * error in its own copy. Neither assembles it any more.
+ *
+ * The sentence that used to stand here — that Azure renders elsewhere, so the
+ * engine bundled here says nothing about those recordings — is right, and it is
+ * §3.4. It is keyFor()'s to keep now.
+ *
+ * Twelve characters is §3's per-product choice, unchanged: no two products
+ * share a cache directory, so the length never has to agree.
  */
 export async function fingerprint(text: string, voiceId: string): Promise<string> {
+  return (await keyFor(text, voiceId, { rate: OUT.sampleRate, out: OUT })).slice(0, 12);
+}
+
+/**
+ * The name this file used to give, kept for exactly one job: deciding whether a
+ * recording made under the old scheme is still current, so that db/rekey.ts can
+ * carry it across without speaking it again.
+ *
+ * Not exported beyond that, and due for deletion once no library in the wild
+ * still carries an old name. It is `ENGINE_VERSION` — a string pairing the
+ * package version with the pipeline number — that dates it.
+ */
+export async function formerFingerprint(text: string, voiceId: string): Promise<string> {
   const cloud = voiceId.startsWith('azure:');
   const payload = JSON.stringify(cloud
     ? [text, 'azure', voiceId.slice(6), OUT]

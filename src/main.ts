@@ -19,6 +19,7 @@ import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
 import { wireCollectionVoice } from './ui/collectionVoice.ts';
 import { draw as drawList, recordAgain, wireList } from './ui/list.ts';
+import { rekeyIfNeeded } from './db/rekey.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { wireSettings } from './ui/settings.ts';
@@ -85,6 +86,12 @@ export async function start(): Promise<void> {
   subscribe(drawRail);
   subscribe(drawList);
   await ensureCollection(lang() === 'de');
+  // Before load(), which is what computes every sentence's state: a library
+  // still carrying the old names would otherwise paint itself entirely
+  // „geändert seit der Aufnahme" for one frame and settle a moment later.
+  // Silent, because nothing a person asked for happened — the recordings are
+  // the ones they already had, under the name CONTRACT.md §3 gives them.
+  await rekeyIfNeeded();
   await loadVoices();
   // Which Sammlungen were open, before anything is drawn — otherwise the first
   // paint is whatever load() would have fallen back to, and it is replaced a

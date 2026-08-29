@@ -123,6 +123,14 @@ export interface Settings {
    * sheet.
    */
   pen?: { sheet: string; next: number };
+  /**
+   * Which scheme the stored fingerprints are named under — db/rekey.ts, which
+   * owns the number and the pass that moves it.
+   *
+   * Absent means the scheme this page used before it asked stimmquelle for
+   * CONTRACT.md §3 rather than assembling it here.
+   */
+  keyScheme?: number;
 }
 
 /** A sentence as the store holds it: the program's shape, plus the index key
