@@ -11,6 +11,7 @@ import { getAudio } from '../db/db.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
 import { cells, penProject, sheetsFor, type PenAudio, type Sheet } from '../core/anybook.ts';
 import { askPenExport } from './penExport.ts';
+import { sheetNotes } from './penNotes.ts';
 import { savePen } from '../db/repo.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { t, tn } from '../i18n/index.ts';
@@ -405,29 +406,11 @@ async function packPen(): Promise<void> {
       // Two lines, which is what the top margin has room for — see notesBlock().
       // The first says which sheet this is, because a Sammlung past 87
       // sentences comes out as several and they are otherwise identical.
-      notes: (page, pages) => [
-        // Only the first sheet carries the start code, so only the first says
-        // so. Whole sentences per case rather than a stem with pieces bolted
-        // on, because the pieces do not sit in the same order in both
-        // languages.
-        [
-          pages === 1
-            ? t('pen_sheet_what', { title: safe, date: stamp, n: audios.length })
-            : page === 1
-              ? t('pen_sheet_first', { title: safe, date: stamp, of: pages })
-              : t('pen_sheet_more', { title: safe, date: stamp, n: page, of: pages }),
-          // Only worth saying on the sheet it is true of: the runs after the
-          // first begin at the top of their own sheet.
-          start > 1 && page === 1 ? t('pen_sheet_from', { n: start }) : '',
-        ].filter(Boolean).join(' · '),
-        t('pen_sheet_paper', {
-          product: sheet.product,
-          n: sheet.cols * sheet.rows,
-          // The address without its scheme: it is being read off paper, not
-          // clicked.
-          url: sheet.url.replace(/^https?:\/\/(www\.)?/, ''),
-        }),
-      ],
+      notes: (page, pages) => sheetNotes({
+        title: safe, date: stamp, sentences: audios.length,
+        product: sheet.product, per: sheet.cols * sheet.rows, url: sheet.url,
+        startCode, start, page, pages,
+      }),
     }),
     `mitreden-${safe}-${stamp}.abs`,
   );
@@ -437,7 +420,8 @@ async function packPen(): Promise<void> {
   const per = sheet.cols * sheet.rows;
   const ended = start - 1 + (startCode ? 1 : 0) + audios.length;
   await savePen({ sheet: sheet.id, next: (ended % per) + 1 });
-  say(tn('done_pen', sheetsFor(sheet, audios.length), { sentences: audios.length }));
+  say(tn(startCode ? 'done_pen' : 'done_pen_bare', sheetsFor(sheet, audios.length),
+    { sentences: tn('count', audios.length) }));
 }
 
 /**
