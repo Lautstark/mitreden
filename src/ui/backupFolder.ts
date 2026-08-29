@@ -17,7 +17,7 @@
  */
 
 import { Sicherung, type Status } from '@lautstark/sicherung';
-import { actionsFor, ago as relative, needsAttention } from '@lautstark/sicherung/ui';
+import { actionsFor, ago as relative, lineFor, needsAttention } from '@lautstark/sicherung/ui';
 import { lang, t } from '../i18n/index.ts';
 import { el, say } from './dom.ts';
 
@@ -44,32 +44,37 @@ const lastCopy = (at: number | null): string =>
   at === null ? t('folder_never') : t('folder_last', { age: ago(at) });
 
 /**
- * The sentence for each state. The two that mean *nothing is being written*
+ * The sentence for each state. Which arms exist and which of them carry an age
+ * is @lautstark/sicherung/ui's `lineFor` since v1.4.0; the words stay here.
+ *
+ * The two that mean *nothing is being written*
  * both carry the age: „es funktioniert nicht" is a sentence somebody can put
  * off, „seit elf Tagen nichts gesichert" is not.
  *
- * Exported for the test that holds that rule. It is the one thing about this
- * panel still written out in three products with nothing checking they agree —
- * @lautstark/sicherung/ui owns the rest, and deliberately not the words.
- * Nothing outside this file calls it.
+ * Exported for the test that holds that rule. It used to be the one thing
+ * about this panel written out in three products with nothing checking they
+ * agree; the shape of it is the package's now and a missing arm is a compile
+ * error. The words are deliberately not, because two of the three products are
+ * bilingual. Nothing outside this file calls it.
  */
 export function sentence(status: Status): string {
-  switch (status.kind) {
-    case 'unsupported': return '';
+  const line = lineFor(status);
+  switch (line.key) {
+    case 'none': return '';
     case 'off': return t('folder_off');
     case 'saving': return t('folder_saving');
-    case 'idle': return status.lastWrite === null
-      ? t('folder_idle_never', { folder: status.folder })
-      : t('folder_idle', { folder: status.folder, age: ago(status.lastWrite) });
+    case 'idle-never': return t('folder_idle_never', { folder: line.folder });
+    case 'idle':
+      return t('folder_idle', { folder: line.folder, age: ago(line.lastWrite) });
     case 'needs-permission':
-      return t('folder_permission', { folder: status.folder, age: lastCopy(status.lastWrite) });
+      return t('folder_permission', { folder: line.folder, age: lastCopy(line.lastWrite) });
     case 'failed':
-      return t('folder_failed', { reason: status.reason, age: lastCopy(status.lastWrite) });
+      return t('folder_failed', { reason: line.reason, age: lastCopy(line.lastWrite) });
     // Nothing went wrong, so this does not read like it did: the copy in the
     // folder is whole, and the only question is whether this browser being
     // empty is the truth.
     case 'held':
-      return t('folder_held', { folder: status.folder, age: lastCopy(status.lastWrite) });
+      return t('folder_held', { folder: line.folder, age: lastCopy(line.lastWrite) });
   }
 }
 
