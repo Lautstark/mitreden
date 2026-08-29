@@ -69,19 +69,20 @@ test('every setting states itself in its own heading, before it is opened', asyn
   await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
   await expect(page.locator('#langstate')).toHaveText('Deutsch');
   await expect(page.locator('#datastate')).toHaveText('Noch keine Sätze');
-  await expect(page.locator('#p-data > summary .section')).toHaveText('Daten');
+  await expect(page.locator('#p-data > summary .section')).toHaveText('Sicherung');
 
   // And each one opens onto the controls it named.
   for (const [panel, marker] of [
     ['p-azure', '#azurekey'], ['p-lang', '#lang'], ['p-data', '#export'],
+    // Its own panel since 2026-08-29. The reset was an <h3> at the foot of
+    // „Daten", which asked somebody to open a panel about backups to find the
+    // one control here that destroys something. A column whose last entry
+    // says „Alles löschen" is the honest arrangement, and it is vorlaut's.
+    ['p-danger', '#wipe'],
   ] as const) {
     await page.click(`#${panel} > summary`);
     await expect(page.locator(marker)).toBeVisible();
   }
-  // A backup and a reset are one subject — what becomes of everything you have —
-  // so they share a panel, as bildhaft's Daten does. Reading about the one is
-  // how somebody finds the other.
-  await expect(page.locator('#p-data #wipe')).toBeVisible();
   // The one the compiler could not check: a sentence saying what the picker does.
   await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
 });

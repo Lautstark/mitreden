@@ -175,22 +175,19 @@
         </div>
       </details>
 
-      <!-- One panel, as bildhaft's Daten is: a backup and a reset are the same
-           subject — what happens to everything you have — and reading about the
-           one is how you find the other. The reset keeps its own heading inside,
-           because a destructive action still has to announce itself. -->
+      <!-- Getting your work out and back, and nothing else. The id stays
+           p-data; the heading is „Sicherung" because that is the one subject
+           left in here since the reset moved out below. -->
       <details class="panel" name="settings" id="p-data">
         <summary>
-          <span class="section" data-i18n="panel_data"></span>
+          <span class="section" data-i18n="panel_backup"></span>
           <span class="state" id="datastate"></span>
         </summary>
         <div class="body">
-          <!-- bildhaft's shape, element for element: the warning as a notice with
-               a word in front of it, then the backup, then the reset under a
-               heading of its own. Two elements rather than one line of markup,
-               so the lead is a translated string like every other and nothing
-               here sets innerHTML from the language files. -->
-          <p class="notice"><b data-i18n="backup_lead"></b> <span data-i18n="backup_intro"></span></p>
+          <!-- No „Sicherung." in front of it any more: the panel is called that
+               now, and a lead repeating its own heading is a word somebody
+               reads twice to learn nothing. -->
+          <p class="notice" data-i18n="backup_intro"></p>
 
           <!-- The folder first, because it is the one that keeps working after
                somebody stops thinking about it. Hidden outright where the
@@ -217,8 +214,21 @@
           </div>
           <p class="hint" data-i18n="backup_hint"></p>
           <input type="file" id="importfile" accept="application/json,.json" hidden>
+        </div>
+      </details>
 
-          <h3 class="danger__title" data-i18n="danger_title"></h3>
+      <!-- Its own panel, and that is the whole of this change.
+           It was an <h3> inside „Daten", which is a second heading level doing
+           a panel's job: a destructive reset is not a data-management chore
+           filed under the same word as making a backup, and a column whose
+           last entry says „Alles löschen" is more honest than one where you
+           have to open „Daten" to find it. vorlaut never put the wipe in its
+           Daten panel; this is the other two catching up. -->
+      <details class="panel" name="settings" id="p-danger">
+        <summary>
+          <span class="section" data-i18n="danger_title"></span>
+        </summary>
+        <div class="body">
           <p class="hint danger__body" data-i18n="danger_body"></p>
           <button class="btn destructive sm" id="wipe" data-i18n="danger_do"></button>
         </div>

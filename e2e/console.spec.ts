@@ -13,7 +13,7 @@ test('the page loads and is used without saying anything to the console', async 
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.fill('#t', 'Eine Zeile.');
   await page.click('#gear');
-  for (const panel of ['p-voice', 'p-azure', 'p-lang', 'p-data'])
+  for (const panel of ['p-voice', 'p-azure', 'p-lang', 'p-data', 'p-danger'])
     await page.click(`#${panel} > summary`);
   await page.click('#setupclose');
   await page.click('#newcol');
