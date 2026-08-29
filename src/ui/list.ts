@@ -456,7 +456,7 @@ async function packPen(): Promise<void> {
  * skips anything whose fingerprint still matches, and the filter here is so the
  * queue on screen says the true number rather than counting them all.
  */
-async function recordAgain(id: string): Promise<void> {
+export async function recordAgain(id: string): Promise<void> {
   const ids = ALL().filter((item) => item.collection === id && item.state !== 'ok')
     .map((item) => item.id);
   if (!ids.length) {
@@ -483,11 +483,16 @@ export function wireList(): void {
      this Sammlung is set to, then the delete. The voice is here rather than in
      Einstellungen because its answer changes with which Sammlung is open, which
      is §3.10's test — and beside the name there is no question about which one
-     the menu means. */
+     the menu means.
+
+     Three items, which is vorlaut's exactly. „Sammlung neu aufnehmen" was the
+     first of four until 2026-08-29: an item permanently present whose most
+     common outcome was the sentence „Alles hier ist schon … aufgenommen", and
+     the settings sheet below it ended by telling you to come back up here and
+     press it. It is a button in that sheet now, carrying its own count. */
   el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
     const current = here();
     if (!current) return;
-    add(t('collection_record'), () => void recordAgain(current.id));
     add(t('collection_export'), () => void exportCollection(current));
     add(t('collection_settings'), () => openCollectionVoice(current.id));
     add(t('collection_delete'), () => {

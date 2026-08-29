@@ -18,7 +18,7 @@ import { lang, setLang, t, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
 import { wireCollectionVoice } from './ui/collectionVoice.ts';
-import { draw as drawList, wireList } from './ui/list.ts';
+import { draw as drawList, recordAgain, wireList } from './ui/list.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { wireSettings } from './ui/settings.ts';
@@ -76,7 +76,7 @@ export async function start(): Promise<void> {
   wireRail();
   wireComposer();
   wireList();
-  wireCollectionVoice();
+  wireCollectionVoice(recordAgain);
   wireSettings(backup);
   el('about').onclick = openAbout;
   el('impressum').onclick = openImpressum;

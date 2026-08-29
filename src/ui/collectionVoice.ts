@@ -36,12 +36,23 @@ import { saveCollectionVoice } from '../db/repo.ts';
 import { t, tn } from '../i18n/index.ts';
 import { chosenVoice, knownVoices } from './composer.ts';
 import { voicePicker } from './voicepicker.ts';
-import { DECLARED, load } from './state.ts';
+import { ALL, DECLARED, load } from './state.ts';
 import { el, say } from './dom.ts';
 
 /** Which Sammlung the open sheet is about. The picker reads it on every draw,
  *  so this is the whole of what makes one dialog serve all of them. */
 let showing: string | null = null;
+
+/** Handed in by main.ts rather than imported: list.ts already imports this
+ *  module for `openCollectionVoice`, and importing back would be a cycle. */
+let record: ((id: string) => Promise<void>) | null = null;
+
+/** How many sentences in this Sammlung are not in the voice it now says it
+ *  speaks in — the ones a re-record would speak. Counted the same way
+ *  `recordAgain` picks them, because a button that says „3 Sätze" and then
+ *  records four is worse than no count at all. */
+const outstanding = (id: string): number =>
+  ALL().filter((item) => item.collection === id && item.state !== 'ok').length;
 
 const shown = () => DECLARED().find((one) => one.id === showing);
 
@@ -87,6 +98,16 @@ function paint(): void {
     ? tn('collection_voice_cost', current.count)
     : t('collection_voice_cost_empty');
   picker.draw();
+
+  /* The button says how many it would speak, and is dead when that is none —
+     vorlaut's grid button is the precedent for both: its label is chosen by
+     what the press would do, not by what the panel is called. „Alles ist
+     aufgenommen" on a disabled button is why it cannot be pressed, which a
+     greyed „0 Sätze neu aufnehmen" would leave somebody to work out. */
+  const pending = outstanding(current.id);
+  const button = el<HTMLButtonElement>('colvoicerecord');
+  button.textContent = pending ? tn('collection_record', pending) : t('collection_record_none');
+  button.disabled = !pending;
 }
 
 export function openCollectionVoice(id: string): void {
@@ -95,6 +116,19 @@ export function openCollectionVoice(id: string): void {
   el<HTMLDialogElement>('colvoice').showModal();
 }
 
-export function wireCollectionVoice(): void {
+export function wireCollectionVoice(onRecord: (id: string) => Promise<void>): void {
+  record = onRecord;
   el('colvoiceclose').onclick = () => el<HTMLDialogElement>('colvoice').close();
+  /* Closes first, then speaks. Every other press on this sheet is instant and
+     leaves the sheet standing — vorlaut's rule, and the right one for a write
+     that is over before the hand leaves the mouse. This one is minutes of
+     synthesis that reports its progress in the page, and a modal over that
+     progress is the one arrangement where somebody cannot see the thing they
+     just started. */
+  el('colvoicerecord').onclick = () => {
+    const id = showing;
+    if (!id || !record) return;
+    el<HTMLDialogElement>('colvoice').close();
+    void record(id);
+  };
 }

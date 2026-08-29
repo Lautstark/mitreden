@@ -99,13 +99,16 @@ test('the ⋯ holds what the Sammlung is set to, under what acts on it', async (
   // conventions.md §3.6, amended: the menu beside the name holds a Sammlung's
   // settings as well as the acts on it, and the order is what keeps the two
   // legible — the acts, then what it is set to, then the delete.
+  //
+  // Three, which is vorlaut's list exactly. The fourth was „Sammlung neu
+  // aufnehmen" at the top; it is a button in the settings sheet now, where the
+  // voice that makes recordings stale is chosen.
   await page.click('#colmore');
   const items = page.locator('.menu button');
-  await expect(items).toHaveCount(4);
-  await expect(items.nth(0)).toHaveText('Sammlung neu aufnehmen');
-  await expect(items.nth(1)).toHaveText('Sammlung exportieren');
-  await expect(items.nth(2)).toContainText('Einstellungen dieser Sammlung');
-  await expect(items.nth(3)).toHaveClass(/danger/);
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toHaveText('Sammlung exportieren');
+  await expect(items.nth(1)).toContainText('Einstellungen dieser Sammlung');
+  await expect(items.nth(2)).toHaveClass(/danger/);
 });
 
 test('the sheet says what a different voice costs, before it is pressed', async ({ page }) => {
@@ -118,7 +121,27 @@ test('the sheet says what a different voice costs, before it is pressed', async 
 
   await openCollectionSettings(page);
   await expect(page.locator('#colvoicecost')).toContainText('2 Sätze');
-  await expect(page.locator('#colvoicecost')).toContainText('neu aufnehmen');
+  // The cost line used to end by naming a menu item to go and press. The act
+  // is on this sheet now, so the line states the cost and stops.
+  await expect(page.locator('#colvoicecost')).not.toContainText('Menü');
   // And no question in the way of the press.
   await expect(page.locator('#colvoice .foot')).toHaveCount(0);
+});
+
+test('the sheet carries the re-record, and says how many it would speak', async ({ page }) => {
+  // The button vorlaut's grid button is the precedent for: it names what the
+  // press would do rather than saying „Speichern", and it is dead when the
+  // press would do nothing — which is the common case, and was a permanently
+  // present menu item announcing „Alles hier ist schon … aufgenommen".
+  await page.fill('#t', 'Ich habe Hunger.\nIch will noch nicht ins Bett.');
+  await page.click('#add');
+  await expect(page.locator('.item')).toHaveCount(2);
+
+  const button = page.locator('#colvoicerecord');
+
+  // Nothing was ever recorded here — there is no voice on this page — so both
+  // sentences are outstanding and the button counts them.
+  await openCollectionSettings(page);
+  await expect(button).toHaveText('2 Sätze neu aufnehmen');
+  await expect(button).toBeEnabled();
 });
