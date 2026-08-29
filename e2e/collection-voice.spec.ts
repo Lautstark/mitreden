@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * Which voice records, now that the answer belongs to the Sammlung.
@@ -10,23 +10,39 @@ import { expect, test } from '@playwright/test';
  * name is where a Sammlung's own is changed, and Einstellungen keeps the
  * default that a new Sammlung starts with.
  *
+ * That „Ändern" is gone as of 2026-08-29. It led to two different places
+ * depending on where the next sentence would land, and the caption beside it
+ * was what made that honest — an arrangement the code had to argue for in two
+ * files. The line only states now, and each of the two answers has one door:
+ * a Sammlung's is its ⋯, the default is Einstellungen.
+ *
  * Nothing here records. Proving a voice speaks costs a 63 MB model and
  * audio.spec.ts pays that once; what goes wrong in this area is a page naming
  * one voice and recording in another, which is decided long before any audio.
  */
+
+/** The one door to a Sammlung's own settings: the ⋯ beside its name. */
+async function openCollectionSettings(page: Page): Promise<void> {
+  await page.click('#colmore');
+  await page.locator('.menu button', { hasText: 'Einstellungen dieser Sammlung' }).click();
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
 });
 
-test('the line names the Sammlung’s voice, and Ändern leads to where that one changes', async ({ page }) => {
-  // The caption is the half that makes one button with two destinations honest:
-  // it says which of the two answers the name beside it came from.
+test('the line names the Sammlung’s voice, and the ⋯ is where that one changes', async ({ page }) => {
+  // The caption says which of the two answers the name beside it came from.
+  // It used to also be what made one button with two destinations honest; it
+  // now earns its place on the first half alone.
   await expect(page.locator('#voicewhat')).toHaveText('Stimme der Sammlung');
   const named = await page.locator('#voicename').innerText();
 
-  await page.click('#voicepick');
+  // And the line is a statement: nothing in it is pressable.
+  await expect(page.locator('.voicenow button')).toHaveCount(0);
+
+  await openCollectionSettings(page);
   await expect(page.locator('#colvoice')).toBeVisible();
   // And not the app's settings, which is where it used to lead.
   await expect(page.locator('#setup')).not.toBeVisible();
@@ -66,11 +82,13 @@ test('with two open, the next sentence is in none — and both halves say so', a
   await rows.nth(1).click({ modifiers: ['ControlOrMeta'] });
 
   await expect(page.locator('#voicewhat')).toHaveText('Standardstimme');
-  await expect(page.locator('#voicepick')).toHaveAttribute('aria-label', 'Standardstimme ändern');
+  // No door in the line, for either answer. This is the case the old button
+  // handled by changing where it led, which is exactly what it stopped doing.
+  await expect(page.locator('.voicenow button')).toHaveCount(0);
 
-  await page.click('#voicepick');
+  // The default's door is Einstellungen, and it opens on the voice panel.
+  await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
-  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
   await expect(page.locator('#colvoice')).not.toBeVisible();
   // The panel says what it is for, so nobody reads it as the voice recording now.
   await expect(page.locator('#p-voice .section')).toHaveText('Standardstimme');
@@ -86,7 +104,7 @@ test('the ⋯ holds what the Sammlung is set to, under what acts on it', async (
   await expect(items).toHaveCount(4);
   await expect(items.nth(0)).toHaveText('Sammlung neu aufnehmen');
   await expect(items.nth(1)).toHaveText('Sammlung exportieren');
-  await expect(items.nth(2)).toContainText('Stimme der Sammlung');
+  await expect(items.nth(2)).toContainText('Einstellungen dieser Sammlung');
   await expect(items.nth(3)).toHaveClass(/danger/);
 });
 
@@ -98,7 +116,7 @@ test('the sheet says what a different voice costs, before it is pressed', async 
   await page.click('#add');
   await expect(page.locator('.item')).toHaveCount(2);
 
-  await page.click('#voicepick');
+  await openCollectionSettings(page);
   await expect(page.locator('#colvoicecost')).toContainText('2 Sätze');
   await expect(page.locator('#colvoicecost')).toContainText('neu aufnehmen');
   // And no question in the way of the press.

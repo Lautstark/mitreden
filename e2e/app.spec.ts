@@ -138,21 +138,29 @@ test('the caption spans the composer, both ends on the same edge', async ({ page
   // asymmetric because a round send button needs less inset than text does. A
   // caption has no such reason, and it read as starting further in than it
   // ended. What is measured is what the eye reads: the key's background on the
-  // left, and on the right the word rather than the transparent box round it.
+  // left, and the last words on the right.
+  //
+  // That right end used to be an „Ändern" button, and the padding inside it had
+  // to be subtracted to find where the ink stopped. The line states rather than
+  // routes since 2026-08-29, so the last thing in it is a span and its right
+  // edge is the ink.
   const ends = await page.evaluate(() => {
     const box = document.querySelector('.compose')!.getBoundingClientRect();
     const kbd = document.querySelector('.chint kbd')!.getBoundingClientRect();
-    const btn = document.getElementById('voicepick')!.getBoundingClientRect();
-    const pad = parseFloat(getComputedStyle(document.getElementById('voicepick')!).paddingRight);
-    return { left: Math.round(kbd.left - box.left), right: Math.round(box.right - (btn.right - pad)) };
+    const last = document.getElementById('voicefrom')!.getBoundingClientRect();
+    return { left: Math.round(kbd.left - box.left), right: Math.round(box.right - last.right) };
   });
   expect(ends.left).toBe(0);
   expect(ends.right).toBe(0);
 
-  // And one baseline. The right half ends in a padded button, so it is twice
-  // the height of the left; a flex row left to stretch put one at the top of
-  // the line and centred the other 7px below it. Measured on the text itself,
-  // by range — an element box includes padding and would hide the difference.
+  // And one baseline. This mattered when the right half ended in a padded
+  // button and was twice the height of the left: a flex row left to stretch put
+  // one at the top of the line and centred the other 7px below it. The button
+  // is gone and the two halves are the same height now, so this is holding a
+  // fixed thing rather than catching a live one — kept because it is the
+  // alignment the row is *for*, and a future control in this line would break
+  // it the same way. Measured on the text itself, by range: an element box
+  // includes padding and would hide the difference.
   const drift = await page.evaluate(() => {
     const baseline = (node: Node) => {
       const range = document.createRange();

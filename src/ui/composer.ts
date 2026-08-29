@@ -146,21 +146,18 @@ export async function pickVoice(id: string): Promise<void> {
  * this is. The sentence was true before because there was one answer; there are
  * two now — this Sammlung's, or the default an uncollected sentence records in
  * — and a line naming a voice without saying which of the two it read is a line
- * that is right by luck. It is also what makes one „Ändern" leading to two
- * different places honest: the word beside it says which door, before the press
- * rather than after it.
+ * that is right by luck.
+ *
+ * That fourth fact used to do double duty, as the caption that made one
+ * „Ändern" button leading to two different places honest. The button is gone
+ * (index.html says why) and the fact stays, because it was always the more
+ * useful half: it answers "which voice is this" without anybody pressing
+ * anything.
  */
 function drawVoice(): void {
   const into = nextCollection();
   const voice = voiceById(voiceInForce());
   el('voicewhat').textContent = t(into ? 'voice_label_collection' : 'voice_label_default');
-  // The button says nothing but „Ändern" and has room for nothing more, so what
-  // it leads to is in the name a reader hears rather than only in the caption a
-  // reader sees.
-  const change = el('voicepick');
-  const what = t(into ? 'voice_change_collection' : 'voice_change_default');
-  change.title = what;
-  change.setAttribute('aria-label', what);
   el('voicename').textContent = voice?.label ?? '—';
   // The language, not the locale. "Englisch (Vereinigte Staaten)" is the honest
   // answer and it is also the one that pushed this line onto a row of its own;

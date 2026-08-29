@@ -249,21 +249,24 @@
         <span><kbd>Enter</kbd> <span id="chint1" data-i18n="compose_records"></span> ·
           <kbd>Shift</kbd> + <kbd>Enter</kbd> <span id="chint2" data-i18n="compose_newline"></span></span>
         <!-- Not a control: a statement of which voice the next recording gets,
-             and a way through to where that is changed.
+             and only that.
 
-             Both halves are written from composer.ts rather than carried by
-             data-i18n, because both depend on where the next sentence lands.
-             In a Sammlung the line names that Sammlung's voice and the button
-             leads to the Sammlung's own sheet; with none open or two, the next
-             sentence goes uncollected and both point at the default in
-             Einstellungen. One button and two doors, and what makes that honest
-             rather than a trap is that the caption to its left says which of
-             the two it means before it is pressed. -->
+             It carried an „Ändern" button until 2026-08-29, and the comment
+             here argued that one button leading to two different places was
+             honest because the caption said which. That argument was the tell.
+             The two doors are now where they belong - a Sammlung's voice is in
+             its own ⋯ menu, the default is in Einstellungen - and this line
+             does not route anywhere, so there is nothing left to keep in step
+             with it.
+
+             Written from composer.ts rather than carried by data-i18n, because
+             what it says depends on where the next sentence lands: this
+             Sammlung's voice, or the default an uncollected sentence records
+             in. -->
         <span class="right voicenow">
           <span class="voicenow__what" id="voicewhat"></span>
           <b id="voicename"></b>
           <span class="voicenow__from" id="voicefrom"></span>
-          <button id="voicepick" class="btn quiet sm" data-i18n="voice_change"></button>
         </span>
       </p>
       <!-- role="status" is aria-live="polite", and the element is never hidden
