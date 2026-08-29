@@ -448,16 +448,20 @@ function chooseLang(code: Lang): void {
   void load();
 }
 
-/** Opening one panel from outside — the composer's way in to the voice. */
-function openPanel(id: string): void {
-  const panel = el<HTMLDetailsElement>(id);
-  panel.open = true;
-  // Only after the dialog is on screen, or there is nothing to scroll within.
-  requestAnimationFrame(() => panel.scrollIntoView({ block: 'nearest' }));
-}
 
 /** The dialog, with the panel that answers whatever asked for it unfolded. */
-export function openSetup(panel?: string): void {
+/* No panel argument, and none is wanted.
+ *
+ * It used to take one and deep-link into that panel, which is how the
+ * composer's „Ändern" button reached the voice section. That button went on
+ * 2026-08-29 - the line under the box states and does not route - and with it
+ * the only caller that ever passed an argument. What was left was a parameter
+ * nothing supplied and an openPanel() nothing reached, which is worse than
+ * nothing: it reads as a seam somebody may still be using.
+ *
+ * Also no longer exported. The gear below is the one caller and it is in this
+ * file, so the entrance is where the sheet is. */
+function openSetup(): void {
   drawVoices();
   drawTheme();
   drawStates();
@@ -469,7 +473,6 @@ export function openSetup(panel?: string): void {
   if (!azure.textContent) azure.textContent = t('loading');
   void drawSetup();
   el<HTMLDialogElement>('setup').showModal();
-  if (panel) openPanel(panel);
 }
 
 export function wireSettings(backup: Sicherung): void {
