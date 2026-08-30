@@ -267,14 +267,21 @@ function readFile(data: unknown): { lines: Line[]; collection: string | null } {
   return { lines, collection: name };
 }
 
-async function importFile(file: File): Promise<void> {
+/**
+ * A file in, sentences in the list.
+ *
+ * Exported because ui/shelf.ts takes the same path: a link naming a published
+ * Sammlung and a file somebody picked are one act with two doors, and a second
+ * copy of this is how the second door ends up not saying what the first says.
+ */
+export async function importFile(file: File): Promise<string | null> {
   busy('busy_import');
   let parsed: unknown;
   try {
     parsed = JSON.parse(await file.text());
   } catch {
     say(t('import_failed', { error: file.name }));
-    return;
+    return null;
   }
 
   // A full Sicherung takes the path that keeps its Sammlungen; everything else
@@ -293,13 +300,15 @@ async function importFile(file: File): Promise<void> {
         ? t('backup_too_new')
         : t('import_failed', { error: file.name }));
     }
-    return;
+    /* A whole-library Sicherung restores every Sammlung it holds, so there is
+       no one of them to hand back and nothing for a caller to open. */
+    return null;
   }
 
   const { lines, collection } = readFile(parsed);
   if (!lines.length) {
     say(t('import_empty'));
-    return;
+    return null;
   }
   const { addPhrases, votedVoice } = await import('../db/repo.ts');
   // Which voices this page can speak in, so a voice arriving with a sentence it
@@ -321,6 +330,7 @@ async function importFile(file: File): Promise<void> {
   say(t('done_import', { added, merged })
     + (revoiced ? t('done_import_revoiced', { n: revoiced }) : ''));
   await load();
+  return into.id;
 }
 
 async function wipeEverything(): Promise<void> {

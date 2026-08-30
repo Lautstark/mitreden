@@ -22,6 +22,7 @@ import { draw as drawList, recordAgain, wireList } from './ui/list.ts';
 import { rekeyIfNeeded } from './db/rekey.ts';
 import { drawRail, wireRail } from './ui/rail.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
+import { openNamed } from './ui/shelf.ts';
 import { wireSettings } from './ui/settings.ts';
 import { applyLang, el } from './ui/dom.ts';
 import { load, restoreOpen, subscribe } from './ui/state.ts';
@@ -102,6 +103,10 @@ export async function start(): Promise<void> {
   // re-confirmed lands in needs-permission and says so in Einstellungen →
   // Daten, which is where the click can happen.
   await backup.restore().catch(() => undefined);
+  /* Last, and after load(): this may add a Sammlung and needs the list it lands
+     in to be drawn. It never rejects — see ui/shelf.ts — so start()'s own catch
+     goes on meaning „the page failed to open". */
+  await openNamed();
 }
 
 /**

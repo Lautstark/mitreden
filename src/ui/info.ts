@@ -200,6 +200,14 @@ export const openDatenschutz = (): void => page('Datenschutz', `
     Sätze wird dabei nicht übertragen. Danach liegt die Stimme auf deinem Gerät
     und es findet kein weiterer Abruf statt.
   </p>
+  ${h3('Eine fertige Sammlung holen')}
+  <p style="margin:0">
+    Öffnest du einen Link auf eine fertige Sammlung — die Adresse endet dann auf
+    ?sammlung= — holt dein Browser diese eine Datei von lautstark.tech, das
+    ebenfalls bei GitHub Pages liegt. Übertragen wird dabei nur, welche Sammlung
+    gemeint ist; nichts aus deinen eigenen Sätzen geht mit. Ohne einen solchen
+    Link passiert das nicht.
+  </p>
   ${h3('Azure Speech, nur auf eigenen Wunsch')}
   <p style="margin:0">
     Trägst du einen eigenen Azure-Schlüssel ein, gehen die Sätze, die du
