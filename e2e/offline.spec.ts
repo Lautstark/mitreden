@@ -40,6 +40,9 @@ const TEXT = new Set(['.js', '.css', '.html', '.json', '.webmanifest', '.map']);
 const ALLOWED = new Map([
   // Fetched. The voice model, once, on the first recording. Declared.
   ['huggingface.co', 'the piper voice models'],
+  // Fetched, and only ever after a ?sammlung= link is opened: the one published
+  // Sammlung that link names. Declared — „Eine fertige Sammlung holen".
+  ['lautstark.tech', 'a published Sammlung a ?sammlung= link names'],
   // Linked in prose, never fetched - the about, Impressum and licence texts.
   ['github.com', 'the source code and the issue tracker'],
   ['lautstark.github.io', 'the sister projects'],
