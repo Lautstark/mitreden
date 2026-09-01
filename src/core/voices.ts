@@ -1,6 +1,6 @@
 /** Which voices this page may offer, and what to call them. */
 
-import { azureVoices, piperVoices, type Offered } from '@lautstark/stimmquelle/browser';
+import { azureVoices, labelOf, piperVoices, type Offered } from '@lautstark/stimmquelle/browser';
 import type { Voice } from './types.ts';
 
 /** `piper:de_DE-thorsten-medium` -> `de_DE-thorsten-medium`, the model's name. */
@@ -120,14 +120,19 @@ export async function probeAzure(azure: AzureAccess): Promise<AzureAnswer> {
 
 /**
  * Two voices can share a name across quality tiers, and a picker that shows
- * "Thorsten" twice is a picker you cannot use. The tier only appears when it
- * has to.
+ * "Thorsten" twice is a picker you cannot use. The rule is stimmquelle's since
+ * 2.9.0 and was written here first: whether two voices share a name is a fact
+ * about the catalogue, and the catalogue is over there. It was the third
+ * separate answer to it — vorlaut kept a set of the names it holds twice, and a
+ * third picker was telling the two Thorstens apart by their download sizes.
+ *
+ * Same signature and same output. What the package does better is that it reads
+ * `quality` off the catalogue instead of the last dash-separated chunk of the
+ * id, which this had no other way to get and which is not a field anything
+ * promised the shape of — so an Azure voice, whose id carries no tier at all,
+ * now keeps its bare name rather than gaining a slice of a ShortName.
  */
-export function labelOf(voice: Offered, among: readonly Offered[]): string {
-  const twins = among.filter((other) => other.name === voice.name).length > 1;
-  const tier = voice.id.split('-').at(-1);
-  return twins ? `${voice.name} (${tier})` : voice.name;
-}
+export { labelOf };
 
 export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   id: voice.id,
