@@ -22,7 +22,7 @@ import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangV
 import { voicePicker } from './voicepicker.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
-import { confirmDialog, openDialog } from '@lautstark/design/dialog';
+import { confirmDialog, openDialog } from './dialog.ts';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import { downloadJson } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
@@ -364,7 +364,6 @@ async function wipeEverything(): Promise<void> {
     ok.textContent = t('understood');
     const sheet = openDialog({
       title: t('danger_blocked_title'),
-      closeLabel: t('close'),
       body: [t('danger_blocked', { folder })],
       footer: [ok],
     });
@@ -378,9 +377,6 @@ async function wipeEverything(): Promise<void> {
       ? t('danger_ask_folder', { n: await countPhrases(), folder })
       : t('danger_ask_browser', { n: await countPhrases() }),
     confirmLabel: t('danger_do'),
-    cancelLabel: t('cancel'),
-    // Never the same word as the button beside it.
-    closeLabel: t('close'),
     danger: true,
     /* The one act in this product that asks for a word. It empties the library
        on every device the household has; design.md §4.3 says this is what the

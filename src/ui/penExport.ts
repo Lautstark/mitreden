@@ -15,7 +15,7 @@
  */
 
 import { DEFAULT_SHEET, SHEETS, sheetsFor, type Sheet } from '../core/anybook.ts';
-import { openDialog } from '@lautstark/design/dialog';
+import { openDialog } from './dialog.ts';
 import { loadSettings } from '../db/db.ts';
 import { t, tn } from '../i18n/index.ts';
 
@@ -189,7 +189,6 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
 
     const open = openDialog({
       title: t('pen_ask_title'),
-      closeLabel: t('close'),
       body: [sheetName, sheetRow, codeBox, startRow, map, summary, paper],
       footer: [cancel, confirm],
       onClose: () => done(answer),

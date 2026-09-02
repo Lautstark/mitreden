@@ -26,7 +26,7 @@ import {
 } from './state.ts';
 import { busy, el, say } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
-import { confirmDialog } from '@lautstark/design/dialog';
+import { confirmDialog } from './dialog.ts';
 import { download } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
@@ -299,8 +299,6 @@ async function remove(item: PhraseWithState): Promise<void> {
     title: t('menu_delete_one'),
     body: t('ask_delete_this', { text: `„${item.text}“` }),
     confirmLabel: t('delete_one_do'),
-    cancelLabel: t('cancel'),
-    closeLabel: t('close'),
     danger: true,
   })) return;
   busy('busy_delete');

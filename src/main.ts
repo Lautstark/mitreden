@@ -14,7 +14,7 @@ import { exportEverything } from './db/backup.ts';
 import { discardEverything, isRefusal, onChanged, pullFromFolder } from './db/db.ts';
 import { Sicherung } from '@lautstark/sicherung';
 import { ablage, adopted, watchFolder } from './db/folder.ts';
-import { confirmDialog } from '@lautstark/design/dialog';
+import { confirmDialog } from './ui/dialog.ts';
 import { lang, setLang, t, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
 import { loadVoices, wireComposer } from './ui/composer.ts';
@@ -142,8 +142,6 @@ async function refused(): Promise<void> {
     title: t('db_refused_title'),
     body: t('db_refused_body'),
     confirmLabel: t('db_refused_do'),
-    cancelLabel: t('cancel'),
-    closeLabel: t('close'),
     danger: true,
   })) return;
 

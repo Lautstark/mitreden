@@ -15,7 +15,7 @@ import {
 import { lang, t } from '../i18n/index.ts';
 import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
 import { el, say } from './dom.ts';
-import { confirmDialog } from '@lautstark/design/dialog';
+import { confirmDialog } from './dialog.ts';
 import { renameField, type RenameField } from '@lautstark/design/rename';
 import { drawCollections } from '@lautstark/design/collections';
 
@@ -116,8 +116,6 @@ export async function deleteCollection(key: string, name: string, n: number): Pr
     // What happens, which here is the half that is easy to get wrong: the
     // Sammlung goes and the sentences do not.
     confirmLabel: t('collection_delete_do'),
-    cancelLabel: t('cancel'),
-    closeLabel: t('close'),
     danger: true,
   })) return;
   if (!(await removeCollection(key))) return;
