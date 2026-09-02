@@ -9,7 +9,7 @@
 import { countPhrases, phrasesIn, wipe } from '../db/db.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
-import { wireBackupFolder } from './backupFolder.ts';
+import { backupPanel, type BackupPanel } from '@lautstark/sicherung/backup-panel';
 import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { ablage, isStore } from '../db/folder.ts';
 import { adoptFolder } from '../db/db.ts';
@@ -442,6 +442,10 @@ function chooseLang(code: Lang): void {
   localStorage.setItem('mitreden.lang', code);
   document.documentElement.lang = code;
   applyLang();
+  /* The backup panel holds no data-i18n — it paints its own words — so
+     applyLang() above cannot reach it. It reads lang() on every paint, so one
+     repaint is the whole of what it needs. */
+  keeping?.refresh();
   // Before the picker redraws, so it marks the voice this page now starts in.
   relangVoice();
   drawVoices();
@@ -453,6 +457,10 @@ function chooseLang(code: Lang): void {
   void load();
 }
 
+
+/* Held so that a language change can repaint it, and null where the browser has
+   no picker or a store folder makes the offer redundant. */
+let keeping: BackupPanel | null = null;
 
 /** The dialog, with the panel that answers whatever asked for it unfolded. */
 /* No panel argument, and none is wanted.
@@ -494,8 +502,22 @@ export function wireSettings(backup: Sicherung): void {
   /* Only where there is no store folder: with one, the copies already go beside
      the work, and a second picker would be the same offer under a name that
      reads almost the same. */
-  if (!isStore()) wireBackupFolder(backup);
-  else el('folderbox').hidden = true;
+  /* Only where there is no store folder: with one, the copies already go beside
+     the work, and a second picker would be the same offer under a name that
+     reads almost the same. */
+  if (isStore()) el('folderbox').hidden = true;
+  else {
+    /* The 161 lines this replaces are @lautstark/sicherung/backup-panel's now —
+       words, markup, the age rule — beside the wherePanel above that already
+       came from there. What mitreden kept is `lang`, and it is a function
+       rather than a value on purpose: this page changes language without
+       reloading, and a locale captured once answers in the language the reader
+       has just left while staying perfectly well-formed. That was mitreden's
+       own rule and it is the module's now. */
+    keeping = backupPanel({ backup, say, lang: () => (lang() === 'en' ? 'en' : 'de') });
+    if (keeping) el('folderbox').append(keeping.node);
+    else el('folderbox').hidden = true;
+  }
   el('gear').onclick = () => openSetup();
   el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
   // A pick redraws the list it was made in, so the mark moves with the click —
