@@ -52,7 +52,6 @@
   "count_one": "1 Satz",
   "count_open": ", {n} offen",
   "count_other": "{n} Sätze",
-  "danger_ask": "{n} Sätze, alle Sammlungen und alle Aufnahmen sind danach weg. Das lässt sich nicht rückgängig machen.",
   "danger_body": "Alle Sammlungen, alle Sätze und alle Aufnahmen.",
   "danger_do": "Alle Daten löschen",
   "danger_done": "Alles gelöscht.",
@@ -167,5 +166,10 @@
   "voice_pick_title": "Stimme",
   "voice_rushes_fragments": "Spricht einzelne Wörter sehr kurz. Mit einem Satzzeichen am Ende — Hallo! — nimmt sie sich Zeit.",
   "voice_search_hint": "Stimme suchen …",
-  "panel_keep": "Herausnehmen und einlesen"
+  "panel_keep": "Herausnehmen und einlesen",
+  "danger_ask_browser": "{n} Sätze, alle Sammlungen und alle Aufnahmen sind danach weg — in diesem Browser. Das lässt sich nicht rückgängig machen.",
+  "danger_ask_folder": "{n} Sätze, alle Sammlungen und alle Aufnahmen sind danach weg — auch im Ordner „{folder}“, und damit auf jedem Gerät, das ihn benutzt. Das lässt sich nicht rückgängig machen.",
+  "danger_blocked_title": "Geht gerade nicht",
+  "danger_blocked": "Der Ordner „{folder}“ antwortet nicht. Löschen würde nur diesen Browser leeren — der Ordner behielte alles und gäbe es beim nächsten Start zurück. Verbinde den Ordner wieder und versuch es dann.",
+  "understood": "Verstanden"
 }

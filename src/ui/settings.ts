@@ -6,7 +6,7 @@
  * server of ours, because there is not one.
  */
 
-import { countPhrases, phrasesIn, wipe } from '../db/db.ts';
+import { countPhrases, phrasesIn, wipe, wipeReaches } from '../db/db.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
 import { backupPanel, type BackupPanel } from '@lautstark/sicherung/backup-panel';
@@ -22,7 +22,7 @@ import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangV
 import { voicePicker } from './voicepicker.ts';
 import { ALL, load } from './state.ts';
 import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
-import { confirmDialog } from '@lautstark/design/dialog';
+import { confirmDialog, openDialog } from '@lautstark/design/dialog';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import { downloadJson } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
@@ -336,10 +336,47 @@ export async function importFile(file: File): Promise<string | null> {
   return into.id;
 }
 
+/**
+ * „Alles löschen", and how far it actually goes.
+ *
+ * The sentence differs by where the work lives, and the difference is not a
+ * nicety: with a folder as the store this deletes the files, so it deletes on
+ * every device in the household. „Das lässt sich nicht rückgängig machen" was
+ * true and said nothing about the phone in the next room.
+ *
+ * And with the folder out of reach it is refused rather than asked. Running it
+ * there would empty this browser, leave the folder whole, and hand everything
+ * back on the next start — a delete that reports success and undoes itself,
+ * which is the exact failure db.ts's `wipe` was fixed for. Refusing is the
+ * honest answer; a half-delete is not.
+ */
 async function wipeEverything(): Promise<void> {
+  const reach = wipeReaches();
+  const folder = 'folder' in ablage.status ? ablage.status.folder : '';
+
+  if (reach === 'unreachable') {
+    /* Built by hand: `el` here reads an element by id, it does not make one —
+       the family's other two products mean the opposite by that name. See the
+       family review of 2026-09-02. */
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'btn primary';
+    ok.textContent = t('understood');
+    const sheet = openDialog({
+      title: t('danger_blocked_title'),
+      closeLabel: t('close'),
+      body: [t('danger_blocked', { folder })],
+      footer: [ok],
+    });
+    ok.addEventListener('click', () => sheet.close());
+    return;
+  }
+
   if (!await confirmDialog({
     title: t('danger_title'),
-    body: t('danger_ask', { n: await countPhrases() }),
+    body: reach === 'folder'
+      ? t('danger_ask_folder', { n: await countPhrases(), folder })
+      : t('danger_ask_browser', { n: await countPhrases() }),
     confirmLabel: t('danger_do'),
     cancelLabel: t('cancel'),
     // Never the same word as the button beside it.

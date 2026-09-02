@@ -52,7 +52,6 @@
   "count_one": "1 sentence",
   "count_open": ", {n} open",
   "count_other": "{n} sentences",
-  "danger_ask": "{n} sentences, every collection and every recording will be gone. This cannot be undone.",
   "danger_body": "Every collection, every sentence and every recording.",
   "danger_do": "Delete all data",
   "danger_done": "Everything deleted.",
@@ -167,5 +166,10 @@
   "voice_pick_title": "Voice",
   "voice_rushes_fragments": "Speaks single words very briefly. With a punctuation mark at the end — Hello! — the voice takes its time.",
   "voice_search_hint": "Search voices…",
-  "panel_keep": "Take out and read in"
+  "panel_keep": "Take out and read in",
+  "danger_ask_browser": "{n} sentences, every collection and every recording will be gone — in this browser. This cannot be undone.",
+  "danger_ask_folder": "{n} sentences, every collection and every recording will be gone — in the folder “{folder}” too, and so on every device that uses it. This cannot be undone.",
+  "danger_blocked_title": "Not right now",
+  "danger_blocked": "The folder “{folder}” is not answering. Deleting would empty this browser only — the folder would keep everything and hand it back on the next start. Reconnect the folder and try again.",
+  "understood": "Understood"
 }
