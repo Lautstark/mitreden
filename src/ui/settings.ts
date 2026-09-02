@@ -10,6 +10,9 @@ import { countPhrases, phrasesIn, wipe } from '../db/db.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
 import { wireBackupFolder } from './backupFolder.ts';
+import { wherePanel } from '@lautstark/sicherung/ablage-panel';
+import { ablage, isStore } from '../db/folder.ts';
+import { adoptFolder } from '../db/db.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
 import { offered, probeAzure } from '../core/voices.ts';
 import { LANGUAGES, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
@@ -478,7 +481,21 @@ function openSetup(): void {
 }
 
 export function wireSettings(backup: Sicherung): void {
-  wireBackupFolder(backup);
+  /* The store panel comes from the package, so every Lautstark programme shows
+     the same one. What stays here is what mitreden alone offers besides it. */
+  const store = wherePanel({
+    store: ablage,
+    adopt: adoptFolder,
+    changed: () => void load(),
+    say,
+    lang: lang() === 'en' ? 'en' : 'de',
+  });
+  el('wherebox').append(store.node);
+  /* Only where there is no store folder: with one, the copies already go beside
+     the work, and a second picker would be the same offer under a name that
+     reads almost the same. */
+  if (!isStore()) wireBackupFolder(backup);
+  else el('folderbox').hidden = true;
   el('gear').onclick = () => openSetup();
   el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
   // A pick redraws the list it was made in, so the mark moves with the click —

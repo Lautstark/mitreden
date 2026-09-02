@@ -127,7 +127,7 @@
   "not_recorded_other": "{n} could not be recorded: {why}",
   "nothing_recorded": "None of those are recorded.",
   "nothing_to_record": "Everything here is already recorded in the collection’s voice.",
-  "panel_backup": "Backup",
+  "panel_backup": "Where everything lives",
   "panel_language": "Language",
   "panel_theme": "Appearance",
   "panel_voice_default": "Default voice",
@@ -182,5 +182,6 @@
   "voice_now_default": "New collections get {voice}.",
   "voice_pick_title": "Voice",
   "voice_rushes_fragments": "Speaks single words very briefly. With a punctuation mark at the end — Hello! — the voice takes its time.",
-  "voice_search_hint": "Search voices…"
+  "voice_search_hint": "Search voices…",
+  "panel_keep": "Take out and read in"
 }

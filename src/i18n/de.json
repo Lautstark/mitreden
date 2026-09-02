@@ -127,7 +127,7 @@
   "not_recorded_other": "{n} konnten nicht aufgenommen werden: {why}",
   "nothing_recorded": "Davon ist nichts aufgenommen.",
   "nothing_to_record": "Alles hier ist schon in der Stimme der Sammlung aufgenommen.",
-  "panel_backup": "Sicherung",
+  "panel_backup": "Wo alles liegt",
   "panel_language": "Sprache",
   "panel_theme": "Erscheinungsbild",
   "panel_voice_default": "Standardstimme",
@@ -182,5 +182,6 @@
   "voice_now_default": "Neue Sammlungen bekommen {voice}.",
   "voice_pick_title": "Stimme",
   "voice_rushes_fragments": "Spricht einzelne Wörter sehr kurz. Mit einem Satzzeichen am Ende — Hallo! — nimmt sie sich Zeit.",
-  "voice_search_hint": "Stimme suchen …"
+  "voice_search_hint": "Stimme suchen …",
+  "panel_keep": "Herausnehmen und einlesen"
 }

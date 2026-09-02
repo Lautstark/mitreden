@@ -11,8 +11,9 @@ import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';
 import { exportEverything } from './db/backup.ts';
-import { discardEverything, isRefusal, onChanged } from './db/db.ts';
+import { discardEverything, isRefusal, onChanged, pullFromFolder } from './db/db.ts';
 import { Sicherung } from '@lautstark/sicherung';
+import { ablage, adopted, watchFolder } from './db/folder.ts';
 import { confirmDialog } from '@lautstark/design/dialog';
 import { lang, setLang, t, type Lang } from './i18n/index.ts';
 import { initTheme } from '@lautstark/design/theme';
@@ -92,6 +93,12 @@ export async function start(): Promise<void> {
   // „geändert seit der Aufnahme" for one frame and settle a moment later.
   // Silent, because nothing a person asked for happened — the recordings are
   // the ones they already had, under the name CONTRACT.md §3 gives them.
+  /* Before anything is read. Where a folder is the store it is the truth, and a
+     first paint from the browser's copy would be a library that changes under
+     somebody a moment later. */
+  await ablage.restore().catch(() => null);
+  await pullFromFolder().catch(() => false);
+
   await rekeyIfNeeded();
   await loadVoices();
   // Which Sammlungen were open, before anything is drawn — otherwise the first
@@ -102,7 +109,16 @@ export async function start(): Promise<void> {
   // Never prompts — there is no gesture here. A folder needing its permission
   // re-confirmed lands in needs-permission and says so in Einstellungen →
   // Daten, which is where the click can happen.
-  await backup.restore().catch(() => undefined);
+  /* Where the work already lives in a folder, the dated copies go beside it: the
+     store fills `<folder>/mitreden/` and these are flat files above it, so nobody
+     is asked to pick a second folder that reads like the first. */
+  const held = ablage.handle();
+  if (held) await backup.useFolder(held).catch(() => undefined);
+  else await backup.restore().catch(() => undefined);
+
+  if (await adopted()) {
+    watchFolder(() => void pullFromFolder().then(() => void load()));
+  }
   /* Last, and after load(): this may add a Sammlung and needs the list it lands
      in to be drawn. It never rejects — see ui/shelf.ts — so start()'s own catch
      goes on meaning „the page failed to open". */

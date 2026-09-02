@@ -443,3 +443,24 @@ button,input,select,textarea{font:inherit;color:inherit}
 .folderbox{margin:14px 0 18px}
 .folderbox[hidden]{display:none}
 .folderbox .row{margin-top:10px}
+
+/* The shared panel from @lautstark/sicherung/ablage-panel. The classes are its
+   markup; these are this product's tokens under them. Scoped, because `.sub`
+   already means a lead paragraph here and a shared component must not have to
+   know that. */
+.where-panel{display:grid;gap:11px}
+.where-panel p{margin:0}
+.where-panel .acts{display:flex;flex-wrap:wrap;gap:8px}
+.where{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:var(--radius-sm);background:var(--surface)}
+.where b{font-size:13px;font-weight:600}
+.where.bad{border-color:var(--danger)}
+.where-share{display:grid;gap:6px}
+.where-panel .check{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}
+.where-panel .check input{flex:0 0 auto;margin:0}
+.tree{margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text);font-family:var(--mono);font-size:12px;
+  line-height:1.8;overflow-x:auto}
+.subhead{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text-faint)}
+.hair{border:0;border-top:1px solid var(--line);margin:14px 0 10px}

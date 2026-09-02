@@ -87,6 +87,10 @@ import {
   deleteDB, openDB, type DBSchema, type IDBPDatabase, type IDBPTransaction, type StoreNames,
 } from 'idb';
 import { normText, slug } from '../core/ids.ts';
+import {
+  adopt, adopted, asPhrase, asStored, fileCollection, filePhrase, isStore,
+  pushKind, readKind, unfileCollection, unfilePhrase, type Kind,
+} from './folder.ts';
 import { commonest } from '../core/voices.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 import { changes } from '@lautstark/werkzeuge/changed';
@@ -466,9 +470,17 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
   if (!items.length) return;
   const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
   const phrases = tx.objectStore('phrases');
-  for (const item of items) await phrases.put({ ...item, norm: normText(item.text) });
+  /* Stamped here rather than by the caller: the folder decides what to rewrite
+     by comparing it, and a record that never changes its stamp is a record the
+     folder stops believing has changed. conventions.md §1.4. */
+  const at = Date.now();
+  const stored = items.map((item) => ({ ...item, norm: normText(item.text), updatedAt: at }));
+  for (const item of stored) await phrases.put(item);
   await bump(tx, items.map((item) => item.collection));
   await tx.done;
+  for (const item of stored) await filePhrase(item);
+  /* Membership moved, so the Sammlungen's own stamps moved with it. */
+  await mirror('sammlungen');
   touched();
 }
 
@@ -483,6 +495,8 @@ export async function dropPhrase(id: string): Promise<void> {
   await phrases.delete(id);
   if (held) await bump(tx, [held.collection]);
   await tx.done;
+  await unfilePhrase(id);
+  if (held?.collection) await mirror('sammlungen');
   touched();
 }
 
@@ -581,8 +595,10 @@ export async function putCollections(items: readonly Collection[]): Promise<void
   // Read once per call rather than once per record: several arriving together
   // have to end up in the order they are given.
   let next = await nextStamp(tx.store.index('updatedAt'));
-  for (const item of items) await tx.store.put({ ...item, updatedAt: next++ });
+  const stored = items.map((item) => ({ ...item, updatedAt: next++ }));
+  for (const item of stored) await tx.store.put(item);
   await tx.done;
+  for (const item of stored) await fileCollection(item);
   touched();
 }
 
@@ -612,8 +628,72 @@ export async function dropCollection(id: string): Promise<boolean> {
     await phrases.put(rest);
   }
   await tx.done;
+  await unfileCollection(id);
+  /* The sentences kept their text and lost a membership, which is a change to
+     each of them. §4.3: the Sammlung goes, the sentences stay. */
+  await mirror('saetze');
   touched();
   return true;
+}
+
+/* Where a folder is the store, a change made inside one transaction is mirrored
+   afterwards, wholesale: a folder write cannot happen inside a transaction that
+   has to stay open. */
+async function mirror(...kinds: Kind[]): Promise<void> {
+  if (!isStore()) return;
+  const database = await db();
+  for (const kind of kinds) {
+    if (kind === 'sammlungen') await pushKind('sammlungen', await database.getAll('collections'));
+    if (kind === 'saetze') {
+      const rows = await database.getAll('phrases');
+      await pushKind('saetze', await Promise.all(rows.map(asStored)));
+    }
+  }
+}
+
+/* The folder is the truth where one is connected: on start it is read and the
+   browser's copy is replaced wholesale. Only a folder that has finished becoming
+   the store — one halfway through adoption holds fewer records than the browser
+   does, and reading that back is indistinguishable from "everything was deleted
+   elsewhere". It is not the same thing, and guessing cost a household its
+   calendar once. */
+export async function pullFromFolder(): Promise<boolean> {
+  if (!isStore() || !(await adopted())) return false;
+  const database = await db();
+  const [saetze, sammlungen] = await Promise.all([
+    readKind<Record<string, unknown>>('saetze'),
+    readKind<StoredCollection>('sammlungen'),
+  ]);
+  const tx = database.transaction(['phrases', 'collections'], 'readwrite');
+  await tx.objectStore('phrases').clear();
+  await tx.objectStore('collections').clear();
+  for (const row of saetze) {
+    const item = asPhrase(row);
+    await tx.objectStore('phrases').put({ ...item, norm: normText(item.text) });
+  }
+  for (const item of sammlungen) await tx.objectStore('collections').put(item);
+  await tx.done;
+  /* The audio stays. It is keyed by the sentence's own id, which came back
+     unchanged, and what no longer matches its text is already answered by
+     `fingerprint`. */
+  touched();
+  return true;
+}
+
+/* Connecting a folder for the first time is the migration with a before and an
+   after. A folder that is already a store replaces what this browser holds; one
+   that is not adopts what this browser holds — written, checked, and only then
+   marked. */
+export async function adoptFolder(): Promise<'pushed' | 'pulled' | 'incomplete'> {
+  if (await adopted()) { await pullFromFolder(); return 'pulled'; }
+  const database = await db();
+  const rows = await database.getAll('phrases');
+  const went = await adopt({
+    saetze: await Promise.all(rows.map(asStored)),
+    sammlungen: await database.getAll('collections'),
+  });
+  if (!went.adopted) return went.reason === 'already' ? 'pulled' : 'incomplete';
+  return 'pushed';
 }
 
 /* -------------------------------------------------------------- the rest --- */
