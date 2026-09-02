@@ -171,5 +171,7 @@
   "danger_ask_folder": "{n} sentences, every collection and every recording will be gone — in the folder “{folder}” too, and so on every device that uses it. This cannot be undone.",
   "danger_blocked_title": "Not right now",
   "danger_blocked": "The folder “{folder}” is not answering. Deleting would empty this browser only — the folder would keep everything and hand it back on the next start. Reconnect the folder and try again.",
-  "understood": "Understood"
+  "understood": "Understood",
+  "danger_type": "Type “delete” to confirm",
+  "danger_word": "delete"
 }

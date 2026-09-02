@@ -382,6 +382,11 @@ async function wipeEverything(): Promise<void> {
     // Never the same word as the button beside it.
     closeLabel: t('close'),
     danger: true,
+    /* The one act in this product that asks for a word. It empties the library
+       on every device the household has; design.md §4.3 says this is what the
+       friction is for, and that spending it anywhere else is what breaks it. */
+    requireTyping: t('danger_word'),
+    typingLabel: t('danger_type'),
   })) return;
   await wipe();
   say(t('danger_done'));

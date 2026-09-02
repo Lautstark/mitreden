@@ -171,5 +171,7 @@
   "danger_ask_folder": "{n} Sätze, alle Sammlungen und alle Aufnahmen sind danach weg — auch im Ordner „{folder}“, und damit auf jedem Gerät, das ihn benutzt. Das lässt sich nicht rückgängig machen.",
   "danger_blocked_title": "Geht gerade nicht",
   "danger_blocked": "Der Ordner „{folder}“ antwortet nicht. Löschen würde nur diesen Browser leeren — der Ordner behielte alles und gäbe es beim nächsten Start zurück. Verbinde den Ordner wieder und versuch es dann.",
-  "understood": "Verstanden"
+  "understood": "Verstanden",
+  "danger_type": "Tipp „löschen“, um zu bestätigen",
+  "danger_word": "löschen"
 }
