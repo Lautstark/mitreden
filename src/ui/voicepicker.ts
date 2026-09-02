@@ -21,7 +21,7 @@
 import { lang, t } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
 import { knownVoices } from './composer.ts';
-import { el, sourceOf, speaks } from './dom.ts';
+import { byId, sourceOf, speaks } from './dom.ts';
 import { weighs } from '@lautstark/werkzeuge/bytes';
 
 /**
@@ -147,7 +147,7 @@ export function voicePicker(spec: PickerSpec): Picker {
 
   /** One pill per language the catalogue actually offers, plus the way back. */
   function drawFilters(voices: readonly Voice[]): void {
-    const box = el(spec.chips);
+    const box = byId(spec.chips);
     box.innerHTML = '';
     const codes = [...new Set(voices.map((voice) => language(voice.locale)))]
       .sort((a, b) => speaks(a).localeCompare(speaks(b), lang()));
@@ -172,7 +172,7 @@ export function voicePicker(spec: PickerSpec): Picker {
     const live = spec.current();
     drawFilters(voices);
 
-    const box = el(spec.list);
+    const box = byId(spec.list);
     box.innerHTML = '';
     box.setAttribute('role', 'radiogroup');
     box.setAttribute('aria-label', t('voice_pick_title'));
@@ -195,7 +195,7 @@ export function voicePicker(spec: PickerSpec): Picker {
   function step(event: KeyboardEvent): void {
     const keys = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'];
     if (!keys.includes(event.key)) return;
-    const rows = [...el(spec.list).querySelectorAll<HTMLElement>('.voice')];
+    const rows = [...byId(spec.list).querySelectorAll<HTMLElement>('.voice')];
     const at = rows.indexOf(document.activeElement as HTMLElement);
     if (at < 0 || !rows.length) return;
     event.preventDefault();
@@ -209,12 +209,12 @@ export function voicePicker(spec: PickerSpec): Picker {
     spec.pick(next.dataset.id ?? '');
   }
 
-  const search = el<HTMLInputElement>(spec.search);
+  const search = byId<HTMLInputElement>(spec.search);
   search.addEventListener('input', () => {
     query = search.value.trim().toLowerCase();
     draw();
   });
-  el(spec.list).addEventListener('keydown', (event) => step(event as KeyboardEvent));
+  byId(spec.list).addEventListener('keydown', (event) => step(event as KeyboardEvent));
 
   return { draw };
 }

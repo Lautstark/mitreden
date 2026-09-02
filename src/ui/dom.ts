@@ -29,13 +29,16 @@ import { announcer, type Announcer } from '@lautstark/design/toast';
  */
 let line: Announcer | undefined;
 const status = (): Announcer =>
-  (line ??= announcer(el('s'), { busyClass: 'working' }));
+  (line ??= announcer(byId('s'), { busyClass: 'working' }));
 
-export function el<T extends HTMLElement = HTMLElement>(id: string): T {
-  const node = document.getElementById(id);
-  if (!node) throw new Error(`No element with id "${id}" in the page.`);
-  return node as T;
-}
+/* `byId` was `el` here until 2026-09-02, which is the name bildhaft and
+   wochenwerk use for the *opposite* operation — making an element. One word,
+   two contradictory meanings, in sibling repositories somebody moves between.
+   The implementation is @lautstark/werkzeuge/dom's now and the throw came with
+   it: a missing id is a template and a module that have drifted apart, not a
+   state sixty call sites should branch on. */
+export { byId } from '@lautstark/werkzeuge/dom';
+import { byId } from '@lautstark/werkzeuge/dom';
 
 /**
  * What just happened, in words, where a screen reader will read it.

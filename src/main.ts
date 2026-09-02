@@ -25,7 +25,7 @@ import { drawRail, wireRail } from './ui/rail.ts';
 import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { openNamed } from './ui/shelf.ts';
 import { wireSettings } from './ui/settings.ts';
-import { applyLang, el } from './ui/dom.ts';
+import { applyLang, byId } from './ui/dom.ts';
 import { load, restoreOpen, subscribe } from './ui/state.ts';
 
 function chooseLang(): void {
@@ -81,10 +81,10 @@ export async function start(): Promise<void> {
   wireList();
   wireCollectionVoice(recordAgain);
   wireSettings(backup);
-  el('about').onclick = openAbout;
-  el('impressum').onclick = openImpressum;
-  el('datenschutz').onclick = openDatenschutz;
-  el('infoclose').onclick = () => el<HTMLDialogElement>('info').close();
+  byId('about').onclick = openAbout;
+  byId('impressum').onclick = openImpressum;
+  byId('datenschutz').onclick = openDatenschutz;
+  byId('infoclose').onclick = () => byId<HTMLDialogElement>('info').close();
   subscribe(drawRail);
   subscribe(drawList);
   await ensureCollection(lang() === 'de');

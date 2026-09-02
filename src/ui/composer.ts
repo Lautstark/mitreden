@@ -21,7 +21,7 @@ import { setProgress } from '../core/audio.ts';
 import { LANGUAGES, lang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
 import { DECLARED, OPEN, endWork, load, queueWork, stepWork, subscribe } from './state.ts';
-import { busy, el, say, sourceOf, speaks } from './dom.ts';
+import { busy, byId, say, sourceOf, speaks } from './dom.ts';
 
 let voices: Voice[] = [];
 let chosen = '';
@@ -157,17 +157,17 @@ export async function pickVoice(id: string): Promise<void> {
 function drawVoice(): void {
   const into = nextCollection();
   const voice = voiceById(voiceInForce());
-  el('voicewhat').textContent = t(into ? 'voice_label_collection' : 'voice_label_default');
-  el('voicename').textContent = voice?.label ?? '—';
+  byId('voicewhat').textContent = t(into ? 'voice_label_collection' : 'voice_label_default');
+  byId('voicename').textContent = voice?.label ?? '—';
   // The language, not the locale. "Englisch (Vereinigte Staaten)" is the honest
   // answer and it is also the one that pushed this line onto a row of its own;
   // the region only separates two voices when both are offered, which is a
   // question for the picker, where there is room to ask it.
-  el('voicefrom').textContent = voice ? `${sourceOf(voice.source)} · ${speaks(voice.lang)}` : '';
+  byId('voicefrom').textContent = voice ? `${sourceOf(voice.source)} · ${speaks(voice.lang)}` : '';
 }
 
 async function add(): Promise<void> {
-  const box = el<HTMLTextAreaElement>('t');
+  const box = byId<HTMLTextAreaElement>('t');
   const lines = box.value.split('\n').map((line) => line.trim()).filter(Boolean);
   if (!lines.length) {
     say(t('type_first'));
@@ -206,8 +206,8 @@ export function wireComposer(): void {
      onto the open one. It reads DECLARED() and OPEN, both of which this is the
      notification for. */
   subscribe(drawVoice);
-  el('add').onclick = () => void add();
-  el('t').addEventListener('keydown', (event) => {
+  byId('add').onclick = () => void add();
+  byId('t').addEventListener('keydown', (event) => {
     const key = event as KeyboardEvent;
     if (key.key === 'Enter' && !key.shiftKey) {
       event.preventDefault();

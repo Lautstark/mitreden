@@ -24,7 +24,7 @@ import {
   ALL, CAP, endWork, load, onLanded, onWork, queueWork, refresh, shown, stateText,
   stepWork, workOn,
 } from './state.ts';
-import { busy, el, say } from './dom.ts';
+import { busy, byId, say } from './dom.ts';
 import { menuOn } from '@lautstark/design/menu';
 import { confirmDialog } from './dialog.ts';
 import { download } from '@lautstark/werkzeuge/download';
@@ -58,10 +58,10 @@ function openDownload(button: HTMLElement): void {
 function paintCount(): void {
   const items = shown();
   const pending = items.filter((item) => item.state !== 'ok').length;
-  const searching = el<HTMLInputElement>('q').value.trim().length > 0;
+  const searching = byId<HTMLInputElement>('q').value.trim().length > 0;
   // A fraction made sense when a Sammlung was a filter over one long list. It
   // is a place now, and "0 of 3" in an empty one reads as an error.
-  el('count').textContent = searching
+  byId('count').textContent = searching
     ? t('count_filtered', { n: items.length, all: ALL().length })
     : !items.length ? t('count_none')
       : tn('count', items.length)
@@ -70,10 +70,10 @@ function paintCount(): void {
 
 export function draw(): void {
   const items = [...shown()].reverse();          // newest first
-  const searching = el<HTMLInputElement>('q').value.trim().length > 0;
+  const searching = byId<HTMLInputElement>('q').value.trim().length > 0;
   paintCount();
 
-  const list = el('list');
+  const list = byId('list');
   for (const url of playing.values()) URL.revokeObjectURL(url);
   playing.clear();
   list.innerHTML = '';
@@ -143,7 +143,7 @@ function repaintWork(): void {
 async function landed(id: string): Promise<void> {
   await refresh();
   const item = ALL().find((one) => one.id === id);
-  const node = el('list').querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
+  const node = byId('list').querySelector<HTMLElement>(`.item[data-id="${CSS.escape(id)}"]`);
   paintCount();
   if (!item || !node) return;
   // This row's own blob URL, which the row about to replace it will mint again.
@@ -455,8 +455,8 @@ export async function recordAgain(id: string): Promise<void> {
 export function wireList(): void {
   onWork(repaintWork);
   onLanded((id) => void landed(id));
-  el('q').addEventListener('input', draw);
-  el('dlall').onclick = () => openDownload(el('dlall'));
+  byId('q').addEventListener('input', draw);
+  byId('dlall').onclick = () => openDownload(byId('dlall'));
   /* conventions.md §3.6, in its own order: what acts on this Sammlung, then what
      this Sammlung is set to, then the delete. The voice is here rather than in
      Einstellungen because its answer changes with which Sammlung is open, which
@@ -468,7 +468,7 @@ export function wireList(): void {
      common outcome was the sentence „Alles hier ist schon … aufgenommen", and
      the settings sheet below it ended by telling you to come back up here and
      press it. It is a button in that sheet now, carrying its own count. */
-  el('colmore').onclick = () => menuOn(el('colmore'), (add) => {
+  byId('colmore').onclick = () => menuOn(byId('colmore'), (add) => {
     const current = here();
     if (!current) return;
     add(t('collection_export'), () => void exportCollection(current));

@@ -21,7 +21,7 @@ import type { Collection, Phrase } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
 import { voicePicker } from './voicepicker.ts';
 import { ALL, load } from './state.ts';
-import { applyLang, busy, el, say, sourceOf, speaks } from './dom.ts';
+import { applyLang, busy, byId, say, sourceOf, speaks } from './dom.ts';
 import { confirmDialog, openDialog } from './dialog.ts';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
 import { downloadJson } from '@lautstark/werkzeuge/download';
@@ -62,7 +62,7 @@ export const drawVoices = (): void => defaults.draw();
 
 export async function drawSetup(): Promise<void> {
   const saved = await settings();
-  const box = el('cloud');
+  const box = byId('cloud');
   box.innerHTML = '';
 
   const card = document.createElement('div');
@@ -90,7 +90,7 @@ export async function drawSetup(): Promise<void> {
   // Which key, not merely that there is one: the last four characters tell
   // two keys apart without giving either away. It sits in the panel's heading,
   // so the answer is there before the panel is opened.
-  el('azurestate').textContent = azure
+  byId('azurestate').textContent = azure
     ? t('key_hint', { hint: azure.key.slice(-4) })
     : t('key_none');
 
@@ -411,7 +411,7 @@ const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
  * depend on being able to read the interface around it. */
 function drawLang(): void {
   const current = lang();
-  const box = el('lang');
+  const box = byId('lang');
   box.innerHTML = '';
   for (const [code, name] of Object.entries(LANGUAGES)) {
     const button = document.createElement('button');
@@ -426,7 +426,7 @@ function drawLang(): void {
 /** The three answers, with the one in force pressed. */
 function drawTheme(): void {
   const current = readTheme(THEME_KEY);
-  const box = el('theme');
+  const box = byId('theme');
   box.innerHTML = '';
   for (const theme of THEMES) {
     const button = document.createElement('button');
@@ -457,18 +457,18 @@ function drawTheme(): void {
  */
 function drawStates(): void {
   const voice = knownVoices().find((one) => one.id === chosenVoice());
-  el('voicestate').textContent = voice
+  byId('voicestate').textContent = voice
     ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.lang)}`
     : t('voice_none');
-  el('langstate').textContent = LANGUAGES[lang()];
+  byId('langstate').textContent = LANGUAGES[lang()];
   drawLang();
   // ALL(), not loadPhrases(): the sentences are already in memory, and a
   // heading that carries state has to carry it from the first frame. Reading
   // the database here left this line blank at the moment somebody was reading
   // it — which is the one thing this shape promises not to do.
   const n = ALL().length;
-  el('datastate').textContent = n ? tn('count', n) : t('count_none');
-  el('themestate').textContent = themeLabel(readTheme(THEME_KEY));
+  byId('datastate').textContent = n ? tn('count', n) : t('count_none');
+  byId('themestate').textContent = themeLabel(readTheme(THEME_KEY));
 }
 
 /**
@@ -520,10 +520,10 @@ function openSetup(): void {
   // synchronously on a first open. It says it is fetching rather than saying
   // nothing: a state is what this summary is for, and empty is not one. Later
   // opens find the previous answer still written.
-  const azure = el('azurestate');
+  const azure = byId('azurestate');
   if (!azure.textContent) azure.textContent = t('loading');
   void drawSetup();
-  el<HTMLDialogElement>('setup').showModal();
+  byId<HTMLDialogElement>('setup').showModal();
 }
 
 export function wireSettings(backup: Sicherung): void {
@@ -536,14 +536,14 @@ export function wireSettings(backup: Sicherung): void {
     say,
     lang: lang() === 'en' ? 'en' : 'de',
   });
-  el('wherebox').append(store.node);
+  byId('wherebox').append(store.node);
   /* Only where there is no store folder: with one, the copies already go beside
      the work, and a second picker would be the same offer under a name that
      reads almost the same. */
   /* Only where there is no store folder: with one, the copies already go beside
      the work, and a second picker would be the same offer under a name that
      reads almost the same. */
-  if (isStore()) el('folderbox').hidden = true;
+  if (isStore()) byId('folderbox').hidden = true;
   else {
     /* The 161 lines this replaces are @lautstark/sicherung/backup-panel's now —
        words, markup, the age rule — beside the wherePanel above that already
@@ -553,24 +553,24 @@ export function wireSettings(backup: Sicherung): void {
        has just left while staying perfectly well-formed. That was mitreden's
        own rule and it is the module's now. */
     keeping = backupPanel({ backup, say, lang: () => (lang() === 'en' ? 'en' : 'de') });
-    if (keeping) el('folderbox').append(keeping.node);
-    else el('folderbox').hidden = true;
+    if (keeping) byId('folderbox').append(keeping.node);
+    else byId('folderbox').hidden = true;
   }
-  el('gear').onclick = () => openSetup();
-  el('setupclose').onclick = () => el<HTMLDialogElement>('setup').close();
+  byId('gear').onclick = () => openSetup();
+  byId('setupclose').onclick = () => byId<HTMLDialogElement>('setup').close();
   // A pick redraws the list it was made in, so the mark moves with the click —
   // and the heading, which names the voice in force.
   onVoiceChange(() => { drawVoices(); drawStates(); });
 
-  el('export').onclick = () => void exportAll();
-  el('import2').onclick = () => el('importfile').click();
-  el<HTMLInputElement>('importfile').onchange = (event) => {
+  byId('export').onclick = () => void exportAll();
+  byId('import2').onclick = () => byId('importfile').click();
+  byId<HTMLInputElement>('importfile').onchange = (event) => {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (file) void importFile(file);
   };
-  el('wipe').onclick = () => void wipeEverything();
+  byId('wipe').onclick = () => void wipeEverything();
 }
 
 export type { Phrase };

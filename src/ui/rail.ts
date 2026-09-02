@@ -14,7 +14,7 @@ import {
 } from '../db/repo.ts';
 import { lang, t } from '../i18n/index.ts';
 import { ALL, DECLARED, OPEN, load, notify } from './state.ts';
-import { el, say } from './dom.ts';
+import { byId, say } from './dom.ts';
 import { confirmDialog } from './dialog.ts';
 import { renameField, type RenameField } from '@lautstark/design/rename';
 import { drawCollections } from '@lautstark/design/collections';
@@ -27,7 +27,7 @@ const counts = (): Map<string, number> => {
 };
 
 export function drawRail(): void {
-  const rows = el('rows');
+  const rows = byId('rows');
   const count = counts();
 
   /* The rows are @lautstark/design/collections'. What is left here is what a
@@ -75,8 +75,8 @@ export const here = () => DECLARED().find((c) => OPEN.has(c.id)) ?? DECLARED()[0
 
 function closeRail(): void {
   if (narrow()) {
-    el('rail').classList.remove('open');
-    el('scrim').hidden = true;
+    byId('rail').classList.remove('open');
+    byId('scrim').hidden = true;
   }
 }
 
@@ -100,7 +100,7 @@ const narrow = (): boolean => matchMedia('(max-width:820px)').matches;
  */
 export function showRail(open: boolean, remember = true): void {
   document.body.classList.toggle('railed', !open);
-  el('reveal').hidden = open;
+  byId('reveal').hidden = open;
   if (remember) void saveRailOpen(open);
 }
 
@@ -132,7 +132,7 @@ export function wireRail(): void {
      Leaving the field used to re-arm the same 400 ms timer rather than write,
      so a name clicked away from was lost unless nothing navigated in the next
      beat; a blur writes now. */
-  const title = el<HTMLInputElement>('colname');
+  const title = byId<HTMLInputElement>('colname');
   /* Which Sammlung a pending rename is for, taken on the keystroke rather than
      read when the write runs. Pressing a rail row moves focus off the field
      first, so the blur writes before the switch and the two are the same in
@@ -149,7 +149,7 @@ export function wireRail(): void {
     await load();
   });
 
-  el('newcol').onclick = async () => {
+  byId('newcol').onclick = async () => {
     const made = await createCollection(null, lang() === 'de');
     OPEN.clear();
     OPEN.add(made.id);
@@ -160,19 +160,19 @@ export function wireRail(): void {
     // Through refresh() like every other assignment — the field is not focused
     // yet, because pressing this button is what took focus off it, so the
     // guard passes and the package's idea of what it last wrote stays true.
-    const title = el<HTMLInputElement>('colname');
+    const title = byId<HTMLInputElement>('colname');
     name?.refresh(made.name);
     title.focus();
     title.select();
   };
 
-  el('railopen').onclick = () => {
-    el('rail').classList.add('open');
-    el('scrim').hidden = false;
+  byId('railopen').onclick = () => {
+    byId('rail').classList.add('open');
+    byId('scrim').hidden = false;
   };
-  el('railclose').onclick = closeRail;
-  el('scrim').onclick = closeRail;
-  el('railhide').onclick = () => showRail(false);
-  el('railshow').onclick = () => showRail(true);
+  byId('railclose').onclick = closeRail;
+  byId('scrim').onclick = closeRail;
+  byId('railhide').onclick = () => showRail(false);
+  byId('railshow').onclick = () => showRail(true);
   void restoreRail();
 }

@@ -8,7 +8,7 @@
  */
 
 import { lang } from '../i18n/index.ts';
-import { el } from './dom.ts';
+import { byId } from './dom.ts';
 
 const REPO = 'https://github.com/Lautstark/mitreden';
 const ORG = 'https://github.com/Lautstark';
@@ -27,9 +27,9 @@ const h3 = (text: string, first = false): string =>
   `<h3 style="font-size:14px;margin:${first ? '0' : '18px'} 0 6px">${text}</h3>`;
 
 function page(title: string, html: string): void {
-  const dialog = el<HTMLDialogElement>('info');
-  el('infotitle').textContent = title;
-  el('infobody').innerHTML = html;
+  const dialog = byId<HTMLDialogElement>('info');
+  byId('infotitle').textContent = title;
+  byId('infobody').innerHTML = html;
   dialog.showModal();
 }
 

@@ -37,7 +37,7 @@ import { t, tn } from '../i18n/index.ts';
 import { chosenVoice, knownVoices } from './composer.ts';
 import { voicePicker } from './voicepicker.ts';
 import { ALL, DECLARED, load } from './state.ts';
-import { el, say } from './dom.ts';
+import { byId, say } from './dom.ts';
 
 /** Which Sammlung the open sheet is about. The picker reads it on every draw,
  *  so this is the whole of what makes one dialog serve all of them. */
@@ -90,11 +90,11 @@ async function choose(id: string): Promise<void> {
 function paint(): void {
   const current = shown();
   if (!current) return;
-  el('colvoicetitle').textContent = t('collection_voice_title');
-  el('colvoicelead').textContent = t('collection_voice_lead', { name: current.name });
+  byId('colvoicetitle').textContent = t('collection_voice_title');
+  byId('colvoicelead').textContent = t('collection_voice_lead', { name: current.name });
   // The count is the Sammlung's, not the open set's: this sheet is about one of
   // them however many are open beside it.
-  el('colvoicecost').textContent = current.count
+  byId('colvoicecost').textContent = current.count
     ? tn('collection_voice_cost', current.count)
     : t('collection_voice_cost_empty');
   picker.draw();
@@ -105,7 +105,7 @@ function paint(): void {
      aufgenommen" on a disabled button is why it cannot be pressed, which a
      greyed „0 Sätze neu aufnehmen" would leave somebody to work out. */
   const pending = outstanding(current.id);
-  const button = el<HTMLButtonElement>('colvoicerecord');
+  const button = byId<HTMLButtonElement>('colvoicerecord');
   button.textContent = pending ? tn('collection_record', pending) : t('collection_record_none');
   button.disabled = !pending;
 }
@@ -113,22 +113,22 @@ function paint(): void {
 export function openCollectionVoice(id: string): void {
   showing = id;
   paint();
-  el<HTMLDialogElement>('colvoice').showModal();
+  byId<HTMLDialogElement>('colvoice').showModal();
 }
 
 export function wireCollectionVoice(onRecord: (id: string) => Promise<void>): void {
   record = onRecord;
-  el('colvoiceclose').onclick = () => el<HTMLDialogElement>('colvoice').close();
+  byId('colvoiceclose').onclick = () => byId<HTMLDialogElement>('colvoice').close();
   /* Closes first, then speaks. Every other press on this sheet is instant and
      leaves the sheet standing — vorlaut's rule, and the right one for a write
      that is over before the hand leaves the mouse. This one is minutes of
      synthesis that reports its progress in the page, and a modal over that
      progress is the one arrangement where somebody cannot see the thing they
      just started. */
-  el('colvoicerecord').onclick = () => {
+  byId('colvoicerecord').onclick = () => {
     const id = showing;
     if (!id || !record) return;
-    el<HTMLDialogElement>('colvoice').close();
+    byId<HTMLDialogElement>('colvoice').close();
     void record(id);
   };
 }

@@ -8,7 +8,7 @@
 import { collections as loadCollections, phrases, saveOpen, settings } from '../db/repo.ts';
 import { t } from '../i18n/index.ts';
 import type { CollectionWithCount, PhraseWithState } from '../core/types.ts';
-import { el } from './dom.ts';
+import { byId } from './dom.ts';
 
 /**
  * Rendering thousands of rows makes the page crawl and nobody reads that far.
@@ -89,7 +89,7 @@ const haystack = (item: PhraseWithState): string =>
   `${bare(item.text)} | ${umlaut(item.text)} | ${item.collection ?? ''}`;
 
 export function found(): readonly PhraseWithState[] {
-  const query = el<HTMLInputElement>('q').value.trim();
+  const query = byId<HTMLInputElement>('q').value.trim();
   if (!query) return all;
   const a = bare(query);
   const b = umlaut(query);
