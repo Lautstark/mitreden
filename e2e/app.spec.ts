@@ -69,7 +69,7 @@ test('every setting states itself in its own heading, before it is opened', asyn
   await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
   await expect(page.locator('#langstate')).toHaveText('Deutsch');
   await expect(page.locator('#datastate')).toHaveText('Noch keine Sätze');
-  await expect(page.locator('#p-data > summary .section')).toHaveText('Sicherung');
+  await expect(page.locator('#p-data > summary .section')).toHaveText('Wo alles liegt');
 
   // And each one opens onto the controls it named.
   for (const [panel, marker] of [
