@@ -120,9 +120,16 @@
                button and a menu, which put the choice behind a press. A menu is
                for a list of things to do; this is a list of what the page is.
                The accessible name is bilingual and fixed, because somebody who
-               cannot read the page is exactly who reaches for this. -->
-          <div class="segmented" id="lang" role="group"
-            aria-label="Sprache / Language"></div>
+               cannot read the page is exactly who reaches for this.
+
+               The class, the role and that name are all
+               @lautstark/design/language's now — the module builds the whole
+               row and ui/settings.ts puts it here in place of this div, which
+               takes its id with it. So this is a marker for where the control
+               goes and not the control: an empty div with attributes on it
+               would be a second, silent description of a thing the module
+               already describes, and the two would drift. -->
+          <div id="lang"></div>
           <p class="hint" data-i18n="language_hint"></p>
         </div>
       </details>

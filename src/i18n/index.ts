@@ -12,7 +12,20 @@ import en from './en.json';
 
 export const STRINGS = { de, en } as const;
 export type Lang = keyof typeof STRINGS;
-export const LANGUAGES: Record<Lang, string> = { de: 'Deutsch', en: 'English' };
+
+/**
+ * The languages this page can be in, in the order they are offered.
+ *
+ * Codes only. This was a code→name map, and the names in it — „Deutsch",
+ * „English" — were what the picker put on its buttons. Those are
+ * @lautstark/design/language's `NAMES` now, one copy read by all three
+ * products: a language's own name is not a translation, which is the argument
+ * that lets a shared package carry it at all. What stays here is the half the
+ * package cannot know — which of them this product has words for — and it is
+ * read off the tables rather than listed beside them, so a third language is a
+ * JSON file and its import and nothing else.
+ */
+export const LANGS = Object.keys(STRINGS) as readonly Lang[];
 
 /** Every key either language defines, so a lookup is checked rather than hoped. */
 export type Key = keyof typeof de | keyof typeof en;

@@ -15,7 +15,7 @@ import { ablage, isStore } from '../db/folder.ts';
 import { adoptFolder } from '../db/db.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
 import { offered, probeAzure } from '../core/voices.ts';
-import { LANGUAGES, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
+import { LANGS, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection, Phrase } from '../core/types.ts';
 import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
@@ -24,6 +24,7 @@ import { ALL, load } from './state.ts';
 import { applyLang, busy, byId, say, sourceOf, speaks } from './dom.ts';
 import { confirmDialog, openDialog } from './dialog.ts';
 import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
+import { languagePicker, NAMES } from '@lautstark/design/language';
 import { downloadJson } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
@@ -404,24 +405,38 @@ const THEME_KEY = 'mitreden.theme';
 
 const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
 
-/** Both languages, with the one in force pressed.
+/**
+ * Both languages, with the one in force pressed — and now the same row all
+ * three products draw.
  *
- * Each names itself whatever the page is set to. The control is what somebody
- * reaches for when they cannot read the interface around it, so it must not
- * depend on being able to read the interface around it. */
-function drawLang(): void {
-  const current = lang();
-  const box = byId('lang');
-  box.innerHTML = '';
-  for (const [code, name] of Object.entries(LANGUAGES)) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = name;
-    button.setAttribute('aria-pressed', String(code === current));
-    button.onclick = () => chooseLang(code as Lang);
-    box.appendChild(button);
-  }
-}
+ * The hand-built loop this replaces was the third copy of one control, and the
+ * copies had drifted in the way copies do: bildhaft's carried `role="group"`
+ * and a label on the row it built, this one had them written into index.html
+ * instead, vorlaut-editor's had neither. What mitreden had written down beside
+ * its own copy — that a
+ * language's name is not a translation, because this is the control somebody
+ * reaches for when they *cannot read the interface around it* — is the module's
+ * argument now, and `NAMES` is why the buttons still say „Deutsch" and
+ * „English" on either page.
+ *
+ * `current` is `lang` itself rather than a value: the module reads it on every
+ * repaint, which is what lets chooseLang() below move the pressed button
+ * without a reload.
+ *
+ * The label is deliberately not `t('panel_language')`, and for two reasons that
+ * agree. The one index.html argues at length: this is the accessible name of
+ * the one control whose whole case is that the page around it may be
+ * unreadable, so it says both words and stays saying both. The one the API
+ * settles: `refresh()` moves the pressed button and nothing else — the label is
+ * set once, at construction — so a translated name would be the language the
+ * reader has just left, every time, until a reload.
+ */
+const langs = languagePicker({
+  languages: LANGS,
+  current: lang,
+  choose: (code) => chooseLang(code as Lang),
+  label: 'Sprache / Language',
+});
 
 /** The three answers, with the one in force pressed. */
 function drawTheme(): void {
@@ -460,8 +475,11 @@ function drawStates(): void {
   byId('voicestate').textContent = voice
     ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.lang)}`
     : t('voice_none');
-  byId('langstate').textContent = LANGUAGES[lang()];
-  drawLang();
+  /* The same endonym the pressed button carries, off the same table — the
+     heading and the row must not be able to disagree about what „de" is
+     called. */
+  byId('langstate').textContent = NAMES[lang()] ?? lang();
+  langs.refresh();
   // ALL(), not loadPhrases(): the sentences are already in memory, and a
   // heading that carries state has to carry it from the first frame. Reading
   // the database here left this line blank at the moment somebody was reading
@@ -527,6 +545,23 @@ function openSetup(): void {
 }
 
 export function wireSettings(backup: Sicherung): void {
+  /* The row goes *in place of* the placeholder, not inside it.
+   *
+   * The module hands back the `.segmented` itself — role, label and all — so
+   * appending would put one segmented group inside another: two role="group"s
+   * around two buttons, and a wrapper between the row and the `.body` that
+   * lays it out. Replacing leaves the DOM exactly as the hand-built version
+   * left it, which is also why the baseline picture of this sheet does not
+   * move.
+   *
+   * The name comes off the placeholder rather than being written again here.
+   * `#lang` is what index.html calls this spot and what the suites reach for;
+   * where it sits and what it is called are the product's business, which is
+   * precisely what the module declines to decide. */
+  const slot = byId('lang');
+  langs.node.id = slot.id;
+  slot.replaceWith(langs.node);
+
   /* The store panel comes from the package, so every Lautstark programme shows
      the same one. What stays here is what mitreden alone offers besides it. */
   const store = wherePanel({

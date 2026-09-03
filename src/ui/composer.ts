@@ -18,7 +18,7 @@
 import { addPhrases, build, settings, saveVoice } from '../db/repo.ts';
 import { asVoice, defaultVoice, offered } from '../core/voices.ts';
 import { setProgress } from '../core/audio.ts';
-import { LANGUAGES, lang, t, tn, type Lang } from '../i18n/index.ts';
+import { LANGS, lang, t, tn, type Lang } from '../i18n/index.ts';
 import type { Voice } from '../core/types.ts';
 import { DECLARED, OPEN, endWork, load, queueWork, stepWork, subscribe } from './state.ts';
 import { busy, byId, say, sourceOf, speaks } from './dom.ts';
@@ -91,7 +91,7 @@ export async function loadVoices(): Promise<void> {
   const list = await offered(saved.azure);
   voices = list.map((voice) => asVoice(voice, list));
   starts = {};
-  for (const code of Object.keys(LANGUAGES) as Lang[]) starts[code] = defaultVoice(list, code);
+  for (const code of LANGS) starts[code] = defaultVoice(list, code);
   // A voice somebody chose wins; then a stored one, which is how a choice
   // survives the key it needed going away and coming back; then whatever this
   // page had guessed until now.
