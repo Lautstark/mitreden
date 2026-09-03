@@ -45,6 +45,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Whether the install matches the pins
+        # bildhaft has had this since it started recording, and the reason is
+        # stronger here than in the test workflow: a baseline is committed, and
+        # a wrong one is committed forever. The panels in these shots are drawn
+        # by the shared packages, so a stale install records the wrong picture
+        # and every later run then compares against it and passes.
+        run: npm run preflight
+
       - name: Install the Playwright browser
         run: npx playwright install --with-deps chromium
 
