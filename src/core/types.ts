@@ -1,5 +1,7 @@
 /** What the program is about: sentences, the Sammlungen they sit in, voices. */
 
+import type { Quality } from '@lautstark/stimmquelle/browser';
+
 /** A recording either exists and matches the text, or it does not. */
 export type State = 'ok' | 'stale' | 'missing';
 
@@ -84,6 +86,17 @@ export interface Voice {
   label: string;
   /** The plain name, without the quality tier a twin forces into `label`. */
   name: string;
+  /**
+   * The model's tier, where the backend publishes one — absent for Azure and
+   * for a system voice, neither of which names one.
+   *
+   * Carried rather than dropped because `label` is no longer the only thing
+   * that asks: the picker is stimmquelle's now and works out the tier itself,
+   * against whichever list it is drawing. Handing it `label` instead would fix
+   * the ambiguity against a catalogue nobody is looking at, which is the thing
+   * `labelOf`'s own documentation says not to do.
+   */
+  quality?: Quality;
   source: 'piper' | 'azure' | 'system';
   /** Two letters: `de`. */
   lang: string;

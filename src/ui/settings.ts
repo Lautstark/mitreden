@@ -51,15 +51,18 @@ const AZURE_REGIONS = [
  * today rather than only later — a sentence in no Sammlung records in it, which
  * is a state composer.ts creates deliberately when two Sammlungen are open.
  *
- * The list itself is voicepicker.ts, shared with the Sammlung's own sheet.
+ * The list itself is voicepicker.ts, and this is one of the two instances it
+ * exists to keep apart: a search typed here must not follow somebody into the
+ * Sammlung's own sheet, which is asking a different question of the same
+ * catalogue. See that file's header.
  */
 const defaults = voicePicker({
-  search: 'voiceq', chips: 'voicefilters', list: 'voices',
+  into: 'voices',
   current: chosenVoice,
   pick: (id) => void pickVoice(id),
 });
 
-export const drawVoices = (): void => defaults.draw();
+export const drawVoices = (): void => defaults.refresh();
 
 export async function drawSetup(): Promise<void> {
   const saved = await settings();

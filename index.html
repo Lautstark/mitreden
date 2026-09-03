@@ -147,9 +147,13 @@
         </summary>
         <div class="body">
           <p class="hint" data-i18n="voice_default_hint"></p>
-          <input id="voiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
-          <div class="chips" id="voicefilters"></div>
-          <div class="voices" id="voices"></div>
+          <!-- The field, the language pills and the list are one block from
+               @lautstark/stimmquelle/voice-picker, which brings its own markup
+               and its own words in both languages. Like #lang above, this is a
+               marker for where the block goes and not the block: attributes
+               here would be a second, silent description of something the
+               module already describes, and the two would drift. -->
+          <div id="voices"></div>
         </div>
       </details>
 
@@ -270,9 +274,9 @@
       </div>
       <div class="body">
         <p class="hint" id="colvoicelead"></p>
-        <input id="colvoiceq" class="field" type="search" data-i18n-ph="voice_search_hint" autocomplete="off">
-        <div class="chips" id="colvoicefilters"></div>
-        <div class="voices" id="colvoices"></div>
+        <!-- The second picker, and a second instance on purpose: see
+             src/ui/voicepicker.ts. A marker, as above. -->
+        <div id="colvoices"></div>
         <p class="hint" id="colvoicecost"></p>
         <!-- The act, at the foot of the thing that causes it. vorlaut's
              Sammlung sheet carries acts too and argues each one the same way:

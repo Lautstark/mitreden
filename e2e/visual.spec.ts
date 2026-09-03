@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
  * in the same commit, and the diff is the evidence in the review — or it is the
  * move having quietly taken something with it.
  *
- * ## The three shots, and why the middle one is the one that matters
+ * ## The four shots, and why two of them are the ones that matter
  *
  * The „Wo alles liegt" panel is the only place in this product where two panels
  * drawn by *another* repository sit side by side in ours:
@@ -32,6 +32,16 @@ import { fileURLToPath } from 'node:url';
  * is being moved. Nothing in the package's own suite can see this: over there
  * the panels are drawn against the package's test page. Here they are drawn
  * against ours, and here is where a token that stopped resolving shows up.
+ *
+ * „Standardstimme" is the second, and it was added on 2026-09-03 by the move it
+ * watches. The whole voice picker became
+ * @lautstark/stimmquelle/voice-picker and every `.voice*` rule left
+ * src/styles/app.css for components.css — and the three shots that existed
+ * then came back byte-identical, because that panel is folded in the sheet
+ * shot and no picture had ever held a row of it. Byte-identical is what a
+ * clean move looks like and it is also what no comparison at all looks like,
+ * which is why the shot below opens the panel first. See the note on the test
+ * itself.
  *
  * ## Panels, not the page
  *
@@ -213,6 +223,51 @@ test('the „Wo alles liegt" panel, with both package panels in it', async ({ pa
   await expect(page.locator('#folderbox .backup-panel')).toBeVisible();
   await expect(page.locator('#export')).toBeVisible();
   await expect(page.locator('#p-data')).toHaveScreenshot('wo-alles-liegt.png', { mask: varies(page) });
+});
+
+test('the „Standardstimme" panel, with the picker the package draws', async ({ page }) => {
+  await openSetup(page);
+  /* This panel had no picture at all until 2026-09-03, and the way that came
+     out is worth writing down. The picker moved to
+     @lautstark/stimmquelle/voice-picker and its CSS to components.css — every
+     `.voice*` rule left this repository, the markup gained a `.voices__row`
+     wrapper around every row, and the nested 340px scroller went. Then all
+     three baselines above passed byte-identical. Not because the move was
+     clean: because the panel is folded in the shot that would have held it, so
+     no picture had ever contained a single row of it. A green suite for a
+     comparison that never took place is the exact failure the note at the top
+     of this file describes, one floor down.
+
+     So the panel is opened, the way app.spec.ts opens it, and this is the
+     picture. What it is watching is what only a picture can see: that the
+     block a package now draws still sits in this page's panel like the rest of
+     it. The rows carry no `.small` or `.muted` — the module emits neither, on
+     purpose — so the 12px faint facts line under each name is components.css's
+     `.voice__facts` and nothing else, and it goes grey-on-grey or 13.5px the
+     moment a token or a rule stops reaching it. */
+  await page.locator('#p-voice summary').click();
+  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+  /* And the pointer taken off the panel, which is not fussiness. The panels are
+     one exclusive group (`<details name="settings">`), so opening this one
+     folds „Sprache" above it and the whole panel slides up under a mouse that
+     is still parked where the summary used to be — which landed it on the
+     second row and baked that row's :hover into the first baseline recorded
+     here. It would have been stable, and it would have been a picture of a
+     hover state nobody chose, hiding what that row actually looks like. */
+  await page.mouse.move(0, 0);
+  /* Settled before it is measured, for openSetup's reason and one more of its
+     own: the rows come from the catalogue fetched at start-up, and a picture
+     taken with none of them is a picture of an empty list that would go on
+     passing. Asserting a checked row is what makes it the *settled* list —
+     `current()` has an answer, so the accent tint is in the shot. */
+  await expect(page.locator('#voices .voice[aria-checked="true"]')).toBeVisible();
+  /* And the list is not a scroll box. The module took the nested scroller out
+     — a wheel gesture latches to the list and the sheet under it stops moving
+     — which is a change no picture can state, because "not clipped" and "short
+     enough not to be" look the same. The panel is 700px of unclipped list in
+     the shot below, so this says out loud what the picture only implies. */
+  await expect(page.locator('#voices .voices')).toHaveCSS('max-height', 'none');
+  await expect(page.locator('#p-voice')).toHaveScreenshot('standardstimme.png', { mask: varies(page) });
 });
 
 test('the „Alles löschen" panel', async ({ page }) => {

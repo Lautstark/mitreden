@@ -56,8 +56,13 @@ const outstanding = (id: string): number =>
 
 const shown = () => DECLARED().find((one) => one.id === showing);
 
+/* This sheet's own picker, and deliberately not the one in Einstellungen. The
+   two ask different questions of the same catalogue — what this Sammlung
+   records in, and what a new Sammlung starts with — and a shared instance would
+   carry a search for „kerstin" from one into the other. voicepicker.ts argues
+   it; what makes it true is that this is a second call. */
 const picker = voicePicker({
-  search: 'colvoiceq', chips: 'colvoicefilters', list: 'colvoices',
+  into: 'colvoices',
   /* The voice in force, which is not always the Sammlung's own. A Sammlung
      with no `voice` records in the default — from a migration, a restored
      backup written before the field existed, or a first run — and marking
@@ -97,7 +102,7 @@ function paint(): void {
   byId('colvoicecost').textContent = current.count
     ? tn('collection_voice_cost', current.count)
     : t('collection_voice_cost_empty');
-  picker.draw();
+  picker.refresh();
 
   /* The button says how many it would speak, and is dead when that is none —
      vorlaut's grid button is the precedent for both: its label is chosen by

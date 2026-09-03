@@ -6,6 +6,16 @@ import { expect, test } from '@playwright/test';
  * the Sammlung can be made, named and thrown away, and the dialog opens.
  */
 
+/* The picker's search field, by what it is rather than by an id.
+ *
+ * It had one — `#voiceq`, written in index.html — until the block became
+ * @lautstark/stimmquelle/voice-picker's, which builds its own field and gives
+ * it no id to give. `#voices` is the marker the block is built into and is
+ * still this page's, so the field is named as the one search input inside it.
+ * The rows below are reached the same way and always were: `.voice` is a class
+ * components.css draws, so it is a name this page may hold the module to. */
+const SEARCH = '#voices input[type=search]';
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/?lang=de');
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
@@ -251,12 +261,12 @@ test('the default voice is named beside the composer and chosen in the settings'
 
   // Narrowing is the whole reason it is a list rather than a select: shipped
   // voices alone run to dozens, and an Azure key adds hundreds.
-  await page.fill('#voiceq', 'thorsten');
+  await page.fill(SEARCH, 'thorsten');
   await expect(rows).not.toHaveCount(many);
   await expect(page.locator('#voices .voice__name').first()).toContainText('Thorsten');
-  await page.fill('#voiceq', 'gibtsnicht');
+  await page.fill(SEARCH, 'gibtsnicht');
   await expect(page.locator('#voices')).toContainText('Keine Stimme');
-  await page.fill('#voiceq', '');
+  await page.fill(SEARCH, '');
 
   // Picking marks the row it was made on and renames the line outside. It is a
   // radio group: one choice with several answers, not a row of toggles that
@@ -269,7 +279,7 @@ test('the default voice is named beside the composer and chosen in the settings'
   // The heading above the list names the voice in force, so it moves too.
   await expect(page.locator('#voicestate')).toContainText(name);
   await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'false');
-  await expect(page.locator('#voices')).toHaveAttribute('role', 'radiogroup');
+  await expect(page.locator('#voices .voices')).toHaveAttribute('role', 'radiogroup');
   // A list this long has to be walkable without seventeen presses of Tab.
   await second.press('ArrowDown');
   await expect(rows.nth(2)).toHaveAttribute('aria-checked', 'true');
@@ -302,21 +312,21 @@ test('the picker offers a German woman and an English man', async ({ page }) => 
   await page.locator('#p-voice summary').click();
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
-  await page.fill('#voiceq', 'kerstin');
+  await page.fill(SEARCH, 'kerstin');
   const kerstin = page.locator('#voices .voice').first();
   await expect(kerstin.locator('.voice__name')).toHaveText('Kerstin');
   // What she costs and who she is: the facts a slot is empty without.
   await expect(kerstin.locator('.voice__facts')).toContainText('weiblich');
   await expect(kerstin.locator('.voice__facts')).toContainText('63 MB');
 
-  await page.fill('#voiceq', 'john');
+  await page.fill(SEARCH, 'john');
   const john = page.locator('#voices .voice').first();
   await expect(john.locator('.voice__name')).toHaveText('John');
   await expect(john.locator('.voice__facts')).toContainText('männlich');
 
   // And the licence half is untouched by the runtime claim: de_DE-mls-medium
   // is CC-BY, this page renders no notices, so it is still not on offer.
-  await page.fill('#voiceq', 'mls');
+  await page.fill(SEARCH, 'mls');
   await expect(page.locator('#voices')).toContainText('Keine Stimme');
 });
 
@@ -337,7 +347,7 @@ test('a voice that rushes single words says so on its own row', async ({ page })
   await page.locator('#p-voice summary').click();
   await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
 
-  await page.fill('#voiceq', 'kerstin');
+  await page.fill(SEARCH, 'kerstin');
   const kerstin = page.locator('#voices .voice').first();
   const note = kerstin.locator('.voice__hint');
   // Visible, not merely present: an invisible note is the same as no note, and
@@ -349,14 +359,14 @@ test('a voice that rushes single words says so on its own row', async ({ page })
   // And on that row alone. The catalogue decides who carries the trait, so a
   // page that showed it everywhere would be as wrong as one that showed it
   // nowhere — and would pass every assertion above.
-  await page.fill('#voiceq', 'thorsten');
+  await page.fill(SEARCH, 'thorsten');
   await expect(page.locator('#voices .voice').first().locator('.voice__name'))
     .toContainText('Thorsten');
   await expect(page.locator('#voices .voice__hint')).toHaveCount(0);
 
   // And exactly once across the unfiltered catalogue, which is the assertion
   // that would fail if the flag were being read off something every row has.
-  await page.fill('#voiceq', '');
+  await page.fill(SEARCH, '');
   await expect(page.locator('#voices .voice__hint')).toHaveCount(1);
 });
 
@@ -383,7 +393,7 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   // somebody made, not a mistake to be corrected on their behalf.
   await page.click('#gear');
   await page.locator('#p-voice summary').click();
-  await page.fill('#voiceq', 'Thorsten (emotional)');
+  await page.fill(SEARCH, 'Thorsten (emotional)');
   await page.locator('#voices .voice').first().click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
   await page.click('#p-lang > summary');

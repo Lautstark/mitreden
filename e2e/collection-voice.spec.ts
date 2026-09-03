@@ -55,7 +55,7 @@ test('the line names the Sammlung’s voice, and the ⋯ is where that one chang
   await expect(page.locator('#colvoices .voice[aria-checked="true"] .voice__name'))
     .toHaveText(named);
 
-  await page.fill('#colvoiceq', 'kerstin');
+  await page.fill('#colvoices input[type=search]', 'kerstin');
   await page.locator('#colvoices .voice').first().click();
   await expect(page.locator('#colvoices .voice[aria-checked="true"] .voice__name'))
     .toHaveText('Kerstin');

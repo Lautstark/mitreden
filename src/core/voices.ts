@@ -144,6 +144,10 @@ export const asVoice = (voice: Offered, among: readonly Offered[]): Voice => ({
   gender: voice.gender,
   downloadBytes: voice.downloadBytes,
   needsKey: voice.needsKey,
+  // Absent for Azure and for a system voice, and spread for `rushesFragments`'
+  // reason: `labelOf` branches on the field being there at all, so copying an
+  // `undefined` in would be indistinguishable here but is the wrong statement.
+  ...(voice.quality ? { quality: voice.quality } : {}),
   // Spread rather than assigned, so "absent" survives the trip as absent. The
   // catalogue sets this only on the voices it is true of, and a row asks
   // whether it is there at all; copying an `undefined` into every other voice

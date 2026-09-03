@@ -253,11 +253,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sheet{width:calc(100% - 40px)}
 .sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
 .sheet .sub{margin:0 0 14px}
-/* Filters are pills — design.md §4.3, drawn by components.css. The row above
-   the sentences is gone (every sentence names its own voice, so a pill reading
-   "Thorsten 12" restated the list underneath it), which leaves the voice
-   picker's language filters as mitreden's only filter row. */
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+/* `.chips` went with the picker. The row above the sentences had already gone
+   (every sentence names its own voice, so a pill reading "Thorsten 12"
+   restated the list underneath it), which left the voice picker's language
+   filters as this product's only filter row — and those are the module's
+   `.voice-picker__filters` now, drawn by components.css. The pills themselves
+   are still `.chip`, which was always components.css's. */
 /* The box belongs to the phrase, so it sits with the phrase — not in the
    middle of a row that a second line of collections can make twice as tall, where
    it ends up next to the small print instead. */
@@ -335,28 +336,15 @@ button,input,select,textarea{font:inherit;color:inherit}
 }
 :root[data-theme=light] .item audio{filter:none}
 :root[data-theme=dark] .item audio{filter:invert(.92) hue-rotate(180deg)}
-/* The picker: a list you can narrow, not a select you scroll.
-   Forty shipped voices and, with a key, several hundred Azure ones — a native
-   select of bare names was unusable at that size and said nothing about what
-   separates two of them. */
-.voices{display:flex;flex-direction:column;gap:2px;margin-top:10px;
-  max-height:min(46vh,340px);overflow:auto;padding:2px}
-.voice{display:block;width:100%;
-  text-align:left;border:1px solid transparent;background:none;color:var(--text);
-  font:inherit;cursor:pointer;padding:8px 11px;border-radius:var(--radius-item)}
-.voice:hover{background:var(--surface-2)}
-.voice[aria-checked=true]{background:var(--accent-soft);border-color:transparent}
-.voice[aria-checked=true] .voice__name{color:var(--accent-strong);font-weight:650}
-.voice__name{font-size:14.5px}
-/* Where it comes from, what it speaks, whose voice it is, and what it costs —
-   the four facts the old picker withheld, on the line under the name. */
-.voice__facts{display:block;font-size:12px;color:var(--text-faint)}
-/* A trait the catalogue reports about one model, on the row that has it. The
-   same muted line as the facts: it is another thing worth knowing before
-   choosing, not a warning about having chosen. Unlike the facts it is a
-   sentence and has to wrap — a button does not do that on its own. */
-.voice__hint{display:block;margin-top:3px;font-size:12px;color:var(--text-faint);
-  white-space:normal;text-wrap:pretty}
+/* The picker's own rules — `.voices`, `.voice`, `.voice__name`,
+   `.voice__facts`, `.voice__hint` — are components.css's since design 1.30.0,
+   with the block's `.voice-picker*` names beside them. They had to go from
+   here rather than merely stop being maintained: this file is loaded after
+   components.css, so every one of them beat the shared copy while it stood,
+   and the migration would have looked like it had worked. What was ours and
+   is not in the shared set is the 340px scroll box on `.voices`, which the
+   module dropped on purpose — a wheel gesture latches to the list and the
+   sheet under it stops moving. */
 .panel .field{width:100%}
 
 /* Which voice the next recording gets. A statement, not a control: the control
