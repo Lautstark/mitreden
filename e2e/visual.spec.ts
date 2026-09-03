@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { existsSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 /**
  * What the settings sheet looks like, kept as pictures.
@@ -39,21 +41,45 @@ import { expect, test } from '@playwright/test';
  * keeps. The dialog is a modal `<dialog>`, so its own box is the sheet and
  * nothing behind it.
  *
- * ## Why these do not run on CI
+ * ## One set of pictures per platform, and what decides whether they run
  *
  * Playwright names a snapshot after the platform it was taken on, because a
  * platform is what draws it: macOS and Linux disagree about text rasterisation
  * on nearly every glyph, and no threshold that tolerates that would still catch
- * a 1px padding change. Only the darwin baselines are committed, so on the
- * ubuntu runner these would fail as *missing*, which says nothing about the CSS
- * and turns the deploy gate red for a reason nobody can act on. They are
- * therefore skipped anywhere else, and the skip is loud rather than a filter in
- * the config: somebody reading a green CI run should be able to find out from
- * this file that the pictures were not part of it.
+ * a 1px padding change. So `einstellungen-desktop-darwin.png` and
+ * `einstellungen-desktop-linux.png` are two pictures of the same panel, and
+ * neither is the other's baseline.
  *
- * The comparison this file exists for is a local one anyway — the same machine,
- * before the move and after it — which is the only comparison where a pixel
- * diff means what it says.
+ * For a while only the darwin files were committed, and this file dealt with
+ * that by refusing to run anywhere else — `test.skip(process.platform !==
+ * 'darwin', …)`, one platform written in by hand. That skip was right about the
+ * problem: a missing baseline is not a regression, and a check that goes red on
+ * the runner for a reason nobody can act on is a check people learn to ignore.
+ * It was wrong about where the answer lives. It hard-wired *which* platform has
+ * pictures into the one file that has no way of knowing, so the day a Linux
+ * baseline arrived the comparison would still not have run, and nothing would
+ * have said so.
+ *
+ * The guard below asks the snapshot directory instead: is there a file here
+ * ending in `-{platform}.png`? Where there is, the comparison runs. Where there
+ * is not, the tests skip and name the platform that has no picture. That makes
+ * committing the PNGs the whole of the switch — no list here to extend, and
+ * nothing to remember to flip back.
+ *
+ * The one case where the directory must not have the last word is a run that is
+ * there to *write* it: under `--update-snapshots` a platform with no baseline
+ * would otherwise skip itself out of ever getting one. Hence the
+ * `updateSnapshots` check — 'all' and 'changed' are the modes that write, and a
+ * run in either of them is never skipped.
+ *
+ * To give a platform baselines of its own, run the suite there once with
+ * `npx playwright test e2e/visual.spec.ts --update-snapshots` and commit what
+ * it writes. The Linux set cannot be recorded on an Apple Silicon machine — the
+ * matching `mcr.microsoft.com/playwright` image is amd64 and dies under QEMU,
+ * and an arm64 image would draw pixels nobody could prove match the runner — so
+ * .github/workflows/baselines.yml records them on the runner itself and hands
+ * them back as an artifact. The note at the top of that file is the rest of
+ * this one.
  */
 
 /* Deterministic, and not devices['Desktop Chrome']'s 1280×720.
@@ -145,9 +171,26 @@ async function openSetup(page: import('@playwright/test').Page): Promise<void> {
  * these pictures are of. If the English sheet is ever worth a baseline it is a
  * second set of files, not a second guess about which one is in the first. */
 
-test.beforeEach(async () => {
-  test.skip(process.platform !== 'darwin',
-    'Screenshot baselines are committed for darwin only — see the note at the top of this file.');
+/* Where the pictures are, resolved from this file rather than from the working
+ * directory: Playwright is run from the repository root by `npm run test:e2e`
+ * and from wherever a person happens to be standing by everything else, and a
+ * guard that answers differently depending on that is worse than no guard. */
+const SNAPSHOTS = fileURLToPath(new URL('./visual.spec.ts-snapshots', import.meta.url));
+
+/** Whether any baseline in that directory was recorded on the platform now running. */
+function recordedHere(): boolean {
+  if (!existsSync(SNAPSHOTS)) return false;
+  return readdirSync(SNAPSHOTS).some((name) => name.endsWith(`-${process.platform}.png`));
+}
+
+test.beforeEach(async ({}, testInfo) => {
+  /* 'missing' and 'none' are the modes that only ever compare; 'all' and
+     'changed' are the ones that write, and a run that is here to write must not
+     skip itself out of ever producing a first baseline. */
+  const recording = testInfo.config.updateSnapshots === 'all'
+    || testInfo.config.updateSnapshots === 'changed';
+  test.skip(!recording && !recordedHere(),
+    `No baseline recorded for ${process.platform} — see the note at the top of this file.`);
 });
 
 test('the settings sheet, whole', async ({ page }) => {

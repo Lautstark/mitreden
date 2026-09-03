@@ -1,0 +1,65 @@
+# Recording the visual baselines on the machine that will compare them.
+#
+# The screenshots in e2e/visual.spec.ts-snapshots are a picture of what the
+# settings sheet looks like, and their whole purpose is to fail when it changes
+# by accident. That only works where the comparison actually happens — and pixels
+# belong to the machine that drew them. A baseline recorded on a laptop is a
+# baseline the Linux runner has never seen: Playwright files a snapshot per
+# platform, so the runner finds none of its own, writes one and passes. That is
+# worse than no check at all, because it is a green tick for a comparison that
+# did not take place.
+#
+# The obvious fix is to record in the matching `mcr.microsoft.com/playwright`
+# image locally. That does not work on an Apple Silicon machine: the runner is
+# amd64, and amd64 under QEMU segfaults during `npm ci`. An arm64 image would run
+# natively and produce baselines nobody could prove match the runner.
+#
+# So the recording happens here. Run this by hand, download the artifact and
+# commit the PNGs beside the darwin ones — that is the whole of it. The spec asks
+# the snapshot directory whether a baseline exists for the platform it is running
+# on, so committing the files is what turns the comparison on. Nothing else to
+# flip, and nothing to remember to flip back.
+#
+# The build step is not ceremony. This suite runs against the production bundle
+# through `vite preview` (see playwright.config.ts), and preview serves `dist/`,
+# which does not exist on a fresh runner — without it the webServer answers 404
+# and the pictures are of an empty page.
+name: Record visual baselines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install the Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the bundle the suite is served from
+        run: npm run build
+
+      - name: Record
+        run: npx playwright test e2e/visual.spec.ts --update-snapshots
+
+      - name: Hand them back
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-linux
+          path: e2e/visual.spec.ts-snapshots/*-linux.png
+          # A run that recorded nothing must not look like a run that succeeded:
+          # an empty artifact is downloaded, unpacked, and quietly commits
+          # nothing.
+          if-no-files-found: error
