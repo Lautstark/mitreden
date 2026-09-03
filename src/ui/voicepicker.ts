@@ -69,8 +69,9 @@ export function voicePicker(spec: PickerSpec): VoicePicker {
     current: spec.current,
     pick: spec.pick,
     // A function, because this page changes language without reloading — the
-    // language menu is two panels above this list. A locale captured at build
-    // time would go on answering in the language the reader has just left.
+    // row that does it is in the panel directly above this one. A locale
+    // captured at build time would go on answering in the language the reader
+    // has just left, perfectly well-formed the whole time.
     lang,
   });
   byId(spec.into).append(picker.node);
