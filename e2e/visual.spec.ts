@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
  * in the same commit, and the diff is the evidence in the review — or it is the
  * move having quietly taken something with it.
  *
- * ## The four shots, and why two of them are the ones that matter
+ * ## The six shots, and why four of them are the ones that matter
  *
  * The „Wo alles liegt" panel is the only place in this product where two panels
  * drawn by *another* repository sit side by side in ours:
@@ -42,6 +42,16 @@ import { fileURLToPath } from 'node:url';
  * clean move looks like and it is also what no comparison at all looks like,
  * which is why the shot below opens the panel first. See the note on the test
  * itself.
+ *
+ * #info and #colvoice are the third and fourth, and they arrived the same way:
+ * by a rule being deleted rather than moved. `.sheet { width: calc(100% - 40px) }`
+ * sat in src/styles/app.css with no ceiling on it and beat the shared
+ * `min(600px, 100% - 40px)`, so both of these opened as wide as the window —
+ * 1240px at the viewport below. The settings sheet was out of its way on
+ * specificity (`.sheet.panels`, 900px), so the one dialog with a picture was
+ * the one dialog the bug could not reach, and the four shots above went on
+ * passing. Every plain `.sheet` in this product is now photographed, which is
+ * the only arrangement in which that cannot happen again.
  *
  * ## Panels, not the page
  *
@@ -279,4 +289,48 @@ test('the „Alles löschen" panel', async ({ page }) => {
   // regression here that no assertion about text or visibility would catch.
   await expect(page.locator('#wipe')).toBeVisible();
   await expect(page.locator('#p-danger')).toHaveScreenshot('alles-loeschen.png', { mask: varies(page) });
+});
+
+/* The two plain sheets. Both are `.sheet` with nothing else on it, which is the
+   width the package draws — min(600px, 100% - 40px) — and which this product
+   overrode to the width of the window until 2026-09-14. Neither had ever been
+   photographed, which is why nothing said so. */
+
+test('the „Was ist mitreden?" sheet, at the width the package draws', async ({ page }) => {
+  await page.goto('/?lang=de');
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+  await page.click('#about');
+  await expect(page.locator('#info')).toBeVisible();
+  // The prose is written into the body from the i18n table, so the sheet has
+  // its final height only once that has landed.
+  await expect(page.locator('#infotitle')).toHaveText('Was ist mitreden?');
+  await expect(page.locator('#infobody')).toContainText('Hugging Face');
+  /* Said out loud beside the picture, because a picture cannot say which of
+     several widths it is a picture of: 600 is the package's figure for a sheet
+     that asks a question, and the point of this shot is that this product takes
+     it rather than writing one of its own. */
+  await expect(page.locator('#info')).toHaveCSS('width', '600px');
+  await expect(page.locator('#info')).toHaveScreenshot('info.png');
+});
+
+test('the Sammlung’s own voice sheet, at the same width', async ({ page }) => {
+  await page.goto('/?lang=de');
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+  await page.click('#colmore');
+  await page.locator('.menu button', { hasText: 'Einstellungen dieser Sammlung' }).click();
+  await expect(page.locator('#colvoice')).toBeVisible();
+  /* Settled, for standardstimme.png's reason: the rows come from the catalogue
+     fetched at start-up, and a checked one is what says the list has arrived
+     and `current()` has an answer. This is a second instance of the same
+     picker, in a sheet rather than a panel, which is the other thing this shot
+     watches. */
+  await expect(page.locator('#colvoices .voice[aria-checked="true"]')).toBeVisible();
+  await expect(page.locator('#colvoice')).toHaveCSS('width', '600px');
+  /* The lead names the Sammlung, and a fresh install's Sammlung is named after
+     today — „Sammlung vom 14.9.2025". A baseline that goes red at midnight is
+     a baseline nobody keeps, so the sentence is painted over. Its box does not
+     move: it is a <p> at the sheet's full width whatever the date is. */
+  await expect(page.locator('#colvoice')).toHaveScreenshot('sammlungsstimme.png', {
+    mask: [page.locator('#colvoicelead')],
+  });
 });
