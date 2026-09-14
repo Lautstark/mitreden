@@ -55,6 +55,19 @@ jobs:
         # moving the build; this is what stops the pin going quietly stale.
         run: node node_modules/@lautstark/design/pins.js
 
+      - name: Whether the shared drawings are reaching the page
+        # pins.js above asks whether this product has the right version of
+        # @lautstark/design. This asks the question underneath it: whether it
+        # is using it. A product stylesheet loads after components.css, so a
+        # bare rule of the same name wins and the shared drawing never reaches
+        # the page - and it looks exactly like it worked, because the product
+        # goes on rendering the way it always did.
+        #
+        # Warning only while the four are being cleaned out. It becomes
+        # --strict once this repository reports none, which is the point of
+        # having it: the list is finite now and is meant to stay at zero.
+        run: node node_modules/@lautstark/design/shadows.js
+
       - name: Typecheck and build
         run: npm run build
 
