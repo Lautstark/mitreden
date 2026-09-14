@@ -63,10 +63,12 @@ jobs:
         # the page - and it looks exactly like it worked, because the product
         # goes on rendering the way it always did.
         #
-        # Warning only while the four are being cleaned out. It becomes
-        # --strict once this repository reports none, which is the point of
-        # having it: the list is finite now and is meant to stay at zero.
-        run: node node_modules/@lautstark/design/shadows.js
+        # --strict: this repository reports none, and that is the state worth
+        # keeping. A bare rule of a shared name either goes, gets an ancestor
+        # so it aims at one place instead of replacing the drawing, or says
+        # why in a `shadows .name:` comment beside it. The tool does not judge
+        # the reason; it asks that there be one.
+        run: node node_modules/@lautstark/design/shadows.js --strict
 
       - name: Typecheck and build
         run: npm run build
