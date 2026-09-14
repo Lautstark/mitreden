@@ -78,7 +78,11 @@
     <div id="infobody"></div>
   </dialog>
 
-  <dialog id="setup" class="sheet">
+  <!-- `panels`: a column of <details>, 900px. This dialog showed the same
+       column at 600px while wochenwerk showed it at 900, and wochenwerk was
+       the one with a reason written down. See design/docs/conventions.md 4.14.
+       #info and #colvoice stay 600 - neither is a column of panels. -->
+  <dialog id="setup" class="sheet panels">
       <div class="head">
         <h2 data-i18n="settings"></h2>
         <button id="setupclose" class="btn quiet icon" data-i18n-aria="close">✕</button>
