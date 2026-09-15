@@ -286,14 +286,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .item{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:flex-start;padding:12px 16px;
   border-radius:var(--radius);background:var(--surface);outline:1px solid var(--line)}
 .item .txt{order:1}
-/* shadows .menu-anchor: the order, and only the order. components.css draws the
-   anchor's box — position, display, flex — and says nothing about where it goes
-   in the row it sits in, so this adds to that drawing rather than replacing it:
-   the ⋯ follows the sentence here, and follows the count on a phone (the
-   max-820 block below). Both rules are already scoped to the row they arrange.
-   shadows.js reports them anyway because it reads the last compound of a
-   selector and stops there — see the note on `.dot` below, which is the same
-   case and the clearer one. */
+/* The order, and only the order. components.css draws the anchor's box —
+   position, display, flex — and says nothing about where it goes in the row it
+   sits in, so this adds to that drawing rather than replacing it: the ⋯ follows
+   the sentence here, and follows the count on a phone (the max-820 block
+   below). */
 .item .menu-anchor{order:2}
 /* After the shared rule above, not before it — that one resets the margin. */
 .item input[type=checkbox]{margin-top:6px}
@@ -314,15 +311,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* The lamp sits with the words it belongs to instead of starting the row —
    one marker at the left edge (the checkbox) is enough. */
 .item .st{display:inline-flex;align-items:center;gap:6px}
-/* shadows .dot: a different lamp from the one components.css draws. That file
-   has `.dot` only inside `.standing` — @lautstark/sicherung's panels, which in
-   this product live in the settings sheet and are photographed there. This is
-   the recording state on a sentence row, and every rule for it is scoped to
-   `.item`. No element is ever both, so neither drawing is replacing the other
-   and the shared one reaches the page untouched.
-   shadows.js reports it because it matches on the last compound of a selector:
-   `.item .dot` and `.standing .dot` both read as `.dot` to it, which its own
-   header says should not count (`.speech-row .btn`) but its `drawn()` does. */
+/* A different lamp from the one components.css draws. That file has `.dot` only
+   inside `.standing` — @lautstark/sicherung's panels, which in this product live
+   in the settings sheet and are photographed there. This is the recording state
+   on a sentence row, and every rule for it is scoped to `.item`. No element is
+   ever both, so neither drawing is replacing the other and the shared one
+   reaches the page untouched. */
 .item .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--miss)}
 .item.ok .dot{background:var(--ok)}
 .item.stale .dot{background:var(--warn)}
@@ -344,7 +338,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .item .txt{flex:1;min-width:0}
 .item .line{font-size:18px;letter-spacing:-.01em}
 .item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
-/* shadows .state: the same case as `.dot` above. components.css's `.state` is
+/* The same case as `.dot` above. components.css's `.state` is
    the line in a `.panel > summary` that says what a folded panel holds — a
    child of a summary, and nothing else. This is the sentence row's own state
    text, scoped to `.item`. No element is ever both. */
