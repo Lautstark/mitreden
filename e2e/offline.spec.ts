@@ -74,9 +74,11 @@ const HOST = /https?:\/\/([a-zA-Z0-9.-]+)/g;
  * is the pair that was passed in - and the pair is the fact worth checking:
  * `base` is a path on this origin rather than a URL on a host, and `dir` is
  * the same `wasm` that `piperVendor()` was told to fill. Either order, because
- * which one is written first is not something this test has an opinion about.
+ * which one is written first is not something this test has an opinion about,
+ * and either quote, because which one the minifier prefers is not either:
+ * esbuild wrote double quotes and oxc, under vite 8, writes backticks.
  */
-const POINTED_AT = /dir:"wasm",\s*base:"\/[^"]*"|base:"\/[^"]*",\s*dir:"wasm"/;
+const POINTED_AT = /dir:["'`]wasm["'`],\s*base:["'`]\/[^"'`]*["'`]|base:["'`]\/[^"'`]*["'`],\s*dir:["'`]wasm["'`]/;
 
 /** Every text file under dist/, however deep. */
 function builtFiles(dir = DIST): string[] {
