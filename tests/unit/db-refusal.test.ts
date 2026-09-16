@@ -70,11 +70,11 @@ const only = <T>(store: string, database: IDBDatabase): Promise<T[]> =>
     request.onsuccess = () => resolve(request.result as T[]);
   });
 
-let store: typeof import('../../src/db/db.ts');
+let store: typeof import('./store.ts');
 
 beforeAll(async () => {
   await seedVersionTwo();
-  store = await import('../../src/db/db.ts');
+  store = await import('./store.ts');
 });
 
 describe('a version 2 library meeting version 4', () => {

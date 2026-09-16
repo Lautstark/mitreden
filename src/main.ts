@@ -11,7 +11,8 @@ import './styles/app.css';
 
 import { ensureCollection } from './db/repo.ts';
 import { exportEverything } from './db/backup.ts';
-import { discardEverything, isRefusal, onChanged, pullFromFolder } from './db/db.ts';
+import { discardEverything, isRefusal, onChanged } from './db/db.ts';
+import { pullFromFolder } from './db/mirror.ts';
 import { Sicherung } from '@lautstark/sicherung';
 import { ablage, adopted, watchFolder } from './db/folder.ts';
 import { confirmDialog } from './ui/dialog.ts';

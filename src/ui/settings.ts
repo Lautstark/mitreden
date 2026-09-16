@@ -6,13 +6,14 @@
  * server of ours, because there is not one.
  */
 
-import { countPhrases, phrasesIn, wipe, wipeReaches } from '../db/db.ts';
+import { countPhrases, phrasesIn } from '../db/phrases.ts';
+import { wipe, wipeReaches } from '../db/wipe.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import type { Sicherung } from '@lautstark/sicherung';
 import { backupPanel, type BackupPanel } from '@lautstark/sicherung/backup-panel';
 import { wherePanel } from '@lautstark/sicherung/ablage-panel';
 import { ablage, isStore } from '../db/folder.ts';
-import { adoptFolder } from '../db/db.ts';
+import { adoptFolder } from '../db/mirror.ts';
 import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
 import { offered, probeAzure } from '../core/voices.ts';
 import { LANGS, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';

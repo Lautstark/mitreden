@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { allCollections, wipe } from '../../src/db/db.ts';
+import { allCollections } from '../../src/db/collections.ts';
+import { wipe } from '../../src/db/wipe.ts';
 import { createCollection, renameCollection } from '../../src/db/repo.ts';
 
 /**

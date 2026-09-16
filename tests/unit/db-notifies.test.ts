@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  dropAudio, dropCollection, dropPhrase, onChanged, putAudio, putCollection,
-  putCollections, putPhrase, putPhrases, saveSettings, wipe,
-} from '../../src/db/db.ts';
+import { onChanged } from '../../src/db/db.ts';
+import { dropAudio, putAudio } from '../../src/db/audio.ts';
+import { dropCollection, putCollection, putCollections } from '../../src/db/collections.ts';
+import { dropPhrase, putPhrase, putPhrases } from '../../src/db/phrases.ts';
+import { saveSettings } from '../../src/db/settings.ts';
+import { wipe } from '../../src/db/wipe.ts';
 
 /**
  * Every write that changes what a Sicherung would contain must reach

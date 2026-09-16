@@ -5,10 +5,10 @@ import {
 } from '../../src/db/backup.ts';
 import de from '../../src/i18n/de.json';
 import en from '../../src/i18n/en.json';
-import {
-  allCollections, allPhrases, countIn, putCollections, putPhrases, saveSettings,
-  wipe,
-} from '../../src/db/db.ts';
+import { allPhrases, countIn, putPhrases } from '../../src/db/phrases.ts';
+import { allCollections, putCollections } from '../../src/db/collections.ts';
+import { saveSettings } from '../../src/db/settings.ts';
+import { wipe } from '../../src/db/wipe.ts';
 
 /**
  * What may reach a folder that is very likely inside Dropbox.

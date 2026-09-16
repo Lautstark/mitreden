@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  allCollections, allPhrases, countIn, countPhrases, dropCollection, getPhrase,
-  dropPhrase, phrasesIn, putCollection, putCollections, putPhrases, twinsOf, wipe,
-} from '../../src/db/db.ts';
+  allPhrases, countIn, countPhrases, dropPhrase, getPhrase, phrasesIn, putPhrases, twinsOf,
+} from '../../src/db/phrases.ts';
+import {
+  allCollections, dropCollection, putCollection, putCollections,
+} from '../../src/db/collections.ts';
+import { wipe } from '../../src/db/wipe.ts';
 import { collections, editPhrase } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
 

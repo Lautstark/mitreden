@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { allPhrases, loadSettings, putPhrases, saveSettings, wipe } from '../../src/db/db.ts';
+import { allPhrases, putPhrases } from '../../src/db/phrases.ts';
+import { loadSettings, saveSettings } from '../../src/db/settings.ts';
+import { wipe } from '../../src/db/wipe.ts';
 import { KEY_SCHEME, rekeyIfNeeded } from '../../src/db/rekey.ts';
 import { fingerprint, formerNames } from '../../src/core/ids.ts';
 import { OUT } from '../../src/core/settings.ts';

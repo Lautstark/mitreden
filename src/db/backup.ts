@@ -33,10 +33,9 @@
  * otherwise.
  */
 
-import {
-  allCollections, allPhrases, idTaken, loadSettings, putCollections,
-  putPhrases, twinsOf, type Settings,
-} from './db.ts';
+import { allPhrases, idTaken, putPhrases, twinsOf } from './phrases.ts';
+import { allCollections, putCollections } from './collections.ts';
+import { loadSettings, type Settings } from './settings.ts';
 import { free, normText, slug } from '../core/ids.ts';
 import { commonest } from '../core/voices.ts';
 import type { Collection, Phrase } from '../core/types.ts';
