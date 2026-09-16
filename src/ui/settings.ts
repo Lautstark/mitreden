@@ -1,219 +1,38 @@
 /**
- * The settings dialog: voices, language, and your data.
+ * What the Einstellungen sheet *does*: files out, files in, and the one act
+ * that destroys something.
  *
- * The Azure key never leaves this browser. The request goes from here straight
- * to Microsoft and the audio comes straight back; nothing passes through a
- * server of ours, because there is not one.
+ * The sheet itself is SetupSheet.svelte and its panels are components beside
+ * it. What stayed here is the half that is not drawing — and it stayed under
+ * this name rather than moving to a better one because tests/unit/shelf.test.ts
+ * mocks `src/ui/settings.ts` for `importFile`. A module path a unit test names
+ * is part of the contract, and the rename would be a change to a unit test made
+ * to suit a refactor of the layer above it.
+ *
+ * The Azure key never leaves this browser. The request goes from the panel
+ * straight to Microsoft and the audio comes straight back; nothing passes
+ * through a server of ours, because there is not one.
  */
 
 import { countPhrases, phrasesIn } from '../db/phrases.ts';
 import { wipe, wipeReaches } from '../db/wipe.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
-import type { Sicherung } from '@lautstark/sicherung';
-import { backupPanel, type BackupPanel } from '@lautstark/sicherung/backup-panel';
-import { wherePanel } from '@lautstark/sicherung/ablage-panel';
-import { ablage, isStore } from '../db/folder.ts';
-import { adoptFolder } from '../db/mirror.ts';
-import { collections, createCollection, saveAzure, settings } from '../db/repo.ts';
-import { offered, probeAzure } from '../core/voices.ts';
-import { LANGS, lang, setLang, t, tn, type Key, type Lang } from '../i18n/index.ts';
+import { ablage } from '../db/folder.ts';
+import { createCollection, settings } from '../db/repo.ts';
+import { offered } from '../core/voices.ts';
+import { lang, t } from './words.svelte.ts';
 import type { Line } from '../db/repo.ts';
-import type { Collection, Phrase } from '../core/types.ts';
-import { chosenVoice, knownVoices, loadVoices, onVoiceChange, pickVoice, relangVoice } from './composer.ts';
-import { voicePicker } from './voicepicker.ts';
-import { ALL, load } from './state.ts';
-import { applyLang, busy, byId, say, sourceOf, speaks } from './dom.ts';
+import type { Collection } from '../core/types.ts';
+import { load } from './store.svelte.ts';
+import { busy, say } from './dom.ts';
 import { confirmDialog, openDialog } from './dialog.ts';
-import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
-import { languagePicker, NAMES } from '@lautstark/design/language';
 import { downloadJson } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
 
-/**
- * Azure's own region names. A datalist suggests rather than restricts, so a
- * region newer than this file still works by typing it — and the region is
- * what a rejected key usually turns out to be.
- */
-const AZURE_REGIONS = [
-  'westeurope', 'northeurope', 'germanywestcentral', 'switzerlandnorth',
-  'francecentral', 'uksouth', 'swedencentral', 'norwayeast', 'eastus', 'eastus2',
-  'westus', 'westus2', 'westus3', 'centralus', 'southcentralus', 'canadacentral',
-  'brazilsouth', 'australiaeast', 'southeastasia', 'eastasia', 'japaneast',
-  'japanwest', 'koreacentral', 'centralindia', 'southafricanorth', 'uaenorth',
-];
-
-/**
- * The default a *new* Sammlung starts with — which is what this list is now,
- * and not what the next sentence gets.
- *
- * It is still a setting of the app under §3.10's test, and for a reason
- * stronger than "it is a default": its answer does not change when a different
- * Sammlung is selected, because it is not read off one. It also does real work
- * today rather than only later — a sentence in no Sammlung records in it, which
- * is a state composer.ts creates deliberately when two Sammlungen are open.
- *
- * The list itself is voicepicker.ts, and this is one of the two instances it
- * exists to keep apart: a search typed here must not follow somebody into the
- * Sammlung's own sheet, which is asking a different question of the same
- * catalogue. See that file's header.
- */
-const defaults = voicePicker({
-  into: 'voices',
-  current: chosenVoice,
-  pick: (id) => void pickVoice(id),
-});
-
-export const drawVoices = (): void => defaults.refresh();
-
-export async function drawSetup(): Promise<void> {
-  const saved = await settings();
-  const box = byId('cloud');
-  box.innerHTML = '';
-
-  const card = document.createElement('div');
-  // The bare class names here are hooks for the querySelectors below, not
-  // components — which is why none of them may be a name components.css owns.
-  // This paragraph was `sub body` and sat inside the settings sheet, so the
-  // shared `.sheet .body` region rule reached it and quietly took it from 15px
-  // to 14px. v1.4.1 made those rules child combinators and handed it back; the
-  // rename is so it cannot be caught again by whatever the vocabulary adds.
-  //
-  // No head and no card: the panel's summary names this and says whether Azure
-  // holds a key, which is the whole point of a heading that carries its state.
-  card.innerHTML = `
-    <p class="hint probe" role="status"></p>
-    <p class="sub says"></p><p class="notice bad warn"></p>
-    <label for="azurekey"></label>
-    <input id="azurekey" class="field" type="password" autocomplete="off">
-    <label class="region" for="azureregion"></label>
-    <input id="azureregion" class="field region" type="text" list="azureregions" spellcheck="false">
-    <datalist id="azureregions">${AZURE_REGIONS.map((r) => `<option value="${r}">`).join('')}</datalist>
-    <p class="hint region"></p>
-    <div class="row"><button class="btn primary save"></button><button class="btn quiet forget"></button></div>`;
-
-  const azure = saved.azure;
-  // Which key, not merely that there is one: the last four characters tell
-  // two keys apart without giving either away. It sits in the panel's heading,
-  // so the answer is there before the panel is opened.
-  byId('azurestate').textContent = azure
-    ? t('key_hint', { hint: azure.key.slice(-4) })
-    : t('key_none');
-
-  /*
-   * The probe line is a live region, and it is never hidden — §3.8. It used to
-   * be toggled with `[hidden]` when no key was stored, which is one of the two
-   * ways that section names for getting silence: the element leaves the
-   * accessibility tree and comes back carrying its next message.
-   *
-   * What saved it in practice was luck of timing. The answer arrives from a
-   * promise, so by then the region was on screen and empty and the change was
-   * noticed; only the synchronous "asking…" was lost. Removing the need to
-   * reason about that is the whole point of the rule, so what is emptied now is
-   * the text. Empty, a <p> with no content takes no room, which is why it can
-   * stay.
-   *
-   * It is a second region in this page, and a legitimate one: it reports inside
-   * a modal, and the page's own status line is inert behind that modal while it
-   * is open. §3.8 allows exactly this.
-   */
-  const probe = card.querySelector<HTMLElement>('.probe')!;
-  if (!azure) {
-    probe.textContent = '';
-  } else {
-    // The person who stored a key has one question — does Azure answer? —
-    // and the badge's "stored" was never it. Memoised per key and region, so
-    // this line and the picker's own ask share a single request.
-    probe.textContent = t('azure_asking');
-    void probeAzure(azure).then((answer) => {
-      probe.textContent = answer.ok
-        ? tn('azure_answers', answer.count)
-        : t(answer.code === 'unreachable' ? 'azure_unreachable'
-          : answer.code === 'refused' ? 'azure_refused' : 'azure_failed');
-    });
-  }
-  card.querySelector<HTMLElement>('.says')!.textContent = t('azure_body');
-  card.querySelector<HTMLElement>('.warn')!.textContent = t('azure_warn');
-  card.querySelector<HTMLElement>('label[for=azurekey]')!.textContent = t('key_field');
-  card.querySelector<HTMLElement>('label.region')!.textContent = t('region_field');
-  card.querySelector<HTMLElement>('p.region')!.textContent = t('region_hint');
-
-  const key = card.querySelector<HTMLInputElement>('#azurekey')!;
-  // The held key sits in the placeholder, never in the value: a value can be
-  // revealed or resubmitted, a placeholder cannot. It is also what makes the
-  // save rule visible — this field left untouched keeps the key it shows.
-  key.placeholder = azure ? `••••${azure.key.slice(-4)}` : '';
-  const region = card.querySelector<HTMLInputElement>('#azureregion')!;
-  region.value = saved.azure?.region ?? 'westeurope';
-
-  const save = card.querySelector<HTMLButtonElement>('.save')!;
-  const forget = card.querySelector<HTMLButtonElement>('.forget')!;
-  save.textContent = t('key_save');
-  forget.textContent = t('key_forget');
-  forget.hidden = !azure;
-  save.onclick = () => void saveKey(key.value, region.value, save);
-  forget.onclick = () => void forgetKey();
-
-  box.appendChild(card);
-}
-
-/**
- * Checked before it is stored, so a typo is a sentence now rather than a failed
- * recording later. The button says what it is doing meanwhile: the check is a
- * network round trip, and a button that does nothing visible for two seconds is
- * a button you press again.
- */
-async function saveKey(typed: string, region: string, button: HTMLButtonElement): Promise<void> {
-  // The field is empty every time the card draws, so an untouched field must
-  // not mean "no key": a save that only moves the region keeps the key it
-  // already has. Removing the key is its own button, not a way to save.
-  const key = typed.trim() || (await settings()).azure?.key;
-  if (!key) {
-    say(t('type_first'));
-    return;
-  }
-  const where = region.trim() || 'westeurope';
-  const was = button.textContent;
-  button.disabled = true;
-  button.textContent = t('key_checking');
-  busy('key_checking');
-  try {
-    const answer = await probeAzure({ key, region: where });
-    if (!answer.ok) {
-      // A key is bound to one region, and the wrong pairing answers exactly
-      // the same 401 as a wrong key — saying which is more use than repeating
-      // Azure. A region name that is not one never answers at all, and that
-      // difference is worth its own sentence too.
-      say(t('key_failed', { error:
-        answer.code === 'refused' ? t('azure_bad_pair')
-          : answer.code === 'unreachable' ? t('azure_unreachable')
-            : t('azure_no_answer', { error: answer.words }) }));
-      return;
-    }
-    await saveAzure({ key, region: where });
-    say(t('key_saved', { label: 'Azure Speech', n: answer.count }));
-    // The card and the picker are what this save feeds. The dialog stays
-    // open, so the state line and the new voices land on the screen the key
-    // was typed into; the probe is already answered, so neither asks again.
-    await loadVoices();
-    drawVoices();
-    await drawSetup();
-  } catch (error) {
-    say(t('key_failed', { error: error instanceof Error ? error.message : String(error) }));
-  } finally {
-    button.disabled = false;
-    button.textContent = was;
-  }
-}
-
-async function forgetKey(): Promise<void> {
-  await saveAzure(undefined);
-  say(t('key_removed', { label: 'Azure Speech' }));
-  await loadVoices();
-  drawVoices();
-  await drawSetup();
-}
-
-// ------------------------------------------------------------------- data
+/* The date every export here carries. vorlaut deliberately stamps none of its
+ * package exports, so this is the product's and not the package's — see
+ * @lautstark/werkzeuge/download, which takes a filename whole. */
+const stamp = (): string => new Date().toISOString().slice(0, 10);
 
 /** One Sammlung as a file, named after it and dated. */
 export async function exportCollection(collection: Collection): Promise<void> {
@@ -232,16 +51,11 @@ export async function exportCollection(collection: Collection): Promise<void> {
  * and the file it writes is the same one the standing backup puts in the
  * chosen folder.
  */
-async function exportAll(): Promise<void> {
+export async function exportAll(): Promise<void> {
   // The notice travels inside the file, so it is written in the language the
   // page is in rather than in whichever one the db layer happened to hold.
   downloadJson(await exportEverything(t('backup_notice')), `mitreden-sicherung-${stamp()}.json`);
 }
-
-/* The date every export here carries. vorlaut deliberately stamps none of its
- * package exports, so this is the product's and not the package's — see
- * @lautstark/werkzeuge/download, which takes a filename whole. */
-const stamp = (): string => new Date().toISOString().slice(0, 10);
 
 /**
  * What a file may contain: our own export, a bare list, or a bildhaft archive,
@@ -355,14 +169,14 @@ export async function importFile(file: File): Promise<string | null> {
  * which is the exact failure db.ts's `wipe` was fixed for. Refusing is the
  * honest answer; a half-delete is not.
  */
-async function wipeEverything(): Promise<void> {
+export async function wipeEverything(): Promise<void> {
   const reach = wipeReaches();
   const folder = 'folder' in ablage.status ? ablage.status.folder : '';
 
   if (reach === 'unreachable') {
-    /* Built by hand: `el` here reads an element by id, it does not make one —
-       the family's other two products mean the opposite by that name. See the
-       family review of 2026-09-02. */
+    /* Built by hand, into @lautstark/design/dialog's own footer. One button in
+       a frame the package draws is not markup this product owns, and a
+       component for it would be a file holding a single <button>. */
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'btn primary';
@@ -393,224 +207,3 @@ async function wipeEverything(): Promise<void> {
   say(t('danger_done'));
   location.reload();
 }
-
-// ------------------------------------------------------------------ wiring
-
-/*
- * The scheme, and where it is kept.
- *
- * localStorage like the language above it, and for a sharper reason: the scheme
- * has to be readable before the first paint or the page flashes the OS's answer
- * and then corrects itself. That rules out the database the sentences live in,
- * which is asynchronous. @lautstark/design/theme carries the reasoning; the
- * inline script in index.html is the half that runs before this module exists.
- */
-const THEME_KEY = 'mitreden.theme';
-
-const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
-
-/**
- * Both languages, with the one in force pressed — and now the same row all
- * three products draw.
- *
- * The hand-built loop this replaces was the third copy of one control, and the
- * copies had drifted in the way copies do: bildhaft's carried `role="group"`
- * and a label on the row it built, this one had them written into index.html
- * instead, vorlaut-editor's had neither. What mitreden had written down beside
- * its own copy — that a
- * language's name is not a translation, because this is the control somebody
- * reaches for when they *cannot read the interface around it* — is the module's
- * argument now, and `NAMES` is why the buttons still say „Deutsch" and
- * „English" on either page.
- *
- * `current` is `lang` itself rather than a value: the module reads it on every
- * repaint, which is what lets chooseLang() below move the pressed button
- * without a reload.
- *
- * The label is deliberately not `t('panel_language')`, and for two reasons that
- * agree. The one index.html argues at length: this is the accessible name of
- * the one control whose whole case is that the page around it may be
- * unreadable, so it says both words and stays saying both. The one the API
- * settles: `refresh()` moves the pressed button and nothing else — the label is
- * set once, at construction — so a translated name would be the language the
- * reader has just left, every time, until a reload.
- */
-const langs = languagePicker({
-  languages: LANGS,
-  current: lang,
-  choose: (code) => chooseLang(code as Lang),
-  label: 'Sprache / Language',
-});
-
-/** The three answers, with the one in force pressed. */
-function drawTheme(): void {
-  const current = readTheme(THEME_KEY);
-  const box = byId('theme');
-  box.innerHTML = '';
-  for (const theme of THEMES) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = themeLabel(theme);
-    button.setAttribute('aria-pressed', String(theme === current));
-    button.onclick = () => {
-      saveTheme(THEME_KEY, theme);
-      applyTheme(theme);
-      // Redraw this control and its heading only. Nothing else on the page
-      // depends on the scheme — the tokens do that work, which is the point of
-      // there being tokens.
-      drawTheme();
-      drawStates();
-    };
-    box.appendChild(button);
-  }
-}
-
-/**
- * What each panel holds, said in its own heading.
- *
- * This is the whole reason the tabs went: a tab is a promise that something is
- * behind it, and you have to open it to find out what. A heading that already
- * says "Kristin · Mitgeliefert · Englisch", "Kein Schlüssel" or "42 Sätze" is
- * usually the entire question, and opening becomes a decision rather than the
- * only way to look.
- */
-function drawStates(): void {
-  const voice = knownVoices().find((one) => one.id === chosenVoice());
-  byId('voicestate').textContent = voice
-    ? `${voice.label} · ${sourceOf(voice.source)} · ${speaks(voice.lang)}`
-    : t('voice_none');
-  /* The same endonym the pressed button carries, off the same table — the
-     heading and the row must not be able to disagree about what „de" is
-     called. */
-  byId('langstate').textContent = NAMES[lang()] ?? lang();
-  langs.refresh();
-  // ALL(), not loadPhrases(): the sentences are already in memory, and a
-  // heading that carries state has to carry it from the first frame. Reading
-  // the database here left this line blank at the moment somebody was reading
-  // it — which is the one thing this shape promises not to do.
-  const n = ALL().length;
-  byId('datastate').textContent = n ? tn('count', n) : t('count_none');
-  byId('themestate').textContent = themeLabel(readTheme(THEME_KEY));
-}
-
-/**
- * The words this page is in. The button says which; the menu offers the rest,
- * so there is no state to mark twice.
- */
-function chooseLang(code: Lang): void {
-  setLang(code);
-  localStorage.setItem('mitreden.lang', code);
-  document.documentElement.lang = code;
-  applyLang();
-  /* The backup panel holds no data-i18n — it paints its own words — so
-     applyLang() above cannot reach it. It reads lang() on every paint, so one
-     repaint is the whole of what it needs. */
-  keeping?.refresh();
-  // Before the picker redraws, so it marks the voice this page now starts in.
-  relangVoice();
-  drawVoices();
-  // The three scheme labels are words like any other, and they are drawn from
-  // TS rather than carried by data-i18n, so applyLang() above cannot reach them.
-  drawTheme();
-  drawStates();
-  void drawSetup();
-  void load();
-}
-
-
-/* Held so that a language change can repaint it, and null where the browser has
-   no picker or a store folder makes the offer redundant. */
-let keeping: BackupPanel | null = null;
-
-/** The dialog, with the panel that answers whatever asked for it unfolded. */
-/* No panel argument, and none is wanted.
- *
- * It used to take one and deep-link into that panel, which is how the
- * composer's „Ändern" button reached the voice section. That button went on
- * 2026-08-29 - the line under the box states and does not route - and with it
- * the only caller that ever passed an argument. What was left was a parameter
- * nothing supplied and an openPanel() nothing reached, which is worse than
- * nothing: it reads as a seam somebody may still be using.
- *
- * Also no longer exported. The gear below is the one caller and it is in this
- * file, so the entrance is where the sheet is. */
-function openSetup(): void {
-  drawVoices();
-  drawTheme();
-  drawStates();
-  // The key lives in the database, so this one heading cannot be answered
-  // synchronously on a first open. It says it is fetching rather than saying
-  // nothing: a state is what this summary is for, and empty is not one. Later
-  // opens find the previous answer still written.
-  const azure = byId('azurestate');
-  if (!azure.textContent) azure.textContent = t('loading');
-  void drawSetup();
-  byId<HTMLDialogElement>('setup').showModal();
-}
-
-export function wireSettings(backup: Sicherung): void {
-  /* The row goes *in place of* the placeholder, not inside it.
-   *
-   * The module hands back the `.segmented` itself — role, label and all — so
-   * appending would put one segmented group inside another: two role="group"s
-   * around two buttons, and a wrapper between the row and the `.body` that
-   * lays it out. Replacing leaves the DOM exactly as the hand-built version
-   * left it, which is also why the baseline picture of this sheet does not
-   * move.
-   *
-   * The name comes off the placeholder rather than being written again here.
-   * `#lang` is what index.html calls this spot and what the suites reach for;
-   * where it sits and what it is called are the product's business, which is
-   * precisely what the module declines to decide. */
-  const slot = byId('lang');
-  langs.node.id = slot.id;
-  slot.replaceWith(langs.node);
-
-  /* The store panel comes from the package, so every Lautstark programme shows
-     the same one. What stays here is what mitreden alone offers besides it. */
-  const store = wherePanel({
-    store: ablage,
-    adopt: adoptFolder,
-    changed: () => void load(),
-    say,
-    lang: lang() === 'en' ? 'en' : 'de',
-  });
-  byId('wherebox').append(store.node);
-  /* Only where there is no store folder: with one, the copies already go beside
-     the work, and a second picker would be the same offer under a name that
-     reads almost the same. */
-  /* Only where there is no store folder: with one, the copies already go beside
-     the work, and a second picker would be the same offer under a name that
-     reads almost the same. */
-  if (isStore()) byId('folderbox').hidden = true;
-  else {
-    /* The 161 lines this replaces are @lautstark/sicherung/backup-panel's now —
-       words, markup, the age rule — beside the wherePanel above that already
-       came from there. What mitreden kept is `lang`, and it is a function
-       rather than a value on purpose: this page changes language without
-       reloading, and a locale captured once answers in the language the reader
-       has just left while staying perfectly well-formed. That was mitreden's
-       own rule and it is the module's now. */
-    keeping = backupPanel({ backup, say, lang: () => (lang() === 'en' ? 'en' : 'de') });
-    if (keeping) byId('folderbox').append(keeping.node);
-    else byId('folderbox').hidden = true;
-  }
-  byId('gear').onclick = () => openSetup();
-  byId('setupclose').onclick = () => byId<HTMLDialogElement>('setup').close();
-  // A pick redraws the list it was made in, so the mark moves with the click —
-  // and the heading, which names the voice in force.
-  onVoiceChange(() => { drawVoices(); drawStates(); });
-
-  byId('export').onclick = () => void exportAll();
-  byId('import2').onclick = () => byId('importfile').click();
-  byId<HTMLInputElement>('importfile').onchange = (event) => {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (file) void importFile(file);
-  };
-  byId('wipe').onclick = () => void wipeEverything();
-}
-
-export type { Phrase };
-export { collections };

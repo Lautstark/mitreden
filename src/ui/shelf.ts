@@ -26,7 +26,7 @@
 import { wanted } from '@lautstark/werkzeuge/sammlung';
 import { importFile } from './settings.ts';
 import { say, busy } from './dom.ts';
-import { OPEN, notify } from './state.ts';
+import { openOnly } from './store.svelte.ts';
 import { t } from '../i18n/index.ts';
 
 /**
@@ -64,11 +64,7 @@ export async function openNamed(here?: string): Promise<void> {
            them on whatever happened to be open, with the thing they clicked for
            sitting closed in the rail, is not an arrival. Alone, rather than
            added to what was open, for the same reason. */
-        if (into) {
-          OPEN.clear();
-          OPEN.add(into);
-          notify();
-        }
+        if (into) openOnly(into);
       }
   }
 }

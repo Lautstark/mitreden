@@ -5,10 +5,15 @@
  *
  * The legal pages are German because the obligation is; the about follows the
  * page's language.
+ *
+ * What is here is the prose and nothing else. It used to reach into #info by id
+ * and show the dialog itself; the sheet is InfoSheet.svelte now and this hands
+ * it a title and a body. Still HTML strings rather than markup, because these
+ * are three pages of legal text with links in them and a component per
+ * paragraph would be a worse way to read the same words.
  */
 
-import { lang } from '../i18n/index.ts';
-import { byId } from './dom.ts';
+import { lang } from './words.svelte.ts';
 
 const REPO = 'https://github.com/Lautstark/mitreden';
 const ORG = 'https://github.com/Lautstark';
@@ -26,12 +31,9 @@ const ext = (href: string, text: string): string =>
 const h3 = (text: string, first = false): string =>
   `<h3 style="font-size:14px;margin:${first ? '0' : '18px'} 0 6px">${text}</h3>`;
 
-function page(title: string, html: string): void {
-  const dialog = byId<HTMLDialogElement>('info');
-  byId('infotitle').textContent = title;
-  byId('infobody').innerHTML = html;
-  dialog.showModal();
-}
+/** A title and a body, which is all a sheet in this product is. The sheet
+ *  itself is InfoSheet.svelte; what is written in it is here. */
+export interface Page { title: string; html: string }
 
 const ABOUT = {
   de: `
@@ -134,11 +136,13 @@ const ABOUT = {
     </p>`,
 };
 
-export const openAbout = (): void =>
-  page(lang() === 'de' ? 'Was ist mitreden?' : 'What is mitreden?', ABOUT[lang()]);
+export const about = (): Page => ({
+  title: lang() === 'de' ? 'Was ist mitreden?' : 'What is mitreden?',
+  html: ABOUT[lang()],
+});
 
 /** Pflichtangaben nach § 5 DDG — deutsch, weil die Pflicht es ist. */
-export const openImpressum = (): void => page('Impressum', `
+export const impressum = (): Page => ({ title: 'Impressum', html: `
   ${h3('Angaben gemäß § 5 DDG', true)}
   <p style="margin:0">
     Stefanie Grewenig<br>Talheide 5<br>21149 Hamburg<br>Deutschland
@@ -168,10 +172,10 @@ export const openImpressum = (): void => page('Impressum', `
   <p style="margin:0">
     Zur Teilnahme an einem Streitbeilegungsverfahren vor einer
     Verbraucherschlichtungsstelle bin ich weder verpflichtet noch bereit.
-  </p>`);
+  </p>` });
 
 /** Art. 13 DSGVO. Kurz, weil fast nichts passiert: es gibt keinen Server. */
-export const openDatenschutz = (): void => page('Datenschutz', `
+export const datenschutz = (): Page => ({ title: 'Datenschutz', html: `
   <p style="margin-top:0">
     mitreden läuft vollständig in deinem Browser. Es gibt keinen Server von uns,
     keine Konten, keine Auswertung und keine Werbung. Deine Sätze und Aufnahmen
@@ -221,4 +225,4 @@ export const openDatenschutz = (): void => page('Datenschutz', `
     Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit,
     Widerspruch und Beschwerde bei einer Aufsichtsbehörde — wobei hier schlicht
     nichts vorliegt, worüber Auskunft zu geben wäre.
-  </p>`);
+  </p>` });

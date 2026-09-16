@@ -54,6 +54,14 @@ const ALLOWED = new Map([
   ['www.mp3dev.org', 'a licence header in lamejs'],
   ['www.w3.org', 'the SVG and XML namespaces'],
   ['web.dev', "a link in onnxruntime-web's message about cross-origin isolation"],
+  /* Sixteen of them, one per runtime invariant: Svelte throws `new
+     Error('https://svelte.dev/e/effect_orphan')` rather than carrying the
+     sentence, so the address *is* the message. They are in a thrown error and
+     a console.warn and nowhere else — no fetch, no link on the page, nothing a
+     reader can reach — which is web.dev above, one line up, for the same
+     reason. This check is how the page found out it had them at all, on the
+     day the page became components. */
+  ['svelte.dev', "the error codes Svelte's runtime throws instead of sentences"],
 ]);
 
 /**
