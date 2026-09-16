@@ -9,10 +9,11 @@
  */
 
 import {
-  allCollections, allPhrases, countIn, dropAudio, dropCollection, dropPhrase,
-  getAudio, getCollection, getPhrase, idTaken, loadSettings, putAudio,
-  putCollection, putPhrase, putPhrases, saveSettings, twinsOf, type Settings,
-} from './db.ts';
+  allPhrases, countIn, dropPhrase, getPhrase, idTaken, putPhrase, putPhrases, twinsOf,
+} from './phrases.ts';
+import { allCollections, dropCollection, getCollection, putCollection } from './collections.ts';
+import { loadSettings, saveSettings, type Settings } from './settings.ts';
+import { dropAudio, getAudio, putAudio } from './audio.ts';
 import { record } from '../core/audio.ts';
 import { fingerprint, free, normText, slug } from '../core/ids.ts';
 import { commonest } from '../core/voices.ts';

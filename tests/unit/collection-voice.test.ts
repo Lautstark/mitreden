@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  getAudio, putAudio, putCollection, putPhrases, saveSettings, wipe,
-} from '../../src/db/db.ts';
+import { getAudio, putAudio } from '../../src/db/audio.ts';
+import { putCollection } from '../../src/db/collections.ts';
+import { putPhrases } from '../../src/db/phrases.ts';
+import { saveSettings } from '../../src/db/settings.ts';
+import { wipe } from '../../src/db/wipe.ts';
 import {
   addPhrases, collections, createCollection, phrases, saveCollectionVoice, votedVoice,
 } from '../../src/db/repo.ts';

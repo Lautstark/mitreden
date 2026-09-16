@@ -75,11 +75,11 @@ const get = <T>(store: string, key: string, database: IDBDatabase): Promise<T> =
 /* Imported after the old database exists, not before: db.ts opens lazily, but a
  * top-level import that ever grew an eager open would make this file quietly
  * test nothing. Loading it here is what guarantees the order. */
-let store: typeof import('../../src/db/db.ts');
+let store: typeof import('./store.ts');
 
 beforeAll(async () => {
   await seedVersionOne();
-  store = await import('../../src/db/db.ts');
+  store = await import('./store.ts');
 });
 
 describe('opening a database left behind by version 1', () => {

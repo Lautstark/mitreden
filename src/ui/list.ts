@@ -7,7 +7,7 @@
  */
 
 import { asFormat, asPenMp3 } from '../core/audio.ts';
-import { getAudio } from '../db/db.ts';
+import { getAudio } from '../db/audio.ts';
 import { build, deletePhrase, editPhrase } from '../db/repo.ts';
 import { cells, penProject, sheetsFor, type PenAudio, type Sheet } from '../core/anybook.ts';
 import { askPenExport } from './penExport.ts';

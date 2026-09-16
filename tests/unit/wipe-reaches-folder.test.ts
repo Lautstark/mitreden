@@ -38,7 +38,7 @@ vi.mock('../../src/db/folder.ts', async (importOriginal) => {
   };
 });
 
-const { wipe, wipeReaches } = await import('../../src/db/db.ts');
+const { wipe, wipeReaches } = await import('../../src/db/wipe.ts');
 
 /* Seeded directly rather than through putCollection/putPhrase: those write
    through the per-record `fileCollection`/`filePhrase` seam, and what is under

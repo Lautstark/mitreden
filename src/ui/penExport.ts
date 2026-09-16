@@ -16,7 +16,7 @@
 
 import { DEFAULT_SHEET, SHEETS, sheetsFor, type Sheet } from '../core/anybook.ts';
 import { openDialog } from './dialog.ts';
-import { loadSettings } from '../db/db.ts';
+import { loadSettings } from '../db/settings.ts';
 import { t, tn } from '../i18n/index.ts';
 
 export interface PenChoice {

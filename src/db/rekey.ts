@@ -42,7 +42,8 @@
  * stays stale, which is what it was.
  */
 
-import { allPhrases, loadSettings, putPhrases, saveSettings } from './db.ts';
+import { allPhrases, putPhrases } from './phrases.ts';
+import { loadSettings, saveSettings } from './settings.ts';
 import { fingerprint, formerNames } from '../core/ids.ts';
 import type { Phrase } from '../core/types.ts';
 
