@@ -126,7 +126,7 @@ reading is that the prose grew where the code shrank — every `sync()`,
 sit in `index.html`'s comments are now in the components that hold the markup
 they were about.
 
-## The four things the next product should know
+## The five things the next product should know
 
 1. **Every record handed to a component is a `$state` proxy, and
    `structuredClone()` and IndexedDB both refuse one.** The pilot's gotcha, and
@@ -141,12 +141,31 @@ they were about.
    the boot and passed down rather than living beside the panel that draws it.
    Neither is a good place any more, and moving either would have been a change
    to a unit test made to suit a refactor of the layer above it.
-3. **`vitest` needs the Svelte plugin the moment a `.svelte.ts` is in a test's
-   import graph.** `$state` is a compiler form, not a function; without
-   `plugins: [svelte()]` in `vitest.config.ts` the import throws a
-   `ReferenceError` from a file the test is not about. wochenwerk did not hit
-   this because nothing it unit-tests reaches its store.
-4. **The bundle names `svelte.dev` sixteen times.** Svelte throws
+3. **`vitest` needs runes compiled the moment a `.svelte.ts` is in a test's
+   import graph, and `@sveltejs/vite-plugin-svelte` is the wrong way to get
+   them.** `$state` is a compiler form, not a function; without a transform the
+   import throws a `ReferenceError` out of a file the test is not about. The
+   plugin looks like the answer and is not: it declares an `optimizeDeps` set,
+   which turns vitest's dependency optimizer on, and the optimizer fails
+   resolving its own runtime's `node:module` before a single test is collected —
+   on a clean install, which is why a warm one said it was fine for an
+   afternoon. There are no components in these suites, so twelve lines of
+   `compileModule` at `enforce: 'post'` do the whole job. wochenwerk did not hit
+   any of this because nothing it unit-tests reaches its store.
+4. **A rune draws at the press; the thing it is about is written a moment
+   later.** The vanilla build could not draw until the write returned, because
+   drawing was something it had to go and call and the call sat after the await.
+   Runes give you the optimistic version for free, and free is the problem:
+   `pickVoice` moved the mark and named the voice before `saveVoice` had landed,
+   and `saveVoice` is a read of the settings record, a merge and a put — so two
+   presses a moment apart could commit in the order their *reads* resolved.
+   Arrow down, arrow up, reload, and the row above the chosen one came back,
+   about one run in forty-eight. It is two fixes: the writes go in a chain, and
+   the mark waits for its own. The read-modify-write in `db/repo.ts` is the
+   actual defect and is still there, under every `save*` in that file; this was
+   just the one place a person presses three times in a second. Whatever the
+   next product draws from a rune, ask what used to be waiting for the write.
+5. **The bundle names `svelte.dev` sixteen times.** Svelte throws
    `new Error('https://svelte.dev/e/effect_orphan')` rather than carrying the
    sentence, so the address *is* the message. Nothing is fetched and nothing is
    linked, but `e2e/offline.spec.ts` sweeps every text file in `dist/` for
