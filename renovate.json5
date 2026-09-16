@@ -1,51 +1,39 @@
 // Renovate, for this repository.
 //
 // Everything general - when updates arrive, what groups with what, what may
-// merge itself - lives in Lautstark/.github and names no package. What is here
-// is the part that is true of mitreden and would be wrong to inherit.
+// merge itself, and since 2026-09-16 how the family's own packages and the
+// toolchain are handled - lives in Lautstark/.github and is true of every
+// repository. What is here is the part that is true of this one and would be
+// wrong to inherit.
+//
+// The .json5 is spelled out on purpose: the //path/to/file syntax implies a
+// .json extension, so omitting it looks for a file that is not there and
+// Renovate stops before it does anything. The shorter "owner/repo:name" form
+// implies it too.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-
-  // The .json5 is spelled out on purpose: the //path/to/file syntax implies a
-  // .json extension, so omitting it looks for a file that is not there and
-  // Renovate stops before it does anything. The shorter "owner/repo:name" form
-  // implies it too.
   extends: ["github>Lautstark/.github//renovate-shared.json5"],
 
   packageRules: [
     // -----------------------------------------------------------------------
-    // The three shared packages: Renovate does not touch them
+    // The shared packages: what "a bump is a decision" means since 2026-09-16
     // -----------------------------------------------------------------------
     //
-    // @lautstark/design, sicherung and stimmquelle are pinned as github:
-    // dependencies by release tag, and none is on npm:
+    // Until that date this file disabled Renovate for @lautstark/** outright:
+    // the packages were github: tags, hard for the npm manager to follow, and
+    // a bump of one was a decision rather than an update - made by a person
+    // moving the pin, with pins.js saying when one had fallen behind.
     //
-    //     "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#v2.7.0"
-    //
-    // Renovate can be made to follow those, but not with the npm manager that
-    // finds them: it needs git-refs or github-tags wired up by hand, with a
-    // versioning scheme told to it, per package.
-    //
-    // It is disabled rather than configured, for a reason that is not about
-    // the plumbing: **a bump of these is a decision, not an update.** A
-    // stimmquelle release that moves the loudness contract re-records every
-    // sentence in every library the next time somebody builds one, and its
-    // CHANGELOG says which edits a consumer has to make. A pull request that
-    // arrives on a Monday morning and merges itself is the wrong shape for
-    // that. tools/installcheck.mjs exists because a *stale* copy of one of
-    // these produces a plausible test failure somewhere far away; an
-    // unattended bump is the same problem pointed the other way.
-    //
-    // What keeps the pins from going stale is a check rather than a service:
-    //
-    //     node node_modules/@lautstark/design/pins.js
-    //
-    // runs in the deploy workflow, asks each repository for its newest tag,
-    // and names the pins that are behind. It warns and never fails.
-    {
-      matchPackageNames: ["@lautstark/**"],
-      enabled: false,
-    },
+    // The packages are on npmjs.org now, released from their main branches by
+    // CI, and the decision has not gone away; it has moved to where the
+    // information is. The package's author makes it in the commit subject -
+    // feat is a minor, fix a patch, feat! a major - and this repository's
+    // tests make it again on the branch Renovate pushes. So the shared preset
+    // says: a minor or a patch of a shared package merges to main on its own
+    // once the tests here are green, and a major waits for a person with the
+    // changelog in front of them. That rule is not repeated here.
+    // Nothing here consumes bildquelle, which is the one package the family
+    // keeps by hand; the four this repository takes all follow the preset.
 
     // -----------------------------------------------------------------------
     // onnxruntime-web: the exact pin is somebody else's contract
