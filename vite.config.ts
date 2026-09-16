@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { piperVendor } from '@lautstark/stimmquelle/vite';
 import { copyFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,6 +10,10 @@ const base = process.env.BASE_PATH ?? '/';
 export default defineConfig({
   base,
   plugins: [
+    /* The page is components now (docs/svelte-for-the-page.md).
+       Nothing else here changed: the vendoring below and the 404 copy are what
+       they were, because neither is about how the page is drawn. */
+    svelte(),
     /**
      * Everything piper runs on, served from where the page is served.
      *

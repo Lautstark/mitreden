@@ -1,6 +1,11 @@
 /**
- * Wiring. Every view draws itself from state and knows nothing of the others;
- * this is the only place that knows they all exist.
+ * The boot, and only the boot: the page is ui/App.svelte, what it shows comes
+ * from ui/store.svelte.ts, and what is kept comes from the database.
+ *
+ * It was the wiring — the one place that knew every view existed, because every
+ * view drew itself into markup it did not own and had to be told when to. There
+ * is nothing to tell. What is left is the order the stores are read in, which
+ * is the one thing that was never about drawing.
  */
 
 // Tokens first: they are the values everything below resolves against, and
@@ -9,33 +14,21 @@ import '@lautstark/design/tokens/mitreden.css';
 import '@lautstark/design/components.css';
 import './styles/app.css';
 
+import { flushSync, mount } from 'svelte';
+import { Sicherung } from '@lautstark/sicherung';
 import { ensureCollection } from './db/repo.ts';
 import { exportEverything } from './db/backup.ts';
 import { discardEverything, isRefusal, onChanged } from './db/db.ts';
 import { pullFromFolder } from './db/mirror.ts';
-import { Sicherung } from '@lautstark/sicherung';
 import { ablage, adopted, watchFolder } from './db/folder.ts';
 import { confirmDialog } from './ui/dialog.ts';
-import { lang, setLang, t, type Lang } from './i18n/index.ts';
+import { lang, setLang, t } from './ui/words.svelte.ts';
 import { initTheme } from '@lautstark/design/theme';
-import { loadVoices, wireComposer } from './ui/composer.ts';
-import { wireCollectionVoice } from './ui/collectionVoice.ts';
-import { draw as drawList, recordAgain, wireList } from './ui/list.ts';
 import { rekeyIfNeeded } from './db/rekey.ts';
-import { drawRail, wireRail } from './ui/rail.ts';
-import { openAbout, openDatenschutz, openImpressum } from './ui/info.ts';
 import { openNamed } from './ui/shelf.ts';
-import { wireSettings } from './ui/settings.ts';
-import { applyLang, byId } from './ui/dom.ts';
-import { load, restoreOpen, subscribe } from './ui/state.ts';
-
-function chooseLang(): void {
-  const asked = new URL(location.href).searchParams.get('lang');
-  const saved = localStorage.getItem('mitreden.lang');
-  const wanted = asked ?? saved ?? navigator.language.slice(0, 2);
-  setLang(wanted === 'en' ? 'en' : 'de');
-  document.documentElement.lang = lang();
-}
+import { loadVoices } from './ui/voices.svelte.ts';
+import { load, restoreOpen } from './ui/store.svelte.ts';
+import App from './ui/App.svelte';
 
 /*
  * The standing backup. `exportEverything` is what it is handed and the only
@@ -44,7 +37,9 @@ function chooseLang(): void {
  * is very likely inside Dropbox, so what goes in it leaves the machine, and a
  * credential in that file would be posted to somebody's cloud and then to
  * every device sharing the folder. tests/unit/backup-payload.test.ts holds
- * this wiring in place; a failure there is a leak, not a bug.
+ * this wiring in place — by reading this file, which is why it stays here
+ * rather than moving beside the panel that draws it; a failure there is a
+ * leak, not a bug.
  */
 const backup = new Sicherung({
   app: 'mitreden',
@@ -69,6 +64,13 @@ const backup = new Sicherung({
 // notifier in db.ts. Debounced inside Sicherung, so a burst is one file.
 onChanged(() => backup.schedule());
 
+function chooseLang(): void {
+  const asked = new URL(location.href).searchParams.get('lang');
+  const saved = localStorage.getItem('mitreden.lang');
+  const wanted = asked ?? saved ?? navigator.language.slice(0, 2);
+  setLang(wanted === 'en' ? 'en' : 'de');
+}
+
 export async function start(): Promise<void> {
   chooseLang();
   // The attribute is already set by the inline script in index.html; this is
@@ -76,30 +78,27 @@ export async function start(): Promise<void> {
   // and the listener that keeps it right when the OS turns over under a page
   // that is following it.
   initTheme('mitreden.theme');
-  applyLang();
-  wireRail();
-  wireComposer();
-  wireList();
-  wireCollectionVoice(recordAgain);
-  wireSettings(backup);
-  byId('about').onclick = openAbout;
-  byId('impressum').onclick = openImpressum;
-  byId('datenschutz').onclick = openDatenschutz;
-  byId('infoclose').onclick = () => byId<HTMLDialogElement>('info').close();
-  subscribe(drawRail);
-  subscribe(drawList);
+
+  mount(App, { target: document.querySelector<HTMLElement>('#app')!, props: { backup } });
+  /* Flushed rather than left to the scheduler, because everything below this
+     line may speak: `say()` writes into the live region the page has just been
+     told to draw, and the rail's own effect is what puts the Sammlungen on
+     screen. One synchronous pass here is the whole of what the old `wireX()`
+     calls guaranteed by running before anything else did. */
+  flushSync();
+
   await ensureCollection(lang() === 'de');
-  // Before load(), which is what computes every sentence's state: a library
-  // still carrying the old names would otherwise paint itself entirely
-  // „geändert seit der Aufnahme" for one frame and settle a moment later.
-  // Silent, because nothing a person asked for happened — the recordings are
-  // the ones they already had, under the name CONTRACT.md §3 gives them.
   /* Before anything is read. Where a folder is the store it is the truth, and a
      first paint from the browser's copy would be a library that changes under
      somebody a moment later. */
   await ablage.restore().catch(() => null);
   await pullFromFolder().catch(() => false);
 
+  // Before load(), which is what computes every sentence's state: a library
+  // still carrying the old names would otherwise paint itself entirely
+  // „geändert seit der Aufnahme" for one frame and settle a moment later.
+  // Silent, because nothing a person asked for happened — the recordings are
+  // the ones they already had, under the name CONTRACT.md §3 gives them.
   await rekeyIfNeeded();
   await loadVoices();
   // Which Sammlungen were open, before anything is drawn — otherwise the first
@@ -108,8 +107,8 @@ export async function start(): Promise<void> {
   await restoreOpen();
   await load();
   // Never prompts — there is no gesture here. A folder needing its permission
-  // re-confirmed lands in needs-permission and says so in Einstellungen →
-  // Daten, which is where the click can happen.
+  // re-confirmed lands in needs-permission and says so in Einstellungen → Wo
+  // alles liegt, which is where the click can happen.
   /* Where the work already lives in a folder, the dated copies go beside it: the
      store fills `<folder>/mitreden/` and these are flat files above it, so nobody
      is asked to pick a second folder that reads like the first. */
@@ -155,4 +154,4 @@ void start().catch((error: unknown) => {
   throw error;
 });
 
-export type { Lang };
+export type { Lang } from './i18n/index.ts';
