@@ -34,7 +34,9 @@
    * something reversible while saying nothing about what it costs; the line
    * under the list says what it costs, in sentences, before the press.
    */
+  import Sheet from '@lautstark/design/svelte/Sheet';
   import { saveCollectionVoice } from '../db/repo.ts';
+  import { nameParts } from './dialog.ts';
   import { ALL, DECLARED, load } from './store.svelte.ts';
   import { chosenVoice, knownVoices } from './voices.svelte.ts';
   import { recordAgain } from './sammlung.ts';
@@ -44,7 +46,8 @@
 
   let { showing = $bindable() }: { showing: string | null } = $props();
 
-  let sheet: HTMLDialogElement;
+  let dialog = $state<HTMLDialogElement | undefined>(undefined);
+  $effect(() => nameParts(dialog, { close: 'colvoiceclose' }));
 
   let current = $derived(DECLARED().find((one) => one.id === showing));
 
@@ -55,11 +58,6 @@
   let pending = $derived(
     showing ? ALL().filter((item) => item.collection === showing && item.state !== 'ok').length : 0,
   );
-
-  $effect(() => {
-    if (showing && !sheet.open) sheet.showModal();
-    if (!showing && sheet.open) sheet.close();
-  });
 
   async function choose(id: string): Promise<void> {
     const one = current;
@@ -91,44 +89,56 @@
 </script>
 
 <!-- A sheet rather than a column of folded panels (§3.5) because there is
-     exactly one thing here to set. The markup is what it was — no `.foot`,
-     which e2e/collection-voice.spec.ts asserts, and a `.btn.quiet.icon` ✕ that
-     is in sammlungsstimme.png at a tolerance of zero. -->
-<dialog id="colvoice" class="sheet" bind:this={sheet} onclose={() => { showing = null; }}>
-  <div class="head">
-    <h2 id="colvoicetitle">{t('collection_voice_title')}</h2>
-    <button id="colvoiceclose" class="btn quiet icon" aria-label={t('close')}
-      onclick={() => { showing = null; }}>✕</button>
-  </div>
-  <div class="body">
-    <p class="hint" id="colvoicelead">{current ? t('collection_voice_lead', { name: current.name }) : ''}</p>
-    <div id="colvoices">
-      <!-- The second picker, and a second instance on purpose: see
-           pieces/VoicePicker.svelte.
+     exactly one thing here to set. The frame is
+     @lautstark/design/svelte/Sheet's since 2026-09-17; what that cost this
+     dialog is the ✕'s tier, `.btn.quiet.icon` → `.btn.icon` (§6.1), and
+     sammlungsstimme.png was re-recorded for it. Nothing else moved: the body
+     was already a `.body`, so the region rule already reached it.
 
-           The voice in force, which is not always the Sammlung's own. A
-           Sammlung with no `voice` records in the default — from a migration, a
-           restored backup written before the field existed, or a first run —
-           and marking nothing in the list would have the sheet contradicting
-           the line outside it, which names that same voice as the one
-           recording. So the inherited answer is shown as the answer; pressing
-           it is what makes it this Sammlung's own, which is a real change and
-           not a no-op, because the default can move afterwards and this
-           Sammlung will no longer follow it. -->
-      <VoicePicker current={() => current?.voice ?? chosenVoice()} pick={(id) => void choose(id)} />
-    </div>
-    <!-- The count is the Sammlung's, not the open set's: this sheet is about
-         one of them however many are open beside it. -->
-    <p class="hint" id="colvoicecost">{current
-      ? (current.count ? tn('collection_voice_cost', current.count) : t('collection_voice_cost_empty'))
-      : ''}</p>
-    <!-- The act, at the foot of the thing that causes it. The button says how
-         many it would speak, and is dead when that is none — vorlaut's grid
-         button is the precedent for both: its label is chosen by what the press
-         would do, not by what the panel is called. „Alles ist aufgenommen" on a
-         disabled button is why it cannot be pressed, which a greyed „0 Sätze
-         neu aufnehmen" would leave somebody to work out. -->
-    <button id="colvoicerecord" class="btn primary sm" disabled={!pending}
-      onclick={speakAgain}>{pending ? tn('collection_record', pending) : t('collection_record_none')}</button>
+     **No foot snippet, and that is the assertion** —
+     e2e/collection-voice.spec.ts expects `.foot` to have count 0, and the
+     shared frame draws one only when a foot is given. The record button below
+     is part of what this sheet is about and sits under the cost it names,
+     which is why it was never in a foot to begin with.
+
+     `open` is one-way for InfoSheet's reason: `showing` is a `string | null`
+     and `bind:` cannot take a `$derived`. -->
+<Sheet
+  id="colvoice"
+  open={showing !== null}
+  title={t('collection_voice_title')}
+  closeLabel={t('close')}
+  onclose={() => { showing = null; }}
+  bind:dialog
+>
+  {#snippet head()}<h2 id="colvoicetitle">{t('collection_voice_title')}</h2>{/snippet}
+  <p class="hint" id="colvoicelead">{current ? t('collection_voice_lead', { name: current.name }) : ''}</p>
+  <div id="colvoices">
+    <!-- The second picker, and a second instance on purpose: see
+         pieces/VoicePicker.svelte.
+
+         The voice in force, which is not always the Sammlung's own. A
+         Sammlung with no `voice` records in the default — from a migration, a
+         restored backup written before the field existed, or a first run —
+         and marking nothing in the list would have the sheet contradicting
+         the line outside it, which names that same voice as the one
+         recording. So the inherited answer is shown as the answer; pressing
+         it is what makes it this Sammlung's own, which is a real change and
+         not a no-op, because the default can move afterwards and this
+         Sammlung will no longer follow it. -->
+    <VoicePicker current={() => current?.voice ?? chosenVoice()} pick={(id) => void choose(id)} />
   </div>
-</dialog>
+  <!-- The count is the Sammlung's, not the open set's: this sheet is about
+       one of them however many are open beside it. -->
+  <p class="hint" id="colvoicecost">{current
+    ? (current.count ? tn('collection_voice_cost', current.count) : t('collection_voice_cost_empty'))
+    : ''}</p>
+  <!-- The act, at the foot of the thing that causes it. The button says how
+       many it would speak, and is dead when that is none — vorlaut's grid
+       button is the precedent for both: its label is chosen by what the press
+       would do, not by what the panel is called. „Alles ist aufgenommen" on a
+       disabled button is why it cannot be pressed, which a greyed „0 Sätze
+       neu aufnehmen" would leave somebody to work out. -->
+  <button id="colvoicerecord" class="btn primary sm" disabled={!pending}
+    onclick={speakAgain}>{pending ? tn('collection_record', pending) : t('collection_record_none')}</button>
+</Sheet>
