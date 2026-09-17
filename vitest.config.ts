@@ -49,6 +49,30 @@ const runes = {
 export default vitestConfig({
   include: ['tests/unit/**/*.test.ts'],
   setupFiles: ['./tests/unit/setup.ts'],
+  /*
+   * And the transform above only sees what Vite is processing.
+   *
+   * `@lautstark/werkzeuge/reactive-text` — which `ui/words.svelte.ts` is built
+   * on since 2026-09-17 — ships as **source** behind the `svelte` export
+   * condition, because `tsc` would emit its `$state(0)` as a call to an
+   * undefined identifier and publish that. A dependency handed to node reaches
+   * no transform at all, `post` or otherwise, and the import then throws the
+   * same ReferenceError the twelve lines above exist to prevent, out of a
+   * package this suite has no opinion about. conventions.md §6.0 asks every
+   * consumer of a shared rune module for this line, and werkzeuge's own header
+   * names this repository as the case.
+   *
+   * Two things measured here on 2026-09-17 and worth writing down. Vite does
+   * not externalise a dependency whose entry is a `.ts` file, so today the
+   * module is inlined and compiled with the line absent — which is exactly why
+   * it is written down rather than left to hold by accident: nothing would go
+   * red the day that stopped being true. And the regex is narrowed to `src/`
+   * on purpose. Inlining the whole package drags werkzeuge's compiled `dist/`
+   * through Vite as well, and that turned a one-second suite into
+   * twenty-five; `src/` is where the rune is and the only thing here that
+   * cannot be externalised.
+   */
+  server: { deps: { inline: [/@lautstark\/werkzeuge\/src\//] } },
 }, {
   plugins: [runes],
 });
