@@ -21,7 +21,7 @@
    * into a `<main id="app">` because over there the app *is* one column; here
    * that would have moved the landmark.
    */
-  import { saveRailOpen, settings } from '../db/repo.ts';
+  import { saveSidebarOpen, settings } from '../db/repo.ts';
   import { useStatusLine } from './dom.ts';
   import type { Page } from './info.ts';
   import { t } from './words.svelte.ts';
@@ -64,13 +64,13 @@
 
   const collapse = (on: boolean): void => {
     railed = on;
-    void saveRailOpen(!on);
+    void saveSidebarOpen(!on);
   };
 
   /* What it was set to last time. Absent means open: a rail nobody has put away
      is there, and a first visit should not have to say so. Not through
      collapse(), which would write back what it has just read. */
-  void settings().then((saved) => { railed = saved.railOpen === false; });
+  void settings().then((saved) => { railed = saved.sidebarOpen === false; });
 
   let info = $state<Page | null>(null);
   let setup = $state(false);

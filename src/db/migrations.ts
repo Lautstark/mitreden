@@ -1,11 +1,16 @@
 /**
- * The steps between versions. One so far, and db.ts says what happens to a
+ * The steps between versions. Two so far, and db.ts says what happens to a
  * version that has none: it is refused, and the library stays as it was.
+ *
+ * A database crossing several versions runs every step in between, in order,
+ * inside the one versionchange transaction — so each step here is written
+ * against the shape the step above it leaves, and never against the shape the
+ * program currently has.
  */
 import type { IDBPTransaction, StoreNames } from 'idb';
 import { slug } from '../core/ids.ts';
 import { commonest } from '../core/voices.ts';
-import { SETTINGS, type MitredenDB, type StoredPhrase } from './schema.ts';
+import { SETTINGS, type MitredenDB, type Settings, type StoredPhrase } from './schema.ts';
 
 /**
  * The library as version 3 left it: a sentence names every Sammlung it is in.
@@ -112,4 +117,56 @@ export async function migrateV3toV4(
     const voice = commonest(votes.get(collection.id) ?? [], preferred);
     if (voice) await collections.put({ ...collection, voice });
   }
+}
+
+/**
+ * The settings record as version 4 left it: the collapse preference is called
+ * `railOpen`.
+ *
+ * Declared here rather than anywhere the program can reach, for `PhraseV3`'s
+ * reason — the old name exists in exactly one place now, and this is it.
+ */
+type SettingsV4 = Omit<Settings, 'sidebarOpen'> & { railOpen?: boolean };
+
+/**
+ * Version 4 to version 5: `railOpen` becomes `sidebarOpen`.
+ *
+ * One field of one record of one store, and the whole of the change. It is a
+ * rename rather than a new preference: the polarity is the same (`true` is a
+ * column that is there, absent is open), and the value stored is carried
+ * across rather than defaulted, so somebody who put the sidebar away last week
+ * finds it still away.
+ *
+ * **Why this is a step and not a read-side fallback.** `patchSettings` merges,
+ * so a key nothing writes any more is a key nothing ever removes: without this
+ * every existing browser would carry a dead `railOpen` beside the live
+ * `sidebarOpen` for the life of the database, and the first person to read the
+ * record would have two answers to one question and no way to tell which one
+ * the program uses. The alternative — `saved.sidebarOpen ?? saved.railOpen` at
+ * the reader — is the same debt with a second copy of the old name in the
+ * source as interest.
+ *
+ * **And why the rename was worth a version at all.** The field is named for
+ * the element it remembers, and that element is
+ * `@lautstark/design/svelte/Sidebar` now (conventions.md §6.3): there is no
+ * `.rail` left in this product for `railOpen` to be about. Nothing leaves the
+ * browser over it — `stripSecrets` in backup.ts is an allow-list and carries
+ * `voice` alone — so no Sicherung, no export and no other product has to know
+ * this happened.
+ *
+ * Every await here is on an IndexedDB request, for the reason migrateV3toV4
+ * gives at length: one await on anything else commits the transaction halfway.
+ */
+export async function migrateV4toV5(
+  tx: IDBPTransaction<MitredenDB, StoreNames<MitredenDB>[], 'versionchange'>,
+): Promise<void> {
+  const store = tx.objectStore(SETTINGS);
+  const held = (await store.get(SETTINGS)) as SettingsV4 | undefined;
+  // No record at all is the ordinary case for a browser that has never changed
+  // a preference, and a record without the key is one that never collapsed it.
+  // Both are already the new shape.
+  if (!held || held.railOpen === undefined) return;
+
+  const { railOpen, ...rest } = held;
+  await store.put({ ...rest, sidebarOpen: railOpen }, SETTINGS);
 }

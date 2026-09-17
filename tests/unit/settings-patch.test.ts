@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { loadSettings, patchSettings, saveSettings } from '../../src/db/settings.ts';
-import { saveAzure, saveOpen, savePen, saveRailOpen, saveVoice } from '../../src/db/repo.ts';
+import { saveAzure, saveOpen, savePen, saveSidebarOpen, saveVoice } from '../../src/db/repo.ts';
 import { onChanged } from '../../src/db/db.ts';
 import { wipe } from '../../src/db/wipe.ts';
 
@@ -47,25 +47,25 @@ describe('patching the settings record', () => {
 
   /* The half the chain in ui/voices.svelte.ts never covered, and the case that
      actually goes red without patchSettings: two *different* preferences
-     written at once. Four of them here because the rail, the open Sammlungen
+     written at once. Four of them here because the sidebar, the open Sammlungen
      and the voice genuinely do move together — restoring a session writes the
      first two within a frame of each other. */
   it('a field written at the same time as another does not drop it', async () => {
     await Promise.all([
       saveVoice(THORSTEN),
-      saveRailOpen(false),
+      saveSidebarOpen(false),
       saveOpen(['kueche']),
       savePen({ sheet: 'a4', next: 7 }),
     ]);
     expect(await loadSettings()).toEqual({
-      voice: THORSTEN, railOpen: false, open: ['kueche'], pen: { sheet: 'a4', next: 7 },
+      voice: THORSTEN, sidebarOpen: false, open: ['kueche'], pen: { sheet: 'a4', next: 7 },
     });
   });
 
   it('leaves everything it was not asked about alone', async () => {
-    await saveSettings({ voice: THORSTEN, railOpen: true, keyScheme: 3 });
-    await patchSettings({ railOpen: false });
-    expect(await loadSettings()).toEqual({ voice: THORSTEN, railOpen: false, keyScheme: 3 });
+    await saveSettings({ voice: THORSTEN, sidebarOpen: true, keyScheme: 3 });
+    await patchSettings({ sidebarOpen: false });
+    expect(await loadSettings()).toEqual({ voice: THORSTEN, sidebarOpen: false, keyScheme: 3 });
   });
 
   /* Removing is a patch too, which is the whole of saveAzure: setting the key
@@ -86,7 +86,7 @@ describe('patching the settings record', () => {
     let heard = 0;
     const stop = onChanged(() => { heard++; });
     try {
-      await patchSettings({ voice: THORSTEN, railOpen: true, open: ['kueche'] });
+      await patchSettings({ voice: THORSTEN, sidebarOpen: true, open: ['kueche'] });
       expect(heard).toBe(1);
       await patchSettings({ voice: KERSTIN });
       expect(heard).toBe(2);

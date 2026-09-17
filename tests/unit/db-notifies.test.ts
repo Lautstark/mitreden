@@ -98,7 +98,7 @@ describe('the change notifier', () => {
      are each one call to it. Once per call and not once per field: a merge
      that moved three of them is still one change to the Sicherung. */
   it('patchSettings() announces the write, once', async () => {
-    await patchSettings({ voice: 'v', railOpen: true });
+    await patchSettings({ voice: 'v', sidebarOpen: true });
     expect(heard).toBe(1);
   });
 

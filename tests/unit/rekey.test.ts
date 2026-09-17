@@ -157,12 +157,12 @@ describe('the mark', () => {
   });
 
   it('keeps the rest of the settings', async () => {
-    await saveSettings({ voice: VOICE, railOpen: false });
+    await saveSettings({ voice: VOICE, sidebarOpen: false });
 
     await rekeyIfNeeded();
 
     const settings = await loadSettings();
     expect(settings.voice).toBe(VOICE);
-    expect(settings.railOpen).toBe(false);
+    expect(settings.sidebarOpen).toBe(false);
   });
 });

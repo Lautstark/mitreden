@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * A version 2 library meeting version 4, and the one thing it must not do.
+ * A version 2 library meeting the current version, and the one thing it must
+ * not do.
  *
  * This file used to drop every store it found for anything older than version
  * 3, and the page then opened, empty and working. That is the failure being
@@ -77,7 +78,7 @@ beforeAll(async () => {
   store = await import('./store.ts');
 });
 
-describe('a version 2 library meeting version 4', () => {
+describe('a version 2 library meeting the current version', () => {
   it('refuses, rather than opening onto an empty library', async () => {
     await expect(store.db()).rejects.toSatisfy(store.isRefusal);
   });

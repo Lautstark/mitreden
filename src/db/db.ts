@@ -12,7 +12,10 @@
  *
  * Version 4 carries a version 3 library across, recordings and all:
  * migrations.ts copies blobs where it splits a sentence and deletes none.
- * Nothing is re-recorded and nothing is lost.
+ * Nothing is re-recorded and nothing is lost. Version 5 renames one
+ * preference, and a version 3 library crosses both steps in order — "a step
+ * for every version crossed" is the rule rather than a description of the one
+ * step there used to be.
  *
  * Every other old version is **refused**, and the upgrade transaction is
  * aborted so the database keeps its version and its records. That is a change
@@ -46,7 +49,7 @@
 import { deleteDB, openDB, type IDBPDatabase } from 'idb';
 import { changes } from '@lautstark/werkzeuge/changed';
 import { createStores, type MitredenDB } from './schema.ts';
-import { migrateV3toV4 } from './migrations.ts';
+import { migrateV3toV4, migrateV4toV5 } from './migrations.ts';
 
 /* ---------------------------------------------------------------- change --- */
 
@@ -104,7 +107,7 @@ let handle: Promise<IDBPDatabase<MitredenDB>> | null = null;
 
 export function db(): Promise<IDBPDatabase<MitredenDB>> {
   refusal = null;
-  handle ??= openDB<MitredenDB>('mitreden', 4, {
+  handle ??= openDB<MitredenDB>('mitreden', 5, {
     async upgrade(database, from, _to, tx) {
       try {
         // A browser that has never been here — and the way back in after
@@ -115,9 +118,21 @@ export function db(): Promise<IDBPDatabase<MitredenDB>> {
           return;
         }
 
-        // A version 3 library is carried across, recordings and all.
+        // A version 3 library is carried across, recordings and all — and then
+        // across the step above it, because a library that skipped a version
+        // would be at the new number in the old shape. Written out per starting
+        // version rather than as a fall-through chain so that a version added
+        // later without a step is still *refused* below rather than silently
+        // renumbered.
         if (from === 3) {
           await migrateV3toV4(tx);
+          await migrateV4toV5(tx);
+          return;
+        }
+
+        // A version 4 library needs the settings rename alone.
+        if (from === 4) {
+          await migrateV4toV5(tx);
           return;
         }
 

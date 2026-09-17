@@ -57,7 +57,7 @@ test('a rail put away on a laptop still opens as a drawer here', async ({ page }
       const ask = database.transaction('settings').objectStore('settings').get('settings');
       ask.onsuccess = () => {
         database.close();
-        keep((ask.result as { railOpen?: boolean } | undefined)?.railOpen === false);
+        keep((ask.result as { sidebarOpen?: boolean } | undefined)?.sidebarOpen === false);
       };
       ask.onerror = () => { database.close(); keep(false); };
     };
