@@ -56,7 +56,7 @@ import { fileURLToPath } from 'node:url';
  * ## Panels, not the page
  *
  * Each shot is of an element, not of the viewport. A screenshot of the whole
- * page would carry the rail with it, and the rail holds a Sammlung named after
+ * page would carry the sidebar with it, and the sidebar holds a Sammlung named after
  * today's date — a baseline that goes red at midnight is a baseline nobody
  * keeps. The dialog is a modal `<dialog>`, so its own box is the sheet and
  * nothing behind it.

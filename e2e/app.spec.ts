@@ -277,20 +277,54 @@ test('the footer answers what this is, and the two German legal questions', asyn
   }
 });
 
-test('the rail can be put away, and stays away', async ({ page }) => {
-  const rail = page.locator('#rail');
-  await expect(rail).toBeInViewport();
-  await page.click('#railhide');
-  await expect(rail).not.toBeInViewport();
+test('the sidebar can be put away, and stays away', async ({ page }) => {
+  const sidebar = page.locator('#sidebar');
+  await expect(sidebar).toBeInViewport();
+  await page.click('#sidebarhide');
+  await expect(sidebar).not.toBeInViewport();
   // Something has to bring it back, or putting it away is a trap.
-  await expect(page.locator('#railshow')).toBeVisible();
+  await expect(page.locator('#sidebarshow')).toBeVisible();
   // The choice is about the shape of the window, so it is not re-made per visit.
   await page.reload();
-  await expect(rail).not.toBeInViewport();
-  await page.click('#railshow');
-  await expect(rail).toBeInViewport();
+  await expect(sidebar).not.toBeInViewport();
+  await page.click('#sidebarshow');
+  await expect(sidebar).toBeInViewport();
   await page.reload();
-  await expect(rail).toBeInViewport();
+  await expect(sidebar).toBeInViewport();
+});
+
+/**
+ * What the two collapse controls say about the column, and what is not drawn
+ * beside them.
+ *
+ * The ‹ and the ☰ that brings it back are this product's buttons —
+ * conventions.md §6.3 leaves them with the product, because in bildhaft the
+ * collapse lives inside the brand row and a component-owned chevron and a
+ * product-owned brand cannot both be true. What the component hands over is the
+ * half that is about an element inside it, and this is that half arriving.
+ *
+ * The ✕ is the other half of the same rule: it is drawn below 820px and not at
+ * all above, as markup rather than as a `display: none` nobody can see. So up
+ * here it is absent, which is a stronger thing to assert than hidden.
+ */
+test('the collapse controls name the column, and the ✕ is not drawn up here', async ({ page }) => {
+  const hide = page.locator('#sidebarhide');
+  await expect(hide).toHaveAttribute('aria-controls', 'sidebar');
+  await expect(hide).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#sidebarclose'), 'no column to dismiss above the breakpoint')
+    .toHaveCount(0);
+
+  await hide.click();
+  const show = page.locator('#sidebarshow');
+  await expect(show).toHaveAttribute('aria-controls', 'sidebar');
+  await expect(show).toHaveAttribute('aria-expanded', 'false');
+});
+
+/* And the column is a named landmark, which it was not before: bildhaft finds
+   its sidebar by role and this one had nothing to tell one `complementary`
+   region from another. */
+test('the sidebar is a named complementary landmark', async ({ page }) => {
+  await expect(page.getByRole('complementary', { name: 'Sammlungen' })).toBeVisible();
 });
 
 test('the default voice is named beside the composer and chosen in the settings', async ({ page }) => {
@@ -482,7 +516,7 @@ test('the page reaches no host but Hugging Face', async ({ page }) => {
 test('which Sammlungen were open comes back, all of them', async ({ page }) => {
   /* conventions.md §1.2. Coming back to the one you were in is the whole of
      what "open" means; and here it is the ones, plural, because arity is many
-     (§4.1) and the rail multi-selects for exactly that reason. Restoring one of
+     (§4.1) and the sidebar multi-selects for exactly that reason. Restoring one of
      two would be a worse answer than restoring none, because it would look
      like the second Sammlung had been closed.
 

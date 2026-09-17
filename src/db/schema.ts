@@ -69,10 +69,19 @@ export interface Settings {
    */
   open?: string[];
   /**
-   * Whether the rail is a column of the page at all. A desktop choice; the
-   * phone has no rail to collapse, only one to dismiss. conventions.md §1.3.
+   * Whether the sidebar is a column of the page at all. A desktop choice; the
+   * phone has no column to collapse, only a drawer to dismiss. §1.3.
+   *
+   * It was `railOpen` until the sidebar became
+   * `@lautstark/design/svelte/Sidebar` (§6.3): mitreden's `.rail` was the
+   * column and the shared spelling for the column is `.sidebar`, so the field
+   * that remembers whether it is there follows the element it is about. The
+   * name is bildhaft's, which has held `sidebarOpen` with this polarity and
+   * this meaning since before either of them shared a component — so this is
+   * the third product agreeing rather than a new word. migrations.ts carries
+   * the old key across; absent still means open.
    */
-  railOpen?: boolean;
+  sidebarOpen?: boolean;
   /**
    * What the Anybook export was asked for last time.
    *

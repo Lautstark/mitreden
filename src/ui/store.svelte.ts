@@ -2,7 +2,7 @@
  * What the page is currently showing.
  *
  * The subscriber list is gone. It was three watcher arrays — `subscribe`,
- * `onWork`, `onLanded` — and the whole coupling between the rail, the list and
+ * `onWork`, `onLanded` — and the whole coupling between the sidebar, the list and
  * the composer, and every one of them existed to answer the same question:
  * *who has to be told*. Nobody has to be told. Whatever reads `shown()` while
  * it draws is drawn again when the sentences move, and that is the entire
@@ -106,7 +106,7 @@ export async function restoreOpen(): Promise<void> {
   remembered = [...open].join('\u0000');
 }
 
-/** What is typed in the rail's search field. It was read off the input by id on
+/** What is typed in the sidebar's search field. It was read off the input by id on
  *  every draw; it is the value the field is bound to now. */
 let query = $state('');
 
@@ -225,7 +225,7 @@ export function endWork(): void {
 }
 
 /** The sentences again, without the Sammlungen: a batch reports one at a time
- *  and nothing about the rail has moved. */
+ *  and nothing about the sidebar has moved. */
 export async function refresh(): Promise<void> {
   all = await phrases();
 }

@@ -82,7 +82,7 @@ export async function start(): Promise<void> {
   mount(App, { target: document.querySelector<HTMLElement>('#app')!, props: { backup } });
   /* Flushed rather than left to the scheduler, because everything below this
      line may speak: `say()` writes into the live region the page has just been
-     told to draw, and the rail's own effect is what puts the Sammlungen on
+     told to draw, and the sidebar's own effect is what puts the Sammlungen on
      screen. One synchronous pass here is the whole of what the old `wireX()`
      calls guaranteed by running before anything else did. */
   flushSync();

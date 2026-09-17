@@ -607,7 +607,7 @@
       {backup} {say} lang={reading} />{/if}</div>
 
     <!-- The two halves of the same subject, side by side. „Sicherung
-         einlesen" used to be „Importieren" in the rail, a screen away from
+         einlesen" used to be „Importieren" in the sidebar, a screen away from
          the button that makes the file it reads — history rather than intent,
          since that button predates there being a backup format and quietly
          gained a second job when one arrived. It still does both: importFile

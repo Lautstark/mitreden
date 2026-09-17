@@ -143,7 +143,7 @@ describe('a sentence like this one', () => {
 });
 
 /* conventions.md §1.4. Creation order answers a question nobody asks; what the
- * rail is for is getting back to what you were doing. */
+ * sidebar is for is getting back to what you were doing. */
 describe('last edited, first in the list', () => {
   it('puts the newest at the top rather than the bottom', async () => {
     await putCollection({ id: 'dritte', name: 'Dritte' });

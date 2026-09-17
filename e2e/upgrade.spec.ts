@@ -157,7 +157,7 @@ test('a browser holding the old database is asked before anything goes', async (
       keep({ version: database.version, stores, indexes });
     };
   }))).toEqual({
-    version: 4,
+    version: 5,
     stores: ['audio', 'collections', 'phrases', 'settings'],
     indexes: ['collection', 'norm'],
   });
@@ -279,7 +279,7 @@ test('a browser holding the keyed database is asked before anything goes', async
       database.close();
       keep({ version: database.version, path });
     };
-  }))).toEqual({ version: 4, path: 'id' });
+  }))).toEqual({ version: 5, path: 'id' });
 });
 
 /** Version 3, made the way version 3 made it: the membership is an array and a
@@ -410,7 +410,7 @@ test('a version 3 library arrives whole, with every recording', async ({ page })
       tx.onerror = () => drop(tx.error);
     };
   }))).toEqual({
-    version: 4,
+    version: 5,
     rows: [['hunger', 'kueche'], ['ich-bin-muede', 'schlafen'], ['mude', 'kueche']],
     voices: [
       ['Küche', 'piper:de_DE-thorsten-medium'],

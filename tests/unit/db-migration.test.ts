@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * A version 3 library meeting version 4, and the one thing it must not do.
+ * A version 3 library meeting the current version, and the one thing it must
+ * not do.
  *
  * Every earlier upgrade in this file's neighbour dropped what it found, and
  * that was the decision rather than an omission. This one carries across,
@@ -88,7 +89,12 @@ function seedVersionThree(): Promise<void> {
       // Nothing in it, so nothing to vote with.
       collections.put({ id: 'leer', name: 'Leer', updatedAt: 4 });
 
-      tx.objectStore('settings').put({ voice: THORSTEN, open: ['kueche'] }, 'settings');
+      /* `railOpen` is version 4's name for the collapse preference and this
+         seed is older than that — which is the point: a version 3 library has
+         to cross both steps, so the field it is carrying arrives under version
+         5's name. Nothing else in this file is about that step. */
+      tx.objectStore('settings').put(
+        { voice: THORSTEN, open: ['kueche'], railOpen: false }, 'settings');
 
       const audio = tx.objectStore('audio');
       audio.put(bytes(1), 'hunger');
@@ -115,7 +121,7 @@ beforeAll(async () => {
 
 const read = async (id: string) => (await store.allPhrases()).find((one) => one.id === id);
 
-describe('a version 3 library carried into version 4', () => {
+describe('a version 3 library carried into the current version', () => {
   it('upgrades without throwing, so the store answers at all', async () => {
     await expect(store.allCollections()).resolves.toBeTruthy();
   });
@@ -193,7 +199,13 @@ describe('a version 3 library carried into version 4', () => {
   });
 
   it('keeps the settings, which say what the default is now for', async () => {
-    expect(await store.loadSettings()).toEqual({ voice: THORSTEN, open: ['kueche'] });
+    /* And under the names version 5 uses, not the ones the seed was written
+       with: a library that skipped a version would otherwise be at the new
+       number in the old shape. `railOpen` is gone rather than left beside its
+       replacement — patchSettings merges, so a key nothing writes any more is
+       a key nothing would ever remove. */
+    expect(await store.loadSettings())
+      .toEqual({ voice: THORSTEN, open: ['kueche'], sidebarOpen: false });
   });
 
   /* The index was replaced, not just the field: a multiEntry index over an

@@ -37,10 +37,10 @@
   /* Renaming is typing in the title (§1.6). The debounce, the write on the way
      out and the guard against a repaint typing over you are the package's; what
      is left here is this product's own answer to an empty name, which is to
-     refuse it — a Sammlung must always be callable by something in the rail.
+     refuse it — a Sammlung must always be callable by something in the sidebar.
 
      Which Sammlung a pending rename is for is taken on the keystroke rather
-     than read when the write runs. Pressing a rail row moves focus off the
+     than read when the write runs. Pressing a sidebar row moves focus off the
      field first, so the blur writes before the switch and the two are the same
      in practice — but that is an ordering, not a guarantee. */
   let renaming: { id: string; name: string } | null = null;

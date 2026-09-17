@@ -390,7 +390,7 @@ export const settings = loadSettings;
 export const saveVoice = (voice: string): Promise<void> => patchSettings({ voice });
 
 /**
- * Which Sammlungen are open, and whether the rail is there — both in the
+ * Which Sammlungen are open, and whether the sidebar is there — both in the
  * settings record with every other preference, and neither in localStorage.
  * conventions.md §1.2 and §1.3.
  *
@@ -404,7 +404,8 @@ export const saveVoice = (voice: string): Promise<void> => patchSettings({ voice
 export const saveOpen = (open: readonly string[]): Promise<void> =>
   patchSettings({ open: [...open] });
 
-export const saveRailOpen = (railOpen: boolean): Promise<void> => patchSettings({ railOpen });
+export const saveSidebarOpen = (sidebarOpen: boolean): Promise<void> =>
+  patchSettings({ sidebarOpen });
 
 /** Which sheet the export was for, and the circle the run ended on. */
 export const savePen = (pen: Settings['pen']): Promise<void> => patchSettings({ pen });

@@ -12,19 +12,74 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('the sidebar is a drawer: opens over a scrim, closes by tapping it', async ({ page }) => {
-  const rail = page.locator('#rail');
-  await expect(rail).not.toBeInViewport();
-  await page.click('#railopen');
-  await expect(rail).toBeInViewport();
+  const sidebar = page.locator('#sidebar');
+  await expect(sidebar).not.toBeInViewport();
+  await page.click('#sidebaropen');
+  await expect(sidebar).toBeInViewport();
   await expect(page.locator('#scrim')).toBeVisible();
   await page.locator('#scrim').click({ position: { x: 350, y: 400 } });
-  await expect(rail).not.toBeInViewport();
+  await expect(sidebar).not.toBeInViewport();
 });
 
 test('opening a Sammlung closes the drawer', async ({ page }) => {
-  await page.click('#railopen');
+  await page.click('#sidebaropen');
   await page.click('#rows .collections__item');
-  await expect(page.locator('#rail')).not.toBeInViewport();
+  await expect(page.locator('#sidebar')).not.toBeInViewport();
+});
+
+/**
+ * The scrim draws no frame, which is the one cost of it becoming a `<button>`.
+ *
+ * conventions.md §6.3 changed it from a `<div>` on consistency rather than
+ * necessity, and named the bill: this product's `.scrim` rule has no `border`
+ * declaration, and with `box-sizing: border-box` a bare `<button>` at
+ * `inset: 0` takes the user agent's `border: 2px outset ButtonBorder` and draws
+ * a two-pixel frame around the whole viewport. The component's scoped style
+ * resets it — and the reason this test exists rather than a reading of that
+ * file is the sentence beside the reset: no test in any of the three products
+ * would have caught it, because the one that exists clicks a position and a
+ * position inside a two-pixel border is still inside the scrim.
+ *
+ * Asserted on the element rather than in the stylesheet, because the question
+ * is not whether the declaration is written anywhere. It is whether it wins:
+ * the reset is scoped, so it carries the component's hash at 0-2-0, and this
+ * page's own `.scrim { z-index: 19 }` is 0-1-0 and sets nothing that competes.
+ */
+test('the scrim draws no border, now that it is a button', async ({ page }) => {
+  await page.click('#sidebaropen');
+  const scrim = page.locator('#scrim');
+  await expect(scrim).toBeVisible();
+  for (const side of ['border-top-width', 'border-right-width',
+    'border-bottom-width', 'border-left-width']) {
+    await expect(scrim, `${side} on a control the size of the window`).toHaveCSS(side, '0px');
+  }
+});
+
+/* And a keyboard can reach it, which is what the change bought. The drawer's ✕
+   is still the first thing in there and still the obvious way out; this is the
+   second one, and it used to be a div that nothing could focus. */
+test('the scrim is reachable and closes the drawer', async ({ page }) => {
+  await page.click('#sidebaropen');
+  await expect(page.locator('#sidebar')).toBeInViewport();
+  await page.locator('#scrim').focus();
+  await expect(page.locator('#scrim')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#sidebar')).not.toBeInViewport();
+});
+
+/* What the ☰ says about the thing it opens. None of the three products had
+   this before the component: the bar's control named nothing and announced no
+   state, so a reader was told there was a button and not what pressing it
+   would do. */
+test('the ☰ names the drawer and says whether it is up', async ({ page }) => {
+  const bar = page.locator('#sidebaropen');
+  await expect(bar).toHaveAttribute('aria-controls', 'sidebar');
+  await expect(bar).toHaveAttribute('aria-expanded', 'false');
+  await bar.click();
+  await expect(bar).toHaveAttribute('aria-expanded', 'true');
+  // And the drawer carries the ✕ down here, which is the only head on screen
+  // while the layer covers the bar.
+  await expect(page.locator('#sidebarclose')).toBeVisible();
 });
 
 test('nothing overflows the screen', async ({ page }) => {
@@ -33,7 +88,7 @@ test('nothing overflows the screen', async ({ page }) => {
   expect(overflow, 'horizontal overflow in px').toBe(0);
 });
 
-test('a rail put away on a laptop still opens as a drawer here', async ({ page }) => {
+test('a sidebar put away on a laptop still opens as a drawer here', async ({ page }) => {
   // The choice is remembered, and it is a desktop choice: there is no control
   // on this width to undo it, so it must not follow the user onto the phone.
   //
@@ -41,10 +96,10 @@ test('a rail put away on a laptop still opens as a drawer here', async ({ page }
   // than by seeding the store. This used to write localStorage directly, and
   // when the preference moved into the settings record (§1.3) that line stopped
   // reaching anything — the test would have stayed green while asserting
-  // nothing, because on a phone the rail is off-canvas either way.
+  // nothing, because on a phone the sidebar is off-canvas either way.
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.click('#railhide');
-  await expect(page.locator('#railshow')).toBeVisible();
+  await page.click('#sidebarhide');
+  await expect(page.locator('#sidebarshow')).toBeVisible();
 
   // The write is asynchronous, so the reload has to come after it lands rather
   // than after the class changes. Asked of the database, which is the thing
@@ -57,7 +112,7 @@ test('a rail put away on a laptop still opens as a drawer here', async ({ page }
       const ask = database.transaction('settings').objectStore('settings').get('settings');
       ask.onsuccess = () => {
         database.close();
-        keep((ask.result as { railOpen?: boolean } | undefined)?.railOpen === false);
+        keep((ask.result as { sidebarOpen?: boolean } | undefined)?.sidebarOpen === false);
       };
       ask.onerror = () => { database.close(); keep(false); };
     };
@@ -66,8 +121,8 @@ test('a rail put away on a laptop still opens as a drawer here', async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
-  const rail = page.locator('#rail');
-  await expect(rail).not.toBeInViewport();
-  await page.click('#railopen');
-  await expect(rail).toBeInViewport();
+  const sidebar = page.locator('#sidebar');
+  await expect(sidebar).not.toBeInViewport();
+  await page.click('#sidebaropen');
+  await expect(sidebar).toBeInViewport();
 });
