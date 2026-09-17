@@ -320,6 +320,36 @@ test('the collapse controls name the column, and the ✕ is not drawn up here', 
   await expect(show).toHaveAttribute('aria-expanded', 'false');
 });
 
+/**
+ * And Escape is not the column's, up here.
+ *
+ * The drawer answers Escape from v1.38.0 (e2e/mobile.spec.ts), and this is the
+ * other half of the same rule rather than an omission. Below 820px the sidebar
+ * is a layer over somebody's work and Escape means "take this off me". Above it
+ * the column is furniture: it is not covering anything, there is nothing to
+ * dismiss, and the press belongs to whatever the person is actually working in
+ * — the settings sheet below, a menu, the title of a Sammlung being renamed.
+ * A component that claimed Escape at every width would have taken it from all
+ * three, and taken it invisibly, because nothing would be red.
+ *
+ * So the assertion is about the sheet as much as about the sidebar: the press
+ * reaches the dialog, the dialog closes, and the column is exactly where it
+ * was. A bare press first, with nothing open, because "Escape did nothing" is
+ * the claim and it has to be made where there is nothing else to blame.
+ */
+test('Escape belongs to the work up here, not to the column', async ({ page }) => {
+  const sidebar = page.locator('#sidebar');
+  await expect(sidebar).toBeInViewport();
+  await page.keyboard.press('Escape');
+  await expect(sidebar, 'nothing to dismiss, so nothing is dismissed').toBeInViewport();
+
+  await page.click('#gear');
+  await expect(page.locator('#setup')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#setup'), 'the press reached the dialog').not.toBeVisible();
+  await expect(sidebar, 'and went nowhere near the column').toBeInViewport();
+});
+
 /* And the column is a named landmark, which it was not before: bildhaft finds
    its sidebar by role and this one had nothing to tell one `complementary`
    region from another. */

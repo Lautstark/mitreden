@@ -82,6 +82,72 @@ test('the ☰ names the drawer and says whether it is up', async ({ page }) => {
   await expect(page.locator('#sidebarclose')).toBeVisible();
 });
 
+/**
+ * Escape, which is the third way out and the one this product did not have.
+ *
+ * conventions.md §6.3 promised four things the component adds that no product
+ * had: `aria-expanded`/`aria-controls`, Escape, focus moving in, and focus
+ * coming back. The first build shipped only the ARIA — which is markup — and
+ * neither of the two that needed code. The adoption commit found that and
+ * declined to write a mitreden-local Escape handler, because a copy in one of
+ * three products is exactly the divergence the extraction exists to end. The
+ * behaviour arrives from the package instead, at v1.38.0, and these two tests
+ * are it arriving here.
+ *
+ * Pressed twice from two places, because the listener is on the window rather
+ * than on the `<aside>` and that is the whole of its point. The first press is
+ * from where the component has just put focus; the second is from the scrim,
+ * which is a sibling of the column and not inside it — a listener attached to
+ * the drawer would answer the first and be deaf to the second, and the drawer
+ * would stay up for anybody who had tabbed out of it.
+ */
+test('Escape closes the drawer, from inside it and from the scrim', async ({ page }) => {
+  const sidebar = page.locator('#sidebar');
+  await page.click('#sidebaropen');
+  await expect(sidebar).toBeInViewport();
+  await page.keyboard.press('Escape');
+  await expect(sidebar).not.toBeInViewport();
+
+  await page.click('#sidebaropen');
+  await expect(sidebar).toBeInViewport();
+  await page.locator('#scrim').focus();
+  await page.keyboard.press('Escape');
+  await expect(sidebar, 'a press that arrives from outside the column').not.toBeInViewport();
+});
+
+/**
+ * The round trip: focus goes into the layer when it opens and comes back out to
+ * whatever opened it when it closes.
+ *
+ * The `✕` rather than the first Sammlung, which is the component's choice and
+ * the right one — it is the way out, which is what somebody who has just been
+ * handed a layer over their work needs to be able to find, and Tab from there
+ * reaches the list in one press.
+ *
+ * Both ways out are asked, because they leave focus in different places at the
+ * moment the drawer goes: Escape leaves it on the `✕`, and pressing the `✕`
+ * leaves it on a button that is about to stop being drawn. Without the restore
+ * both land focus on `<body>`, which sends a keyboard back to the top of the
+ * page — the same defect menu.spec.ts closed for the menu, and the reason that
+ * file's last two tests read the way they do.
+ */
+test('the drawer takes focus when it opens and hands it back when it closes', async ({ page }) => {
+  const bar = page.locator('#sidebaropen');
+  const close = page.locator('#sidebarclose');
+
+  await bar.click();
+  await expect(close, 'the way out is what focus lands on').toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(bar, 'and it comes back to the ☰ that opened it').toBeFocused();
+
+  // And by the ✕, which removes itself in the same beat it dismisses the layer.
+  await bar.click();
+  await expect(close).toBeFocused();
+  await close.click();
+  await expect(page.locator('#sidebar')).not.toBeInViewport();
+  await expect(bar).toBeFocused();
+});
+
 test('nothing overflows the screen', async ({ page }) => {
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
