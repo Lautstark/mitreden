@@ -53,7 +53,7 @@ test('a key Azure refuses says which of the two things is wrong', async ({ page 
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
   await page.fill('#azureregion', 'westeurope');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   // The region is the usual culprit and the message has to say so, in German.
   await expect(page.locator('#s')).toContainText('Region', { timeout: 10_000 });
 });
@@ -67,10 +67,10 @@ test('the button says it is working while it waits', async ({ page }) => {
   });
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   // This is the bug that read as "nothing happens".
-  await expect(page.locator('#cloud .save')).toBeDisabled();
-  await expect(page.locator('#cloud .save')).toHaveText(/prüft/i);
+  await expect(page.locator('#azuresave')).toBeDisabled();
+  await expect(page.locator('#azuresave')).toHaveText(/prüft/i);
   release?.();
 });
 
@@ -80,7 +80,7 @@ test('a key Azure accepts is kept, and its voices join the picker', async ({ pag
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
   await page.fill('#azureregion', 'westeurope');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   await expect(voice(page, 'Katja')).toHaveCount(1);
   // The picker says where each voice comes from, which is the difference
@@ -100,7 +100,7 @@ test('opening the settings answers whether Azure does, and asks it only once', a
   });
   await openVoices(page);
   await page.fill('#azurekey', 'A'.repeat(28) + 'Nk7q');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   // The save's answer lands on the still-open dialog: which key, and that
   // Azure answers it with a count.
   await expect(page.locator('#setup')).toHaveJSProperty('open', true);
@@ -109,13 +109,13 @@ test('opening the settings answers whether Azure does, and asks it only once', a
   // reveal, nothing to resubmit, and an untouched field visibly keeps it.
   await expect(page.locator('#azurekey')).toHaveAttribute('placeholder', /Nk7q/);
   await expect(page.locator('#azurekey')).toHaveValue('');
-  await expect(page.locator('#cloud .probe')).toHaveText('2 Stimmen verfügbar');
+  await expect(page.locator('#azureprobe')).toHaveText('2 Stimmen verfügbar');
   expect(asks).toBe(1);
   // A fresh visit probes on open — and still asks once, although the voice
   // picker wants the same catalogue.
   await page.reload();
   await reopenVoices(page);
-  await expect(page.locator('#cloud .probe')).toHaveText('2 Stimmen verfügbar');
+  await expect(page.locator('#azureprobe')).toHaveText('2 Stimmen verfügbar');
   expect(asks).toBe(2);
 });
 
@@ -124,7 +124,7 @@ test('a stored key whose region stops answering says so, and the shipped voices 
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   // The hostname carries the region, and a region that stops resolving fails
   // before any status exists.
@@ -132,7 +132,7 @@ test('a stored key whose region stops answering says so, and the shipped voices 
   await page.route(VOICE_LIST, (route) => route.abort('namenotresolved'));
   await page.reload();
   await reopenVoices(page);
-  await expect(page.locator('#cloud .probe')).toContainText('antwortet nicht');
+  await expect(page.locator('#azureprobe')).toContainText('antwortet nicht');
   // Broken Azure costs its own rows alone: the shipped voices are still there.
   await expect(page.locator('#voices .voice[data-id^="piper:"]')).not.toHaveCount(0);
   await expect(voice(page, 'Katja')).toHaveCount(0);
@@ -143,14 +143,14 @@ test('a stored key Azure has stopped taking gets its words on the card', async (
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   // Valid when it was stored, revoked by the next visit.
   await page.unroute(VOICE_LIST);
   await page.route(VOICE_LIST, (route) => route.fulfill({ status: 401, body: '' }));
   await page.reload();
   await reopenVoices(page);
-  await expect(page.locator('#cloud .probe')).toContainText('lehnt den Schlüssel ab');
+  await expect(page.locator('#azureprobe')).toContainText('lehnt den Schlüssel ab');
 });
 
 test('a region name that is not one is a sentence at save time, not a silence', async ({ page }) => {
@@ -158,7 +158,7 @@ test('a region name that is not one is a sentence at save time, not a silence', 
   await openVoices(page);
   await page.fill('#azurekey', '0'.repeat(32));
   await page.fill('#azureregion', 'westeurop');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('antwortet nicht', { timeout: 10_000 });
   // And the key was not stored: a pairing that never answered is not one to keep.
   // The heading says so rather than falling silent — an empty state is exactly
@@ -171,14 +171,14 @@ test('a save that only moves the region keeps the key it already has', async ({ 
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openVoices(page);
   await page.fill('#azurekey', 'A'.repeat(28) + 'Nk7q');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   // The redraw left the key field empty again — the trap was that saving now
   // meant forgetting. Only the region moves; the status line is cleared first
   // so the next 'freigeschaltet' is provably this save's.
   await page.evaluate(() => { document.getElementById('s')!.textContent = ''; });
   await page.fill('#azureregion', 'northeurope');
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
   await page.reload();
   await reopenVoices(page);

@@ -65,7 +65,7 @@ Not chosen, and why: the same four as the pilot — vanilla with one idiom, Reac
 or Preact, Lit, Solid — for the same four reasons, which are written out over
 there and are not this product's to restate.
 
-**Amended 2026-09-17, and three of those four bullets have moved.** They are
+**Amended 2026-09-17, and all four of those bullets have moved.** They are
 left standing because what they say about *that* commit is true and the reason
 they were written is the useful part; what follows is where they stand now.
 
@@ -84,8 +84,25 @@ they were written is the useful part; what follows is where they stand now.
   is the same arrangement, shipped. `ui/dialog.ts` stays, because
   `@lautstark/design/dialog` still draws every confirmation.
 - `pieces/Vanilla.svelte` went to the package in round 1 and the import is
-  `@lautstark/design/svelte/Vanilla`. `pieces/` holds `VoicePicker.svelte`
-  alone now.
+  `@lautstark/design/svelte/Vanilla`. `pieces/VoicePicker.svelte` went the same
+  way in round 3a-bis — it is `@lautstark/stimmquelle/svelte/VoicePicker` now,
+  in both the sheets that drew one — so `pieces/` is gone and there is no
+  directory of this product's own components left. One `Vanilla` survives, and
+  only one: the language row, because `@lautstark/design` ships no Svelte twin
+  of `languagePicker`.
+- The shared vanilla panels are not vanilla any more, and the last line of that
+  bullet — "nothing in a shared package had to change" — is the part that
+  stopped being true. `@lautstark/sicherung`'s `AblagePanel` and `BackupPanel`,
+  `@lautstark/stimmquelle`'s `VoicePicker` and its `AzurePanel` are the twins
+  those packages ship, and this product's own Azure card is ninety lines
+  lighter for it. It took two package releases to get there: round 3a adopted
+  them and was withdrawn the same day, because a shipped `.svelte` imported its
+  own package's `src/` while every consumer holds `dist/`, and a class with
+  `#private` fields declared twice is two types — a consumer could not pass its
+  own object to its own component without a cast. sicherung v1.17.1 and
+  stimmquelle v2.12.1 import through the export map, and round 3a-bis landed
+  the same adoption with no cast in it. The `Vanilla` hosts, the `refresh()`
+  calls, the two `dispose()`s and the `onDestroy` went with them.
 
 ## What moved, and what stayed
 

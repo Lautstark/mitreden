@@ -114,7 +114,7 @@ test('the same file keeps its Azure voice on a browser that has the key', async 
   await openData(page);
   await page.click('#p-azure > summary');
   await page.fill('#azurekey', '0'.repeat(32));
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
 
   await importJson(page, 'mitreden-alle-saetze-2026-08-23.json', [
@@ -161,7 +161,7 @@ test('the same sentence in two files lands in each Sammlung, in each voice', asy
   await openData(page);
   await page.click('#p-azure > summary');
   await page.fill('#azurekey', '0'.repeat(32));
-  await page.click('#cloud .save');
+  await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
 
   await importJson(page, 'erste.json', [

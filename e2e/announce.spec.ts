@@ -61,7 +61,11 @@ test('the Azure probe line is a region that is never hidden', async ({ page }) =
   const panel = page.locator('#p-azure');
   if ((await panel.getAttribute('open')) === null) await panel.locator('summary').click();
 
-  const probe = page.locator('.probe');
+  /* `#azureprobe` rather than `.probe`: the panel is
+     @lautstark/stimmquelle/svelte/AzurePanel since 2026-09-17 and §6.9 turns
+     this product's class hooks into ids it passes in. The property is the
+     same one, asked of the same element. */
+  const probe = page.locator('#azureprobe');
   await expect(probe).toHaveAttribute('role', 'status');
   await expect(probe).not.toHaveAttribute('hidden', /.*/);
   await expect(probe).toBeEmpty();
