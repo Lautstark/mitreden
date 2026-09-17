@@ -45,7 +45,7 @@ const declared = (record: StoredCollection | undefined): Collection | undefined 
 /**
  * Last edited first — conventions.md §1.4.
  *
- * Creation order answers a question nobody asks. What the rail is for is
+ * Creation order answers a question nobody asks. What the sidebar is for is
  * getting back to what you were doing, and after a handful of Sammlungen
  * creation order reliably puts that at the bottom.
  *

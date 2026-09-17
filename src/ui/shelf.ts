@@ -59,10 +59,10 @@ export async function openNamed(here?: string): Promise<void> {
         // Two ways in, one import.
         const into = await importFile(asked.file);
         /* And then open it, which the file picker does not have to: somebody
-           there is standing in Einstellungen with the rail behind them, while
+           there is standing in Einstellungen with the sidebar behind them, while
            somebody arriving from a link asked for one Sammlung by name. Landing
            them on whatever happened to be open, with the thing they clicked for
-           sitting closed in the rail, is not an arrival. Alone, rather than
+           sitting closed in the sidebar, is not an arrival. Alone, rather than
            added to what was open, for the same reason. */
         if (into) openOnly(into);
       }

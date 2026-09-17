@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * The sidebar: which Sammlungen exist, which one you are in, and making one.
+   * The list of Sammlungen in the sidebar: which exist, which one you are in,
+   * and making one.
    *
    * A Sammlung is a place you work in, not a label a sentence happens to carry.
    * Clicking one opens it; Cmd or Ctrl adds a second, because working across
@@ -8,24 +9,30 @@
    * reachable. §4.2, which is about the open set and not about how many
    * Sammlungen a sentence is in.
    *
-   * Whether the rail is on screen is App.svelte's: it is two separate
-   * questions — a drawer dismissed on a phone, a column put away on a laptop —
-   * and the scrim and the ☰ that answer them are outside this element.
+   * ## This was Rail.svelte, and what is left of it is the list
+   *
+   * The column around it — the `<aside>`, the brand row, the drawer's `✕`, the
+   * foot — is `@lautstark/design/svelte/Sidebar` now (conventions.md §6.3), and
+   * App.svelte is where it is assembled. What could not go with it is exactly
+   * this: the component's `sections` seam is **one snippet**, and the product
+   * draws its own `<h2>` and its own section wrappers inside it, because
+   * bildhaft swaps the heading along with the list when a search is running.
+   *
+   * Whether the sidebar is on screen was never this file's and still is not: it
+   * is two separate questions — a drawer dismissed on a phone, a column put
+   * away on a laptop — and both are answered a level up.
    */
   import { drawCollections } from '@lautstark/design/collections';
   import { createCollection } from '../db/repo.ts';
-  import { ALL, DECLARED, OPEN, ask, asked, load, openAlso, openOnly } from './store.svelte.ts';
+  import { ALL, DECLARED, OPEN, load, openAlso, openOnly } from './store.svelte.ts';
   import { lang, t } from './words.svelte.ts';
   import { say } from './dom.ts';
 
-  let { drawer, dismiss, collapse, showSettings, nameNew }: {
-    /** On a phone: the rail is a layer over the work and this is whether it is up. */
-    drawer: boolean;
-    /** Put the layer away. Does nothing where the rail is a column of the page. */
+  let { dismiss, nameNew }: {
+    /** Put the drawer away. Does nothing where the sidebar is a column of the
+     *  page — choosing a Sammlung dismisses the layer, because it is in the way
+     *  of the thing that was just asked for (§3.1). */
     dismiss: () => void;
-    /** Put the column away for good — a laptop question, remembered. */
-    collapse: () => void;
-    showSettings: () => void;
     /** Into the new Sammlung's name, selected. The field is in the head over
      *  the list, so the caret is sent there rather than moved from here. */
     nameNew: () => void;
@@ -45,7 +52,14 @@
      it, and a press either opens it alone or adds it to what is open. Which key
      that flag stands for is the package's, so it cannot become Shift here and
      Cmd elsewhere. mitreden is still the one product that uses the additive
-     flag — §4.2 — and that did not change when arity did.
+     flag — §4.2 — and that did not change when arity did, nor when the column
+     around this list became a shared component: `open` and `onPick` are props
+     of that component's *row list*, not of its shell, and §6.3 leaves both with
+     the product for exactly this reason.
+
+     `openAlso` toggles rather than adds, so Cmd-clicking a Sammlung that is
+     already open closes it. That is the behaviour §4.2 records and is not a
+     thing to converge with the two products that ignore the flag.
 
      The module fills a container rather than handing back a node, so it is
      called in an effect over that container rather than hosted in a Vanilla.
@@ -80,30 +94,8 @@
   }
 </script>
 
-<aside id="rail" class="rail" class:open={drawer}>
-  <div class="rail__brand">
-    <h1><img class="logo" src="icon.svg" alt="" width="34" height="34">mitreden</h1>
-    <!-- Two controls, because they answer two different questions: on a phone
-         the rail is a layer over the work and ✕ dismisses it; on a desktop it
-         is a column of the page and this puts the column away for good. -->
-    <button id="railhide" class="btn quiet icon" aria-label={t('collections_hide')}
-      title={t('collections_hide')} onclick={collapse}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <button id="railclose" class="btn quiet icon" aria-label={t('collections_hide')} onclick={dismiss}>✕</button>
-  </div>
-
-  <div class="rail__part">
-    <input id="q" class="field" type="search" placeholder={t('search_hint')} autocomplete="off"
-      value={asked()} oninput={(event) => ask(event.currentTarget.value)}>
-  </div>
-
-  <div class="rail__part rail__grow">
-    <h2>{t('filter_collections')}</h2>
-    <div class="collections" id="rows" bind:this={rows}></div>
-    <button id="newcol" class="btn quiet sm" onclick={() => void make()}>{t('collection_new')}</button>
-  </div>
-
-  <div class="rail__foot">
-    <button id="gear" class="flat" onclick={showSettings}>{t('settings')}</button>
-  </div>
-</aside>
+<div class="sidebar__part sidebar__grow">
+  <h2>{t('filter_collections')}</h2>
+  <div class="collections" id="rows" bind:this={rows}></div>
+  <button id="newcol" class="btn quiet sm" onclick={() => void make()}>{t('collection_new')}</button>
+</div>

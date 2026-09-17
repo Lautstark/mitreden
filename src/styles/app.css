@@ -15,26 +15,47 @@
 }
 
 *{box-sizing:border-box}
-/* The shell: a rail beside the work.
+/* The shell: a sidebar beside the work.
    A Sammlung is a place you work in, so it is somewhere you go rather than a
    filter you set — the same shape bildhaft uses, for the same reason. Below
-   820px it slides over the work instead of squeezing it. */
-.rail{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:20;
-  background:var(--surface);border-right:1px solid var(--line);
-  display:flex;flex-direction:column;gap:20px;padding:16px 14px;
+   820px it slides over the work instead of squeezing it.
+
+   The column, the brand row, the drawer's ✕ and the foot are
+   @lautstark/design/svelte/Sidebar now, and so is part of what they look like:
+   the declarations all three products already agreed on character for character
+   — `.sidebar`'s six, `.sidebar__brand`'s four and the whole of
+   `.sidebar__foot` — live in that component's scoped <style> and are not
+   repeated here. A scoped selector carries the hash and is 0-2-0, so a copy of
+   them here at 0-1-0 would lose anyway and would only look like the thing in
+   force.
+
+   What is left is what this product varies, and every line of it is a fact
+   about *this* page rather than about a sidebar: it is a fixed column where the
+   other two are grid items, so the placement, the width, the overflow and the
+   stacking stay here. `.rail` was the name until 2026-09-17; bildhaft's `.rail`
+   is the reveal affordance, so the shared spelling for the column is
+   `.sidebar`. conventions.md §6.3. */
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);z-index:20;
   overflow:hidden auto}
-.rail__brand{display:flex;align-items:center;gap:9px;padding:2px 4px}
-.rail__brand h1{flex:1;font-size:18px;font-weight:650;margin:0;display:flex;
+/* Inside the brand row, which the component draws and this markup fills. The
+   `h1`, the mark and the ‹ are all this product's, so their rules are too. */
+.sidebar__brand h1{flex:1;font-size:18px;font-weight:650;margin:0;display:flex;
   align-items:center;gap:9px;letter-spacing:-.02em}
-.rail__brand .logo{width:26px;height:26px}
-.rail__brand .btn.icon{margin-left:auto}
-.rail__part{padding:0 4px}
-.rail__part h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+.sidebar__brand .logo{width:26px;height:26px}
+/* Both controls in the row are .btn.icon — the ‹ this page draws and the ✕ the
+   component draws below the breakpoint — and the first of them takes the space
+   the heading leaves. Above 820px that is the ‹; below it the ‹ is gone and the
+   ✕ is the only one. */
+.sidebar__brand .btn.icon{margin-left:auto}
+/* The sections and the search field's wrapper: the component draws neither,
+   because the heading is part of what a search swaps in the product that
+   searches, and the two products with a field call its wrapper different
+   things. */
+.sidebar__part{padding:0 4px}
+.sidebar__part h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
   color:var(--text-faint);margin:0 6px 8px;font-weight:600}
-.rail__grow{flex:1;min-height:0;overflow:auto}
-.rail__foot{margin-top:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
-  padding:0 4px}
-.rail input[type=search]{width:100%}
+.sidebar__grow{flex:1;min-height:0;overflow:auto}
+.sidebar input[type=search]{width:100%}
 
 /* One row per Sammlung is components.css's `.collections` now - the name, the
    count, the ellipsis on a long one, the accent behind the ones that are open.
@@ -95,13 +116,28 @@
 .panel .row{margin-top:12px}
 .panel > .body > :first-child{margin-top:0}
 .notice.warn{margin:8px 0;font-size:13.5px}
+/* The way out of the page, at the foot of the sidebar (§3.2). The other two
+   products spell this control `.btn.quiet.sm` and this one does not, which was
+   asked again when the sidebar became a shared component on 2026-09-17 — §6.3
+   leaves the foot's *contents* with the product and says nothing about their
+   class, so the question was open rather than answered.
+
+   It stays, and the reason is twenty pixels above it: „+ Neue Sammlung" is a
+   `.btn.quiet.sm`, and giving Einstellungen the same class would draw the way
+   out of the page at the same weight, the same radius and the same size as the
+   last thing to do inside it. The two declarations that differ are the ones
+   that carry that — the pill radius and the inherited weight against
+   components.css's 600 — so this is not a local copy of a shared name under
+   another spelling. It is also not a one-off: `.flat`, `.dots` and
+   `.item .collection` are this page's three quiet inline controls and share the
+   130ms below. */
 .flat{background:transparent;border:0;color:var(--text-dim);font:inherit;
   font-size:13.5px;padding:5px 11px;border-radius:var(--radius-pill);cursor:pointer}
 .flat:hover{background:var(--surface-2);color:var(--text)}
-/* Reduced motion: bildhaft carries this and the rail animates its transform. */
+/* Reduced motion: bildhaft carries this and the sidebar animates its transform. */
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
-  .rail{transition:none}
+  .sidebar{transition:none}
   /* The blanket rule above does not stop these, it makes them frantic — a ring
      spinning a full turn every hundredth of a millisecond is the worst version
      of what somebody asked not to see. Both markers say what they say without
@@ -176,66 +212,78 @@ kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
    siblings. The shared one is the pill. */
 
 /* Put away, and the way back.
-   The rail keeps its width in a variable and the page's left padding is written
-   against that variable, so collapsing is one number in two places rather than
-   a second layout. It slides rather than vanishing, because a column that
-   disappears between two frames reads as a repaint bug. */
-.rail{transition:transform .18s ease}
-.reveal{position:fixed;top:14px;left:14px;z-index:21;display:flex;align-items:center;gap:8px}
-.reveal__logo{width:22px;height:22px}
-.reveal[hidden]{display:none}
+   The sidebar keeps its width in a variable and the page's left padding is
+   written against that variable, so collapsing is one number in two places
+   rather than a second layout. It slides rather than vanishing, because a
+   column that disappears between two frames reads as a repaint bug. */
+.sidebar{transition:transform .18s ease}
 
-.topbar{display:none;position:sticky;top:0;z-index:15;align-items:center;gap:10px;
-  padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+/* Three z-indexes, and they are all that is left of three rules.
+   @lautstark/design/svelte/Reveal, TopBar and Scrim draw the rest of each —
+   including, in Reveal's and TopBar's case, the 820px branch, which has to be
+   theirs: a scoped `.reveal{display:flex}` is 0-2-0 and would out-specify a
+   copy of `@media{.reveal{display:none}}` kept here at 0-1-0, and the bar would
+   be the same trap pointing the other way. Stacking is a fact about this page's
+   own layers and is the one thing none of the three could take. §6.3. */
+.reveal{z-index:21}
+.reveal__logo{width:22px;height:22px}
+.topbar{z-index:15}
 .topbar h1{font-size:19px;margin:0;display:flex;align-items:center;gap:8px;
   letter-spacing:-.03em}
-.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.45)}
+.scrim{z-index:19}
 
 @media (max-width:820px){
-  .rail{transform:translateX(-100%);box-shadow:var(--shadow);width:min(280px,84vw)}
-  .rail.open{transform:none;visibility:visible}
+  .sidebar{transform:translateX(-100%);box-shadow:var(--shadow);width:min(280px,84vw)}
+  .sidebar.open{transform:none;visibility:visible}
   /* The bar is the page's top edge here, so it has to reach all three of them.
      It sat inside the page's margin instead: a card with a rule that stopped
      short of the screen on both sides and a band of background above it. The
      margin is pulled back on all three, and only the air below it stays. */
-  .topbar{display:flex;
-    margin:calc(var(--page-pad) * -1) calc(var(--page-pad) * -1) 16px}
-  /* Bar-sized, like the rail's. .logo's clamp is written for the heading a
+  .topbar{margin:calc(var(--page-pad) * -1) calc(var(--page-pad) * -1) 16px}
+  /* Bar-sized, like the sidebar's. .logo's clamp is written for the heading a
      page opens with, and beside a 19px title it read as a mistake. */
   .topbar .logo{width:28px;height:28px}
   /* The brand row stays, because the drawer covers the bar it would repeat:
-     while the rail is open the ☰ and the wordmark are behind it, so this is
+     while the sidebar is open the ☰ and the wordmark are behind it, so this is
      the only head on screen — and it is what carries the ✕. Hiding the row
      took the ✕ with it and left a layer with no way out but the scrim. The ‹
-     goes instead: it collapses a column, and here there is no column. */
-  #railhide{display:none}
-  /* Here the rail is a layer over the work: there is nothing to collapse, only
-     something to dismiss, and the topbar's ☰ is already the way back. The
-     collapsed state does not apply, and must not: it is remembered across
-     visits, so a rail put away on a laptop would otherwise arrive on the phone
-     as a drawer that will not open. */
-  .reveal{display:none}
+     goes instead: it collapses a column, and here there is no column. That is
+     this rule, and the ✕'s half of it is markup now: the component draws it
+     below the breakpoint and not at all above, so `#railclose{display:none}`
+     has no element left to hide and is gone. */
+  #sidebarhide{display:none}
 }
 @media (min-width:821px){
-  /* Nothing to close when the rail is simply part of the page. */
-  .scrim,.topbar,#railclose{display:none}
+  /* Nothing to close when the sidebar is simply part of the page — and the
+     drawer state is a moment rather than a preference, so a window dragged from
+     phone width to laptop width can arrive up here with it still set. Without
+     this the scrim would cover a page nobody asked to cover. */
+  .scrim{display:none}
 }
 
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:var(--font);font-size:15px;line-height:var(--leading);
   padding:var(--page-pad);padding-bottom:0;-webkit-font-smoothing:antialiased}
-/* The work sits to the right of the rail and keeps its comfortable measure. */
+/* The work sits to the right of the sidebar and keeps its comfortable measure. */
 body{min-height:100vh;display:flex;flex-direction:column}
 main{max-width:720px;margin:0 auto;padding-left:0;width:100%;
   flex:1;display:flex;flex-direction:column}
+/* This block is why --sidebar-w is this product's and not the component's: it
+   is read by a rule on <body>, and no component owns the body.
+
+   And the two `body.collapsed` rules stay *inside* the media query. That is not
+   housekeeping: `body.collapsed .sidebar` is 0-2-1 and `.sidebar.open` is
+   0-2-0, so lifted out of here it would win over the drawer and a sidebar put
+   away on a laptop would arrive on the phone as a drawer that never appears.
+   e2e/mobile.spec.ts is the test that catches it. §3.1 and §6.3. */
 @media (min-width:821px){
-  /* The rail's width plus the padding the page would have had anyway, so the
-     work keeps the same breathing room it had before there was a rail. */
+  /* The sidebar's width plus the padding the page would have had anyway, so the
+     work keeps the same breathing room it had before there was a sidebar. */
   body{padding-left:calc(var(--sidebar-w) + var(--page-pad));
     transition:padding-left .18s ease}
-  /* Collapsed, the work gets the rail's 268px back and re-centres into it. */
-  body.railed{padding-left:var(--page-pad)}
-  body.railed .rail{transform:translateX(-100%);visibility:hidden}
+  /* Collapsed, the work gets the sidebar's 268px back and re-centres into it. */
+  body.collapsed{padding-left:var(--page-pad)}
+  body.collapsed .sidebar{transform:translateX(-100%);visibility:hidden}
 }
 h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.035em;margin:0;
   display:flex;align-items:center;gap:12px}
