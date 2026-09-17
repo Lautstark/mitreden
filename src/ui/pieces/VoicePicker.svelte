@@ -27,10 +27,10 @@
    * so the day this page grows a sample player nothing else moves.
    */
   import { onDestroy } from 'svelte';
+  import Vanilla from '@lautstark/design/svelte/Vanilla';
   import { voicePicker, type VoicePicker } from '@lautstark/stimmquelle/voice-picker';
   import { knownVoices } from '../voices.svelte.ts';
   import { lang } from '../words.svelte.ts';
-  import Vanilla from './Vanilla.svelte';
 
   let { current, pick }: {
     /** What this list is choosing for, read at draw time rather than passed in:
