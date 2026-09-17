@@ -160,11 +160,19 @@ they were about.
    and `saveVoice` is a read of the settings record, a merge and a put — so two
    presses a moment apart could commit in the order their *reads* resolved.
    Arrow down, arrow up, reload, and the row above the chosen one came back,
-   about one run in forty-eight. It is two fixes: the writes go in a chain, and
-   the mark waits for its own. The read-modify-write in `db/repo.ts` is the
-   actual defect and is still there, under every `save*` in that file; this was
-   just the one place a person presses three times in a second. Whatever the
-   next product draws from a rune, ask what used to be waiting for the write.
+   about one run in forty-eight. It was two fixes: the writes went in a chain,
+   and the mark waited for its own. **Only the second half is still there.** The
+   read-modify-write was the actual defect, under every `save*` in `db/repo.ts`
+   rather than under the one place a person presses three times in a second, and
+   it is gone: `patchSettings` in `db/settings.ts` merges between a `get` and a
+   `put` of one readwrite transaction, every `save*` is one call to it, and the
+   chain in `voices.svelte.ts` came out. Waiting for the write before moving the
+   rune is a separate decision and survives — it is about not drawing
+   optimistically, not about order. Whatever the next product draws from a rune,
+   ask what used to be waiting for the write. And the ordering was not the worst
+   of it: two *different* preferences saved in the same moment lost one of the
+   two outright, deterministically, which no repeat of the e2e case would have
+   found (`tests/unit/settings-patch.test.ts`).
 5. **The bundle names `svelte.dev` sixteen times.** Svelte throws
    `new Error('https://svelte.dev/e/effect_orphan')` rather than carrying the
    sentence, so the address *is* the message. Nothing is fetched and nothing is

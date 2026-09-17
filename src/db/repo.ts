@@ -12,7 +12,7 @@ import {
   allPhrases, countIn, dropPhrase, getPhrase, idTaken, putPhrase, putPhrases, twinsOf,
 } from './phrases.ts';
 import { allCollections, dropCollection, getCollection, putCollection } from './collections.ts';
-import { loadSettings, saveSettings, type Settings } from './settings.ts';
+import { loadSettings, patchSettings, type Settings } from './settings.ts';
 import { dropAudio, getAudio, putAudio } from './audio.ts';
 import { record } from '../core/audio.ts';
 import { fingerprint, free, normText, slug } from '../core/ids.ts';
@@ -387,8 +387,7 @@ export const settings = loadSettings;
 /** The default for the *next* Sammlung. It does not reach into the ones that
  *  already exist: those carry their own, and changing one of those is a change
  *  to that Sammlung. */
-export const saveVoice = async (voice: string): Promise<void> =>
-  saveSettings({ ...(await loadSettings()), voice });
+export const saveVoice = (voice: string): Promise<void> => patchSettings({ voice });
 
 /**
  * Which Sammlungen are open, and whether the rail is there — both in the
@@ -402,20 +401,14 @@ export const saveVoice = async (voice: string): Promise<void> =>
  * reason this does not have — they must be readable before the first paint,
  * and this is allowed to arrive a frame late.
  */
-export const saveOpen = async (open: readonly string[]): Promise<void> =>
-  saveSettings({ ...(await loadSettings()), open: [...open] });
+export const saveOpen = (open: readonly string[]): Promise<void> =>
+  patchSettings({ open: [...open] });
 
-export const saveRailOpen = async (railOpen: boolean): Promise<void> =>
-  saveSettings({ ...(await loadSettings()), railOpen });
+export const saveRailOpen = (railOpen: boolean): Promise<void> => patchSettings({ railOpen });
 
 /** Which sheet the export was for, and the circle the run ended on. */
-export const savePen = async (pen: Settings['pen']): Promise<void> =>
-  saveSettings({ ...(await loadSettings()), pen });
-export async function saveAzure(azure: Settings['azure']): Promise<void> {
-  const now = await loadSettings();
-  if (azure) await saveSettings({ ...now, azure });
-  else {
-    const { azure: _drop, ...rest } = now;
-    await saveSettings(rest);
-  }
-}
+export const savePen = (pen: Settings['pen']): Promise<void> => patchSettings({ pen });
+
+/** The key, or forgetting it — one call either way: patchSettings removes a
+ *  field named with undefined rather than storing an empty one. */
+export const saveAzure = (azure: Settings['azure']): Promise<void> => patchSettings({ azure });
