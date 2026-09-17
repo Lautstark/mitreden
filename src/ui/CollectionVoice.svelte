@@ -35,13 +35,13 @@
    * under the list says what it costs, in sentences, before the press.
    */
   import Sheet from '@lautstark/design/svelte/Sheet';
+  import VoicePicker from '@lautstark/stimmquelle/svelte/VoicePicker';
   import { saveCollectionVoice } from '../db/repo.ts';
   import { ALL, DECLARED, load } from './store.svelte.ts';
   import { chosenVoice, knownVoices } from './voices.svelte.ts';
   import { recordAgain } from './sammlung.ts';
-  import { t, tn } from './words.svelte.ts';
+  import { lang, t, tn } from './words.svelte.ts';
   import { say } from './dom.ts';
-  import VoicePicker from './pieces/VoicePicker.svelte';
 
   let { showing = $bindable() }: { showing: string | null } = $props();
 
@@ -114,8 +114,11 @@
   {#snippet head()}<h2 id="colvoicetitle">{t('collection_voice_title')}</h2>{/snippet}
   <p class="hint" id="colvoicelead">{current ? t('collection_voice_lead', { name: current.name }) : ''}</p>
   <div id="colvoices">
-    <!-- The second picker, and a second instance on purpose: see
-         pieces/VoicePicker.svelte.
+    <!-- The second picker, and a second instance on purpose: two tags are two
+         pickers, each with its own query and its own language filter, and the
+         argument for that is at the other call site in ui/SetupSheet.svelte.
+         `hear` is not passed there and is not passed here, for the same
+         reason: this product speaks a voice by recording with it.
 
          The voice in force, which is not always the Sammlung's own. A
          Sammlung with no `voice` records in the default — from a migration, a
@@ -126,7 +129,12 @@
          it is what makes it this Sammlung's own, which is a real change and
          not a no-op, because the default can move afterwards and this
          Sammlung will no longer follow it. -->
-    <VoicePicker current={() => current?.voice ?? chosenVoice()} pick={(id) => void choose(id)} />
+    <VoicePicker
+      voices={knownVoices}
+      current={() => current?.voice ?? chosenVoice()}
+      pick={(id) => void choose(id)}
+      {lang}
+    />
   </div>
   <!-- The count is the Sammlung's, not the open set's: this sheet is about
        one of them however many are open beside it. -->

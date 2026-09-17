@@ -59,12 +59,36 @@
 .sheet > .head h2{flex:1}
 /* A quiet line under a control, saying what it does. bildhaft's .small.faint. */
 .hint{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--text-faint)}
-/* The probe line is a live region and stays in the page with nothing in it
-   (§3.8, and see paintAzure) — so empty it must cost nothing, or the panel
-   gains a 6px gap from a paragraph that is not there. Not [hidden] and not
-   display:none: both take it back out of the accessibility tree, which is the
-   arrangement this replaced. */
-.probe:empty{margin:0}
+/* The Azure panel is @lautstark/stimmquelle/svelte/AzurePanel since
+   2026-09-17, and conventions.md §6.0 forbids a provider package emitting a
+   name this product owns — so the two quiet lines in it, the probe and the
+   note under the region field, no longer carry `.hint`. They are drawn here
+   instead, by the two ids the panel takes for them — `probeId` and `hintId`.
+   `.hint`'s four values, repeated rather than shared, because a class is
+   precisely what this file no longer gets to put on them.
+
+   `hintId` is stimmquelle v2.12.0's and is why neither selector is a statement
+   about the panel's markup any more: the region note was reached as
+   `#cloud > datalist + p` while it was the one element in there with neither
+   an id nor a class of ours, and a sibling combinator is a claim about order
+   rather than about a name the package promised.
+
+   The probe line is a live region and stays in the page with nothing in it
+   (§3.8) — so empty it must cost nothing, or the panel gains a 6px gap from a
+   paragraph that is not there. Not [hidden] and not display:none: both take it
+   back out of the accessibility tree, which is the arrangement this replaced.
+   The package says the same thing in its own scoped block; this one has to be
+   here as well, because the rule above it is an id selector and would
+   otherwise put the margin back. */
+#azureprobe,#azurehint{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--text-faint)}
+#azureprobe:empty{margin:0}
+/* The panel's button row is the shared `.acts` now rather than this file's
+   `.row`, and `.acts` carries no margin of its own — see `.panel .row` just
+   below, which is the same 12px for the same reason. The 2px of gap this
+   costs is the family's answer to a row of panel buttons, and the two
+   @lautstark/sicherung panels in the „Wo alles liegt" panel have always drawn
+   it. */
+#cloud>.acts{margin-top:12px}
 /* Panels do the separating in the settings now, so the card that used to box
    each block is a second border around the same content. What is left of the
    sheet's own spacing is the gap between a panel's controls. */

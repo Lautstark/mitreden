@@ -8,7 +8,6 @@
   "azure_asking": "Frage Azure …",
   "azure_bad_pair": "Azure hat den Schlüssel abgelehnt. Meistens ist es die Region: sie muss die der Speech-Ressource sein, nicht die deines Kontos.",
   "azure_body": "Azure ist kostenpflichtig und braucht ein Konto. Dein Schlüssel bleibt in diesem Browser; die Anfrage geht von hier direkt zu Microsoft, nie über einen Server von uns.",
-  "azure_failed": "Die Abfrage ist fehlgeschlagen — später noch einmal versuchen.",
   "azure_no_answer": "Azure hat nicht geantwortet ({error}).",
   "azure_refused": "Azure lehnt den Schlüssel ab.",
   "azure_unreachable": "Die Region antwortet nicht — stimmt der Regionsname?",

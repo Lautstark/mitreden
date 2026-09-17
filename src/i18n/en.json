@@ -8,7 +8,6 @@
   "azure_asking": "Asking Azure …",
   "azure_bad_pair": "Azure turned the key down. Usually it is the region: it has to be the one your Speech resource is in, not the one your account is in.",
   "azure_body": "Azure is a paid service and needs an account. Your key stays in this browser; the request goes from here straight to Microsoft, never through a server of ours.",
-  "azure_failed": "The check failed — try again later.",
   "azure_no_answer": "Azure did not answer ({error}).",
   "azure_refused": "Azure turns the key down.",
   "azure_unreachable": "The region does not answer — is the region name right?",
