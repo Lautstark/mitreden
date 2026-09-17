@@ -28,6 +28,17 @@
    * component can take: `--sidebar-w` is consumed by a rule on `<body>`, and no
    * component owns the body. That token stays this product's, in app.css.
    *
+   * Two more arrived at design v1.38.0 rather than with the adoption, and the
+   * gap is worth keeping written down: §6.3 promised four things and the first
+   * build shipped only the ARIA, which is markup. Escape and the focus round
+   * trip both needed code, and this page did not write them — a mitreden-local
+   * copy of shared behaviour is the divergence the extraction exists to end, so
+   * the fix went into the component and came back through the pin. The drawer
+   * answers Escape and takes focus to its `✕`, and hands focus back to whatever
+   * opened it; above 820px neither applies, because up here the column covers
+   * nothing and Escape belongs to whatever the person is working in.
+   * e2e/mobile.spec.ts holds the two, e2e/app.spec.ts the third.
+   *
    * ## Why the sidebar and the topbar are not inside <main>
    *
    * `main` is the work column — 720px, centred, with the footer pinned to its
