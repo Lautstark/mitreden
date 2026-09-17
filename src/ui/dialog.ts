@@ -17,6 +17,17 @@
  *
  * `t` is called per invocation and never captured: this page changes language
  * without reloading, and a label read once would be the previous language's.
+ *
+ * ## `nameParts` is gone, which is what it was written to be
+ *
+ * It gathered the one place this product reached past
+ * @lautstark/design/svelte/Sheet — writing `#infoclose`, `#setupclose`,
+ * `#colvoiceclose` and `#infobody` onto elements the frame drew — into a
+ * single function, and said in so many words that the fix was a `closeId` and
+ * a `bodyId` beside `id` in the package. design v1.35.0 has both, so the two
+ * dialogs that own their own `Sheet` pass `closeId` and this is deleted rather
+ * than kept working. The third, `#info`, is `./svelte/Legal` now and forwards
+ * neither — see ui/InfoSheet.svelte, which says so rather than reaching.
  */
 
 import { confirmDialog as ask, openDialog as open } from '@lautstark/design/dialog';
@@ -35,39 +46,4 @@ export function confirmDialog(
     & Partial<Pick<ConfirmOptions, 'cancelLabel' | 'closeLabel'>>,
 ): Promise<boolean> {
   return ask({ cancelLabel: t('cancel'), closeLabel: t('close'), ...options });
-}
-
-/**
- * The two parts of the shared frame this product names, and the one place it
- * reaches past it.
- *
- * @lautstark/design/svelte/Sheet takes an `id` for the `<dialog>` — because
- * vorlaut's `#legal` is 520px by an id selector — and takes none for the ✕ it
- * draws or for the `.body` region. mitreden has four ids on those two
- * elements that its suite clicks and reads: `#infoclose`, `#setupclose`,
- * `#colvoiceclose` and `#infobody`. Losing them would be a change to three
- * e2e files to suit a refactor of the markup under them.
- *
- * `dialog` is a prop of that component for exactly this kind of reach —
- * conventions.md §6.1, "the element, for the caller that has to reach it" —
- * and an id written here stays written, because the frame declares none on
- * either element and so has no attribute to re-render over it. That is the
- * difference from wochenwerk's `setAttribute` on `aria-label`, which §6.1
- * names as a defect: that one fights a value the frame itself draws.
- *
- * It is still a reach, and the fix is a `closeId` and a `bodyId` beside `id`
- * in the package. This is the three call sites that want them, gathered into
- * one function, so that adopting those props later is one edit here and none
- * in the components.
- */
-export function nameParts(
-  dialog: HTMLDialogElement | undefined,
-  ids: { close: string; body?: string },
-): void {
-  if (!dialog) return;
-  const close = dialog.querySelector('.head > button');
-  if (close && close.id !== ids.close) close.id = ids.close;
-  if (!ids.body) return;
-  const body = dialog.querySelector(':scope > .body');
-  if (body && body.id !== ids.body) body.id = ids.body;
 }

@@ -300,6 +300,20 @@ button,input,select,textarea{font:inherit;color:inherit}
    scoped to the dialog that takes it. #info and #colvoice are ordinary sheet
    bodies and are left alone. */
 #setup>.body{color:inherit;font-size:inherit}
+/* @lautstark/design/svelte/Legal draws a `<section>` per page and hides the two
+   that are not showing, so that a locator under any of the three resolves
+   whichever one is open (conventions.md §6.12). That box sits between
+   `.sheet > .body` and this product's prose, and the two rules that space that
+   prose are **child** combinators — so they stop reaching it, and the first
+   paragraph of a page, which sets only its own `margin-top`, would have gained
+   the browser's 1em below it and pushed the rest of the sheet down with it.
+
+   Said again here, one level down, with components.css's own values. A
+   `<section>` has no margin and no padding of its own, so this is the same
+   page it was: info.png is unchanged by the adoption, by construction rather
+   than by luck. */
+#info>.body>section>p{margin:0}
+#info>.body>section>p+p{margin-top:10px}
 /* `.chips` went with the picker. The row above the sentences had already gone
    (every sentence names its own voice, so a pill reading "Thorsten 12"
    restated the list underneath it), which left the voice picker's language

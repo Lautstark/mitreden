@@ -3,54 +3,70 @@
    * The three pages the footer opens: what this is, and the two German legal
    * ones. bildhaft's shape — dialogs in the app, not pages beside it.
    *
-   * One dialog for all three, because they are one shape with different words;
-   * `page` is which of them is showing, and null is closed.
+   * ## The whole dialog is @lautstark/design/svelte/Legal
    *
-   * ## The frame is @lautstark/design/svelte/Sheet
+   * conventions.md §6.12, over §6.1's `Sheet`. One dialog with every page in
+   * it, which is the shape this file already had: `page` was a `Page | null`
+   * and the title and the body swapped. What the component adds is two things
+   * this copy did not have —
    *
-   * It was hand-written markup until 2026-09-17, and what kept it that way was
-   * two pixel differences rather than a disagreement: the ✕ was
-   * `.btn.quiet.icon` where the package's is `.btn.icon`, and the prose sat in
-   * a bare `<div id="infobody">` rather than in a `.body`, so the shared
-   * region rule never reached it. conventions.md §6.1 settles both against
-   * this copy — converging the other way would move every sheet in the family
-   * that already goes through `openDialog`, and those are not the copies being
-   * replaced — so info.png was re-recorded with the change that moved it.
+   * - **every section is drawn and the ones not showing are `hidden`**, which
+   *   is vorlaut's shape and has to be, because its markup is addressed and
+   *   mounting one page at a time would make whether a locator resolves depend
+   *   on which page happened to be open. It costs this product nothing: the
+   *   bodies are one built HTML string each (ui/info.ts argues that, and the
+   *   frame being shared did not change it);
+   * - **from the top, every time.** A sheet keeps its scroll position, and the
+   *   privacy notice is long enough that reopening it half way down reads as a
+   *   page starting in the middle of a sentence. vorlaut's finding, and the
+   *   one behaviour in the component that is not markup.
    *
-   * `open` is one-way here, which §6.1 says is not the lesser form: `page` is
-   * a `Page | null` and `bind:` cannot take a `$derived`, so the sheet is told
-   * whether to be open and `onclose` is what puts the null back.
+   * The accessible name is the current page's title, through §6.1's thunk — so
+   * a reader that announces the dialog says „Impressum" while the Impressum is
+   * showing.
    *
-   * The `head` snippet is not decoration either — it is what carries
-   * `#infotitle`, which two e2e files read. §6.1: head *replaces* the `<h2>`,
-   * so this is the heading rather than a second one beside a hidden one.
+   * ## Three ids this product lost, and they are the package's to give back
+   *
+   * `#infotitle`, `#infobody` and `#infoclose` were this dialog's heading, its
+   * body region and its ✕, and three e2e assertions named each. `Sheet` takes
+   * `closeId` and `bodyId` as of design v1.35.0 and the other two dialogs in
+   * this product take them — but `Legal` forwards neither, and it draws the
+   * `<h2>` itself through the title thunk, so there is no seam for a heading
+   * id either. Round 2's rule is that a missing prop is said out loud rather
+   * than written onto the frame afterwards, so `nameParts` is gone from this
+   * file and the three assertions reach the same three elements structurally
+   * until `Legal` grows `closeId`, `bodyId` and a `titleId`.
+   *
+   * What the component *does* give is a per-page `<section>` id, and the three
+   * below are new and are the better half of the trade: each page is nameable
+   * whether or not it is the one showing.
    */
-  import Sheet from '@lautstark/design/svelte/Sheet';
-  import type { Page } from './info.ts';
-  import { nameParts } from './dialog.ts';
+  import Legal from '@lautstark/design/svelte/Legal';
+  import { htmlOf, PAGES, titleOf, type Page } from './info.ts';
   import { t } from './words.svelte.ts';
 
   let { page = $bindable() }: { page: Page | null } = $props();
 
-  let dialog = $state<HTMLDialogElement | undefined>(undefined);
-  $effect(() => nameParts(dialog, { close: 'infoclose', body: 'infobody' }));
+  /* `$derived`, because the about page's title follows the language and this
+     page changes language without reloading. The ids are this product's names
+     for the three sections; nothing in any stylesheet selects them. */
+  const pages = $derived(PAGES.map((key) => ({
+    key, title: titleOf(key), id: `info-${key}`,
+  })));
 </script>
 
-<!-- `closeLabel` is read here rather than captured: `t` is a dependency of
-     whatever drew with it (ui/words.svelte.ts), and this page changes language
-     without reloading — a label taken once would be the language the reader
-     has just left. -->
-<Sheet
-  id="info"
-  open={page !== null}
-  title={page?.title ?? ''}
-  closeLabel={t('close')}
-  onclose={() => { page = null; }}
-  bind:dialog
->
-  {#snippet head()}<h2 id="infotitle">{page?.title ?? ''}</h2>{/snippet}
-  <!-- Straight into the `.body`, with no box in between: `.sheet > .body > p`
-       and `> p + p` are the rules that space this prose, and they are direct
-       children. -->
-  {@html page?.html ?? ''}
-</Sheet>
+<!-- `bind:page`, which is the form Legal asks for and which this dialog can
+     give it: `page` really is the key, and every way out — the ✕, Escape, a
+     press outside — has to end with this and the dialog agreeing rather than
+     one of them left behind.
+
+     `closeLabel` is read here rather than captured, for the language's reason
+     again: `t` is a dependency of whatever drew with it. -->
+<Legal id="info" bind:page {pages} closeLabel={t('close')}>
+  <!-- Straight into the section, with no box in between. The prose is three
+       HTML strings (ui/info.ts) and `.sheet > .body > p` no longer reaches
+       through the `<section>` Legal draws — src/styles/app.css says the same
+       two rules one level down, with components.css's own values, so this is
+       the same page it was. -->
+  {#snippet children(key)}{@html htmlOf(key as Page)}{/snippet}
+</Legal>

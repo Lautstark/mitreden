@@ -7,10 +7,25 @@
  * page's language.
  *
  * What is here is the prose and nothing else. It used to reach into #info by id
- * and show the dialog itself; the sheet is InfoSheet.svelte now and this hands
- * it a title and a body. Still HTML strings rather than markup, because these
- * are three pages of legal text with links in them and a component per
- * paragraph would be a worse way to read the same words.
+ * and show the dialog itself; the sheet is InfoSheet.svelte now and this answers
+ * it with a title and a body per page.
+ *
+ * ## Still strings, and the frame being shared did not change that
+ *
+ * @lautstark/design/svelte/Legal draws every page at once and hides the two
+ * that are not showing (conventions.md §6.12), so the question of what a page
+ * *is* came up again. It is still an HTML string behind `{@html}`, for the
+ * reason it always was: these are three pages of legal text with links in them,
+ * and a component per paragraph would be a worse way to read the same words.
+ * vorlaut's are markup because its are *addressed* — forty-one ids beneath the
+ * three sections, several of them e2e locators — and that is a reason this
+ * product does not have. §6.12 counts on it either way: „their bodies are one
+ * built HTML string each" is what makes drawing all three cost nothing.
+ *
+ * What changed is the shape of the answer. A page used to be a `{title, html}`
+ * object the footer handed over; it is a **key** now, because Legal holds the
+ * pages and needs to know which one is showing before it asks for any prose.
+ * The two lookups below are what it asks with.
  */
 
 import { lang } from './words.svelte.ts';
@@ -31,9 +46,12 @@ const ext = (href: string, text: string): string =>
 const h3 = (text: string, first = false): string =>
   `<h3 style="font-size:14px;margin:${first ? '0' : '18px'} 0 6px">${text}</h3>`;
 
-/** A title and a body, which is all a sheet in this product is. The sheet
- *  itself is InfoSheet.svelte; what is written in it is here. */
-export interface Page { title: string; html: string }
+/** Which of the three. The sheet itself is InfoSheet.svelte; what is written
+ *  in it is here. */
+export type Page = 'about' | 'impressum' | 'datenschutz';
+
+/** In the order the footer offers them, which is the order they are drawn. */
+export const PAGES: readonly Page[] = ['about', 'impressum', 'datenschutz'];
 
 const ABOUT = {
   de: `
@@ -136,13 +154,8 @@ const ABOUT = {
     </p>`,
 };
 
-export const about = (): Page => ({
-  title: lang() === 'de' ? 'Was ist mitreden?' : 'What is mitreden?',
-  html: ABOUT[lang()],
-});
-
 /** Pflichtangaben nach § 5 DDG — deutsch, weil die Pflicht es ist. */
-export const impressum = (): Page => ({ title: 'Impressum', html: `
+const IMPRESSUM = (): string => `
   ${h3('Angaben gemäß § 5 DDG', true)}
   <p style="margin:0">
     Stefanie Grewenig<br>Talheide 5<br>21149 Hamburg<br>Deutschland
@@ -172,10 +185,10 @@ export const impressum = (): Page => ({ title: 'Impressum', html: `
   <p style="margin:0">
     Zur Teilnahme an einem Streitbeilegungsverfahren vor einer
     Verbraucherschlichtungsstelle bin ich weder verpflichtet noch bereit.
-  </p>` });
+  </p>`;
 
 /** Art. 13 DSGVO. Kurz, weil fast nichts passiert: es gibt keinen Server. */
-export const datenschutz = (): Page => ({ title: 'Datenschutz', html: `
+const DATENSCHUTZ = (): string => `
   <p style="margin-top:0">
     mitreden läuft vollständig in deinem Browser. Es gibt keinen Server von uns,
     keine Konten, keine Auswertung und keine Werbung. Deine Sätze und Aufnahmen
@@ -225,4 +238,19 @@ export const datenschutz = (): Page => ({ title: 'Datenschutz', html: `
     Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit,
     Widerspruch und Beschwerde bei einer Aufsichtsbehörde — wobei hier schlicht
     nichts vorliegt, worüber Auskunft zu geben wäre.
-  </p>` });
+  </p>`;
+
+/**
+ * The heading, and so the dialog's accessible name while that page is showing.
+ *
+ * The two legal ones are German because the obligation is; the about follows
+ * the page's language, and `lang()` is read here rather than captured because
+ * this page changes language without reloading.
+ */
+export const titleOf = (page: Page): string => page === 'impressum' ? 'Impressum'
+  : page === 'datenschutz' ? 'Datenschutz'
+    : lang() === 'de' ? 'Was ist mitreden?' : 'What is mitreden?';
+
+/** The prose. Built on the call rather than held, for `titleOf`'s reason. */
+export const htmlOf = (page: Page): string => page === 'impressum' ? IMPRESSUM()
+  : page === 'datenschutz' ? DATENSCHUTZ() : ABOUT[lang()];
