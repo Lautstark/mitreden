@@ -3,7 +3,7 @@ import { onChanged } from '../../src/db/db.ts';
 import { dropAudio, putAudio } from '../../src/db/audio.ts';
 import { dropCollection, putCollection, putCollections } from '../../src/db/collections.ts';
 import { dropPhrase, putPhrase, putPhrases } from '../../src/db/phrases.ts';
-import { saveSettings } from '../../src/db/settings.ts';
+import { patchSettings, saveSettings } from '../../src/db/settings.ts';
 import { wipe } from '../../src/db/wipe.ts';
 
 /**
@@ -91,6 +91,14 @@ describe('the change notifier', () => {
 
   it('saveSettings() announces the write', async () => {
     await saveSettings({ voice: 'v' });
+    expect(heard).toBe(1);
+  });
+
+  /* The writer every preference actually goes through — repo.ts's five save*
+     are each one call to it. Once per call and not once per field: a merge
+     that moved three of them is still one change to the Sicherung. */
+  it('patchSettings() announces the write, once', async () => {
+    await patchSettings({ voice: 'v', railOpen: true });
     expect(heard).toBe(1);
   });
 

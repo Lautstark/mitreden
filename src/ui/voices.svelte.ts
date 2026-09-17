@@ -118,48 +118,29 @@ export function relangVoice(): void {
 }
 
 /**
- * The writes below, one after another rather than at once.
- *
- * `saveVoice` reads the settings record, merges the voice into it and puts it
- * back — two transactions with an await between them, so two calls in flight at
- * the same time can commit in the order their *reads* happened to resolve
- * rather than the order they were asked for. The last voice pressed then is not
- * the voice that was stored, and the page and the database disagree until a
- * reload settles it the wrong way.
- *
- * It was always possible and it was never seen, because the picker used to be
- * repainted synchronously on every pick and a repaint of several hundred rows
- * is long enough for a write to land before the next press can arrive. Taking
- * that repaint out — which is the whole point of drawing from runes — took the
- * spacing with it, and `e2e/app.spec.ts` began failing about once in forty
- * runs: arrow down, arrow up, and the row above the chosen one comes back after
- * a reload.
- *
- * A chain rather than a lock: nothing here needs to *wait*, it needs the writes
- * to be in the order the presses were. The fix belongs in db/repo.ts in the
- * end — every `save*` there is the same read-modify-write — but this is the one
- * that is pressed three times in a second.
- */
-let writing: Promise<unknown> = Promise.resolve();
-
-/**
  * Picking the default. It records nothing and reaches into no Sammlung that
  * already exists — createCollection copies it in at creation and nothing else
  * reads it except a Sammlung that never got one, and a sentence in none.
+ *
+ * This used to put its writes in a chain of its own. `saveVoice` was a read of
+ * the settings record, a merge and a put — two transactions with an await
+ * between them — so two presses a moment apart could commit in the order their
+ * *reads* resolved rather than the order they were pressed, and the row above
+ * the chosen one came back after a reload about one run in forty-eight. The
+ * chain is gone because the defect is: `saveVoice` is one transaction now, and
+ * db/settings.ts's patchSettings holds the order for every preference rather
+ * than this one holding it for itself. See the note there.
  */
 export async function pickVoice(id: string): Promise<void> {
   if (!id || id === chosen) return;
   deliberate = true;
-  // Behind whatever is already going, and still there if that one threw.
-  writing = writing.catch(() => undefined).then(() => saveVoice(id));
-  await writing;
-  /* After the write, not before it — which is where the vanilla build put it
-     too, by accident of having to call a redraw and having nowhere else to call
-     it from. It matters: the mark on the row and the name beside the composer
-     are this page saying the voice *is* the one that was pressed, and a page
-     reloaded in the half-second between the press and the write would otherwise
-     come back showing a different one. Drawn from a rune, the optimistic
-     version is what you get unless you say not to. */
+  await saveVoice(id);
+  /* After the write, not before it, and that half is a separate decision from
+     the ordering above — it survives the fix. The mark on the row and the name
+     beside the composer are this page saying the voice *is* the one that was
+     pressed, and a page reloaded in the half-second between the press and the
+     write would otherwise come back showing a different one. Drawn from a rune,
+     the optimistic version is what you get unless you say not to. */
   chosen = id;
   const picked = voiceById(id);
   if (picked) say(t('voice_now_default', { voice: picked.label }));

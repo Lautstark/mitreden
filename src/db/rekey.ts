@@ -43,7 +43,7 @@
  */
 
 import { allPhrases, putPhrases } from './phrases.ts';
-import { loadSettings, saveSettings } from './settings.ts';
+import { loadSettings, patchSettings } from './settings.ts';
 import { fingerprint, formerNames } from '../core/ids.ts';
 import type { Phrase } from '../core/types.ts';
 
@@ -91,6 +91,6 @@ export async function rekeyIfNeeded(): Promise<number> {
   // Last, and only once every sentence above is written: an interrupted run
   // leaves the mark unset and simply happens again, which is why the pass is
   // written to be idempotent rather than resumable.
-  await saveSettings({ ...await loadSettings(), keyScheme: KEY_SCHEME });
+  await patchSettings({ keyScheme: KEY_SCHEME });
   return moved.length;
 }

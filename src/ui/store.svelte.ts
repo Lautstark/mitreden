@@ -73,9 +73,9 @@ export function closeCollection(id: string): void {
  *
  * Most of what moves on this page has nothing to do with which Sammlung is
  * open. Writing the settings record each time would be harmless in the store
- * and loud everywhere else: saveSettings announces a change through db.ts's
- * notifier, so the standing backup would reschedule itself on every keystroke
- * that redraws a row.
+ * and loud everywhere else: every writer of it announces a change through
+ * db.ts's notifier, so the standing backup would reschedule itself on every
+ * keystroke that redraws a row.
  */
 let remembered: string | null = null;
 
