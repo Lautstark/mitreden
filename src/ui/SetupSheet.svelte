@@ -41,6 +41,7 @@
   import { onDestroy } from 'svelte';
   import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
+  import Vanilla from '@lautstark/design/svelte/Vanilla';
   import { wherePanel } from '@lautstark/sicherung/ablage-panel';
   import { backupPanel, type BackupPanel } from '@lautstark/sicherung/backup-panel';
   import type { Sicherung } from '@lautstark/sicherung';
@@ -54,7 +55,6 @@
   import { exportAll, importFile, wipeEverything } from './settings.ts';
   import { lang, setLang, sourceOf, speaks, t, tn, type Key } from './words.svelte.ts';
   import { busy, say } from './dom.ts';
-  import Vanilla from './pieces/Vanilla.svelte';
   import VoicePicker from './pieces/VoicePicker.svelte';
 
   let { open = $bindable(), backup }: { open: boolean; backup: Sicherung } = $props();
