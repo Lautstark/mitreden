@@ -15,18 +15,22 @@
  *
  * ## The shape this file is in
  *
- * The frame is @lautstark/design/dialog's, through ui/sheet.svelte.ts, and the
- * contents are two components mounted into the frame's own body and foot. What
- * is here is the state the three answers live in and the one function that
- * opens the thing — which is all this file ever was underneath the 150 lines of
+ * The frame is @lautstark/design/svelte/sheet's `openSheet`, and the contents
+ * are two components mounted into the frame's own body and foot. What is here
+ * is the state the three answers live in and the one function that opens the
+ * thing — which is all this file ever was underneath the 150 lines of
  * `document.createElement` and `style.cssText` that drew it. `draw()` is gone
  * outright: the summary sentence, the grid and the sheet's own name all follow
  * the three fields because they read them.
+ *
+ * ui/sheet.svelte.ts stood between this file and the package and is gone: it
+ * was this product's copy of the arrangement conventions.md §6.1 now ships,
+ * and its one caller is here.
  */
 
+import { openSheet } from '@lautstark/design/svelte/sheet';
 import { DEFAULT_SHEET, SHEETS, type Sheet } from '../core/anybook.ts';
 import { loadSettings } from '../db/settings.ts';
-import { openSheet } from './sheet.svelte.ts';
 import { t } from './words.svelte.ts';
 import PenExportBody from './PenExportBody.svelte';
 import PenExportFoot from './PenExportFoot.svelte';
@@ -48,16 +52,36 @@ export interface Choosing {
   /** How many sentences want a circle. Read only to say how much room is
    *  needed; nothing here touches the recordings. */
   sentences: number;
-  /** Filled by the foot when the export is confirmed, read by `onClose`. */
-  answer: PenChoice | null;
+  /**
+   * The answer, given by the press that gave it, and only the first one counts.
+   *
+   * This replaces a `answer: PenChoice | null` field that the foot wrote and
+   * `onClose` read. See `askPenExport` for why that had to go; what matters
+   * here is that a foot button says what it decided rather than leaving a note
+   * for whatever runs next.
+   */
+  settle(choice: PenChoice | null): void;
 }
 
 /**
  * Asks, and resolves null if the reader closes it any other way.
  *
- * The promise settles from `onClose` alone, which is every way out at once —
- * the ✕, Escape, a press outside, Abbrechen, and the confirm, which closes the
- * sheet itself after writing its answer down.
+ * ## It no longer settles from `close` alone, and that was a real bug
+ *
+ * It used to: the foot wrote its answer onto the shared state, closed the
+ * sheet, and `onClose` resolved the promise with whatever it found there. Two
+ * comments in this file argued for that as "one exit for every way out", and
+ * conventions.md §3.4 spells out why it is the wrong one — a promise resolved
+ * from `close` alone "hangs forever on any host that closes the dialog without
+ * firing it", and the caller then waits for the life of the page while the
+ * person looks at a button that did nothing. There is no failing assertion in
+ * a promise that stays pending, which is why it read as working.
+ *
+ * §3.4's shape, and `confirmDialog`'s: the two footer presses settle it
+ * themselves, `onClose` settles it null for the dismissal paths — the ✕,
+ * Escape, a press outside — and a `settled` guard means whichever arrives
+ * first is the answer. §6.1 recorded this file as the one place in the family
+ * diverging from §3.4; it no longer is.
  */
 export async function askPenExport(sentences: number): Promise<PenChoice | null> {
   const remembered = (await loadSettings()).pen;
@@ -70,18 +94,37 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
   const start = remembered?.sheet === sheet.id && remembered.next > 1
     && remembered.next <= sheet.cols * sheet.rows ? remembered.next : 1;
 
-  const s = $state<Choosing>({ sheet, startCode: true, start, sentences, answer: null });
+  /* Replaced on the next line, before anything can reach it: the promise is
+     what owns the guard, and `openSheet` is not called until it does. A field
+     rather than a closure threaded through two components because `s` is the
+     only thing the frame hands them (§6.1's `SheetContent`). */
+  const s = $state<Choosing>({ sheet, startCode: true, start, sentences, settle: () => {} });
 
   return new Promise<PenChoice | null>((done) => {
+    let settled = false;
+    s.settle = (choice: PenChoice | null): void => {
+      if (settled) return;
+      settled = true;
+      /* $state.snapshot, because what leaves here is written to the database by
+         savePen() and handed to penProject() — and a proxy is refused by
+         structuredClone and by IndexedDB both. The foot builds the object out
+         of `s`, so `sheet` on it is still one. */
+      done(choice ? $state.snapshot(choice) as PenChoice : null);
+    };
+
     openSheet({
       title: t('pen_ask_title'),
+      /* Per call, like ui/dialog.ts's: this page changes language without
+         reloading and a label captured at module scope would be the previous
+         one. A sheet opened now is named in the language showing now. */
+      closeLabel: t('close'),
       state: s,
       body: PenExportBody,
       foot: PenExportFoot,
-      /* $state.snapshot, because what leaves here is written to the database by
-         savePen() and handed to penProject() — and a proxy is refused by
-         structuredClone and by IndexedDB both. */
-      onClose: () => done(s.answer ? $state.snapshot(s.answer) as PenChoice : null),
+      /* The dismissal paths only. The two presses in the foot have already
+         settled it by the time this runs, and the guard is what makes that
+         true rather than hoped for. */
+      onClose: () => s.settle(null),
     });
   });
 }
