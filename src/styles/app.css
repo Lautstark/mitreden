@@ -272,6 +272,34 @@ button,input,select,textarea{font:inherit;color:inherit}
    said since that change that #info and #colvoice stay 600. Now they do. */
 .sheet::backdrop{background:rgba(22,20,17,.38);backdrop-filter:blur(3px)}
 .sheet .sub{margin:0 0 14px}
+/* The settings sheet's body region hands its two inherited values straight
+   back, and this rule is one half of a decision rather than a tweak.
+   design/docs/conventions.md §6.1 leaves a fork open for this dialog: it had no
+   `.body` at all — the panels were the dialog's own children — and
+   @lautstark/design/svelte/Sheet always draws one. `.sheet > .body` sets
+   `color` and `font-size`, both **inherited**, so a child combinator protects
+   the region's own children and nothing under them: six panel headings lose
+   their colour, and `.where-panel p`, `.where` and `.backup-panel > p` — markup
+   @lautstark/sicherung draws, not this product — move with them.
+
+   §6.1's fork is "either the panels keep their colour by a rule that says so,
+   or #setup keeps a body-less shape". This is that rule. The reason it is worth
+   a rule is `wo-alles-liegt.png`: it is the one baseline in this product that
+   photographs another repository's panels, e2e/visual.spec.ts says that is what
+   it exists to watch, and re-recording it inside a change to *this* package's
+   frame would spend the evidence it was taken for.
+
+   `inherit` rather than the two values written out, because the values are not
+   the point — the *absence of a change* is. Whatever `dialog#setup` computes is
+   what its panels computed before the region existed, and will still be after
+   somebody changes the page's type scale. Writing `15px` here would be a second
+   copy of a number to keep in step, and the first divergence would be silent.
+
+   An id selector, which is (1,0,1) against `.sheet > .body`'s (0,2,0) — this is
+   one dialog's exception and not a change to what a sheet body is, so it is
+   scoped to the dialog that takes it. #info and #colvoice are ordinary sheet
+   bodies and are left alone. */
+#setup>.body{color:inherit;font-size:inherit}
 /* `.chips` went with the picker. The row above the sentences had already gone
    (every sentence names its own voice, so a pill reading "Thorsten 12"
    restated the list underneath it), which left the voice picker's language

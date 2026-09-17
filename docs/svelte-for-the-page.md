@@ -65,6 +65,28 @@ Not chosen, and why: the same four as the pilot — vanilla with one idiom, Reac
 or Preact, Lit, Solid — for the same four reasons, which are written out over
 there and are not this product's to restate.
 
+**Amended 2026-09-17, and three of those four bullets have moved.** They are
+left standing because what they say about *that* commit is true and the reason
+they were written is the useful part; what follows is where they stand now.
+
+- The frame is `@lautstark/design/svelte/Sheet` and the six settings panels are
+  `@lautstark/design/svelte/Panel` — the last bullet under Consequences
+  predicted exactly this and set the bar ("a shared frame has to be able to
+  draw them without moving a pixel, or it takes six baselines with it"). It
+  took three of the six, not none and not all: the ✕ went `.btn.quiet.icon` →
+  `.btn.icon` in all three sheets and `#info` gained a real `.body`, so
+  `einstellungen.png`, `info.png` and `sammlungsstimme.png` were re-recorded
+  with the change that moved them. `wo-alles-liegt.png`, `standardstimme.png`
+  and `alles-loeschen.png` did not move, and that was bought rather than
+  found — see `#setup > .body` in `src/styles/app.css`, which is the whole of
+  the argument.
+- `ui/sheet.svelte.ts` is gone; `@lautstark/design/svelte/sheet`'s `openSheet`
+  is the same arrangement, shipped. `ui/dialog.ts` stays, because
+  `@lautstark/design/dialog` still draws every confirmation.
+- `pieces/Vanilla.svelte` went to the package in round 1 and the import is
+  `@lautstark/design/svelte/Vanilla`. `pieces/` holds `VoicePicker.svelte`
+  alone now.
+
 ## What moved, and what stayed
 
 `src/ui/` went from thirteen modules to ten components and eight modules. What

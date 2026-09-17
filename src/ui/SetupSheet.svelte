@@ -29,16 +29,33 @@
    * still here, because the *first* frame of the *first* visit has not, and a
    * state is what this summary is for while empty is not.
    *
-   * ## The frame
+   * ## The frame, and the one rule that had to come with it
    *
-   * Hand-written `<dialog class="sheet panels">` rather than
-   * @lautstark/design/dialog's frame, for InfoSheet.svelte's reason and one
-   * more: this sheet has no `.body` region at all — the panels are the dialog's
-   * own children, which is what `.sheet.panels` in components.css lays out —
-   * and the package's frame wraps its contents in one. einstellungen.png is
-   * compared at a tolerance of zero.
+   * @lautstark/design/svelte/Sheet since 2026-09-17, and the six panels are
+   * @lautstark/design/svelte/Panel. What kept this dialog hand-written was
+   * that it had no `.body` region at all — the panels were the dialog's own
+   * children — and the shared frame always draws one. `.sheet > .body` sets
+   * `color: var(--text-dim)` and `font-size: 14px`, and both are **inherited**
+   * rather than selected, so a child combinator cannot protect what is under
+   * them: every panel heading in this column would lose its colour, and
+   * `.where-panel p`, `.where` and `.backup-panel > p` — markup two *other*
+   * packages draw — would shift with it.
+   *
+   * conventions.md §6.1 leaves that at a fork and names the reason: „Wo alles
+   * liegt" is the one shot in this product that photographs another
+   * repository's panels, and e2e/visual.spec.ts says that is exactly what it
+   * exists to watch. Re-recording it inside a design-frame change spends the
+   * evidence it was taken for. So this took the first branch of the fork — the
+   * panels keep their colour by a rule that says so — and that rule is
+   * `#setup > .body` in src/styles/app.css, which hands the inherited pair
+   * straight back. wo-alles-liegt.png, standardstimme.png and
+   * alles-loeschen.png are unchanged by this commit, and that is by
+   * construction rather than by luck: nothing inside the body region inherits
+   * anything it did not inherit before.
    */
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import Panel from '@lautstark/design/svelte/Panel';
+  import Sheet from '@lautstark/design/svelte/Sheet';
   import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
@@ -55,15 +72,60 @@
   import { exportAll, importFile, wipeEverything } from './settings.ts';
   import { lang, setLang, sourceOf, speaks, t, tn, type Key } from './words.svelte.ts';
   import { busy, say } from './dom.ts';
+  import { nameParts } from './dialog.ts';
   import VoicePicker from './pieces/VoicePicker.svelte';
 
   let { open = $bindable(), backup }: { open: boolean; backup: Sicherung } = $props();
 
-  let sheet: HTMLDialogElement;
+  let dialog = $state<HTMLDialogElement | undefined>(undefined);
+  $effect(() => nameParts(dialog, { close: 'setupclose' }));
 
+  // ------------------------------------------------------------- das Falten
+
+  /**
+   * Which panel is unfolded, and why it is state rather than markup.
+   *
+   * `name="settings"` is the platform's own accordion, so opening one panel
+   * makes the browser **remove another's `open` attribute directly** — Svelte
+   * never sees it happen. A one-way prop would leave this record saying a
+   * panel is open while the DOM says it is folded, and on the next attempt to
+   * open it `set_attribute` would short-circuit against its own stale record
+   * and write nothing. That is the silent bug conventions.md §6.2 was
+   * rewritten for, and `bind:open` on every Panel below is the fix: each one
+   * writes itself back from `ontoggle`, so this record is what the browser
+   * actually did.
+   */
+  const PANELS = ['lang', 'voice', 'azure', 'theme', 'data', 'danger'];
+  /** §3.11: Sprache first, and the only one open. */
+  const OPENS_WITH = 'lang';
+  const arrival = (): Record<string, boolean> =>
+    Object.fromEntries(PANELS.map((one) => [one, one === OPENS_WITH]));
+  const folded = $state<Record<string, boolean>>(arrival());
+
+  /**
+   * §3.11 on **every** opening, which is where this product was out of
+   * compliance.
+   *
+   * The sheet is mounted for the life of the page, so „open on arrival" is not
+   * something the markup can say once and be done with: `open` was an
+   * attribute set at mount and never re-folded, so opening Azure, closing the
+   * sheet and opening it again gave you Azure open and Sprache folded — the
+   * two things §3.11 says must not happen, in the one sheet it is about.
+   *
+   * A count of openings rather than the flag itself, which is vorlaut's
+   * `foldEpoch()` shape: a sheet closed and opened again is two folds, and
+   * keying the re-fold on a number says that where keying it on a boolean only
+   * happens to.
+   */
+  let folds = $state(0);
+  /* `untrack` on both writes, and for the same reason each time: `folds += 1`
+     is a read as well as a write, and `folded[one] = …` goes through a state
+     proxy. An effect that depends on what it assigns is a loop rather than a
+     rule. */
+  $effect(() => { if (open) untrack(() => { folds += 1; }); });
   $effect(() => {
-    if (open && !sheet.open) sheet.showModal();
-    if (!open && sheet.open) sheet.close();
+    void folds;
+    untrack(() => { for (const one of PANELS) folded[one] = one === OPENS_WITH; });
   });
 
   // ------------------------------------------------------------ die Sprache
@@ -311,14 +373,19 @@
 <!-- `panels`: a column of <details>, 900px. This dialog showed the same column
      at 600px while wochenwerk showed it at 900, and wochenwerk was the one with
      a reason written down. See design/docs/conventions.md 4.14. #info and
-     #colvoice stay 600 — neither is a column of panels. -->
-<dialog id="setup" class="sheet panels" bind:this={sheet} onclose={() => { open = false; }}>
-  <div class="head">
-    <h2>{t('settings')}</h2>
-    <button id="setupclose" class="btn quiet icon" aria-label={t('close')}
-      onclick={() => { open = false; }}>✕</button>
-  </div>
+     #colvoice stay 600 — neither is a column of panels.
 
+     `bind:open` here rather than the one-way form, because this one really is
+     a boolean: App.svelte owns it and the frame writes it back on every way
+     out, which is what the hand-written `onclose` used to do. -->
+<Sheet
+  id="setup"
+  panels
+  bind:open
+  title={t('settings')}
+  closeLabel={t('close')}
+  bind:dialog
+>
   <!-- First, and open on arrival. Somebody who cannot read this page needs this
        panel before any of the others, and the two options below name themselves
        — „Deutsch" and „English" are the same words whichever language the rest
@@ -327,29 +394,26 @@
 
        It is also why nothing else opens on arrival: one panel open is a choice
        about which one somebody most needs, and this is the only one where not
-       reading the page is the case being answered. -->
-  <details class="panel" name="settings" id="p-lang" open>
-    <summary>
-      <span class="section">{t('panel_language')}</span>
-      <span class="state" id="langstate">{langState}</span>
-    </summary>
-    <div class="body">
-      <!-- The same segmented control as the scheme below it, and that pairing
-           is the point: two facts about this page, offered the same way. It was
-           a native select first — it drew its own chevron from a hex baked into
-           a data URI, which cannot read a token, so it was the one control that
-           could not follow the theme — and then a button and a menu, which put
-           the choice behind a press. A menu is for a list of things to do; this
-           is a list of what the page is. -->
-      <Vanilla node={langs.node} />
-      <!-- The key stays on the element as well as in the text. It is what
-           e2e/app.spec.ts names to ask that this sentence exists at all — the
-           one assertion in that file the compiler could not make — and the two
-           cannot drift, because the attribute and the lookup are the same
-           string on the same line. -->
-      <p class="hint" data-i18n="language_hint">{t('language_hint')}</p>
-    </div>
-  </details>
+       reading the page is the case being answered. The `open` attribute this
+       used to carry is `folded` above now — see there for why arrival state
+       cannot be markup in a sheet that is never unmounted. -->
+  <Panel id="p-lang" stateId="langstate" section={t('panel_language')}
+    state={langState} bind:open={folded.lang}>
+    <!-- The same segmented control as the scheme below it, and that pairing
+         is the point: two facts about this page, offered the same way. It was
+         a native select first — it drew its own chevron from a hex baked into
+         a data URI, which cannot read a token, so it was the one control that
+         could not follow the theme — and then a button and a menu, which put
+         the choice behind a press. A menu is for a list of things to do; this
+         is a list of what the page is. -->
+    <Vanilla node={langs.node} />
+    <!-- The key stays on the element as well as in the text. It is what
+         e2e/app.spec.ts names to ask that this sentence exists at all — the
+         one assertion in that file the compiler could not make — and the two
+         cannot drift, because the attribute and the lookup are the same
+         string on the same line. -->
+    <p class="hint" data-i18n="language_hint">{t('language_hint')}</p>
+  </Panel>
 
   <!-- The default a new Sammlung starts with, and not the voice the next
        sentence gets — which is what this panel used to say and what it stopped
@@ -357,165 +421,154 @@
        Sammlung records in is behind the ⋯ beside its name; conventions.md §3.10
        is the test that put it there, and the hint below is how somebody
        standing in front of this list finds it. -->
-  <details class="panel" name="settings" id="p-voice">
-    <summary>
-      <span class="section">{t('panel_voice_default')}</span>
-      <span class="state" id="voicestate">{voiceState}</span>
-    </summary>
-    <div class="body">
-      <p class="hint">{t('voice_default_hint')}</p>
-      <!-- The field, the language pills and the list are one block from
-           @lautstark/stimmquelle/voice-picker, which brings its own markup and
-           its own words in both languages. `#voices` is this page's name for
-           where the block goes; the suite reaches the field and the rows
-           through it. -->
-      <div id="voices">
-        <VoicePicker current={chosenVoice} pick={(id) => void pickVoice(id)} />
-      </div>
+  <Panel id="p-voice" stateId="voicestate" section={t('panel_voice_default')}
+    state={voiceState} bind:open={folded.voice}>
+    <p class="hint">{t('voice_default_hint')}</p>
+    <!-- The field, the language pills and the list are one block from
+         @lautstark/stimmquelle/voice-picker, which brings its own markup and
+         its own words in both languages. `#voices` is this page's name for
+         where the block goes; the suite reaches the field and the rows
+         through it. -->
+    <div id="voices">
+      <VoicePicker current={chosenVoice} pick={(id) => void pickVoice(id)} />
     </div>
-  </details>
+  </Panel>
 
-  <details class="panel" name="settings" id="p-azure">
-    <summary>
-      <span class="section">Azure Speech</span>
-      <!-- Which key, not merely that there is one: the last four characters
-           tell two keys apart without giving either away. It sits in the
-           panel's heading, so the answer is there before the panel is
-           opened. -->
-      <span class="state" id="azurestate">{!azureLoaded ? t('loading')
-        : azure ? t('key_hint', { hint: azure.key.slice(-4) }) : t('key_none')}</span>
-    </summary>
-    <div class="body" id="cloud">
-      <!-- The bare class names here are hooks for the suite, not components —
-           which is why none of them may be a name components.css owns. This
-           paragraph was `sub body` and sat inside the settings sheet, so the
-           shared `.sheet .body` region rule reached it and quietly took it from
-           15px to 14px. v1.4.1 made those rules child combinators and handed it
-           back; the rename is so it cannot be caught again by whatever the
-           vocabulary adds.
+  <!-- Which key, not merely that there is one: the last four characters tell
+       two keys apart without giving either away. It sits in the panel's
+       heading, so the answer is there before the panel is opened. -->
+  <Panel id="p-azure" stateId="azurestate" section="Azure Speech"
+    state={!azureLoaded ? t('loading')
+      : azure ? t('key_hint', { hint: azure.key.slice(-4) }) : t('key_none')}
+    bind:open={folded.azure}>
+    <!-- The bare class names here are hooks for the suite, not components —
+         which is why none of them may be a name components.css owns. This
+         paragraph was `sub body` and sat inside the settings sheet, so the
+         shared `.sheet .body` region rule reached it and quietly took it from
+         15px to 14px. v1.4.1 made those rules child combinators and handed it
+         back; the rename is so it cannot be caught again by whatever the
+         vocabulary adds.
 
-           No head and no card: the panel's summary names this and says whether
-           Azure holds a key, which is the whole point of a heading that carries
-           its state. -->
-      <div>
-        <!-- The probe line is a live region, and it is never hidden — §3.8. It
-             used to be toggled with `[hidden]` when no key was stored, which is
-             one of the two ways that section names for getting silence: the
-             element leaves the accessibility tree and comes back carrying its
-             next message. What is emptied now is the text, and empty it takes
-             no room — which is what lets it stay. The `{#if}` is what keeps
-             that true: a bound expression that is currently the empty string is
-             still a child, and `.probe:empty` is what removes the margin. -->
-        <p class="hint probe" role="status">{#if probe}{probe}{/if}</p>
-        <p class="sub says">{t('azure_body')}</p><p class="notice bad warn">{t('azure_warn')}</p>
-        <label for="azurekey">{t('key_field')}</label>
-        <input id="azurekey" class="field" type="password" autocomplete="off"
-          placeholder={azure ? `••••${azure.key.slice(-4)}` : ''} bind:value={key}>
-        <label class="region" for="azureregion">{t('region_field')}</label>
-        <input id="azureregion" class="field region" type="text" list="azureregions"
-          spellcheck="false" bind:value={region}>
-        <datalist id="azureregions">{#each AZURE_REGIONS as name}<option value={name}></option>{/each}</datalist>
-        <p class="hint region">{t('region_hint')}</p>
-        <div class="row"><button class="btn primary save" disabled={checking}
-          onclick={() => void saveKey()}>{checking ? t('key_checking') : t('key_save')}</button><button
-          class="btn quiet forget" hidden={!azure}
-          onclick={() => void forgetKey()}>{t('key_forget')}</button></div>
-      </div>
+         No head and no card: the panel's summary names this and says whether
+         Azure holds a key, which is the whole point of a heading that carries
+         its state.
+
+         `#cloud` is on this box rather than on the panel's `.body`, which is
+         where it sat while that div was this file's to write: Panel draws the
+         body and takes no id for it. Nothing in any stylesheet selects
+         `#cloud` — every use of it is an e2e locator, and all of them are
+         descendant selectors that still land. -->
+    <div id="cloud">
+      <!-- The probe line is a live region, and it is never hidden — §3.8. It
+           used to be toggled with `[hidden]` when no key was stored, which is
+           one of the two ways that section names for getting silence: the
+           element leaves the accessibility tree and comes back carrying its
+           next message. What is emptied now is the text, and empty it takes
+           no room — which is what lets it stay. The `{#if}` is what keeps
+           that true: a bound expression that is currently the empty string is
+           still a child, and `.probe:empty` is what removes the margin. -->
+      <p class="hint probe" role="status">{#if probe}{probe}{/if}</p>
+      <p class="sub says">{t('azure_body')}</p><p class="notice bad warn">{t('azure_warn')}</p>
+      <label for="azurekey">{t('key_field')}</label>
+      <input id="azurekey" class="field" type="password" autocomplete="off"
+        placeholder={azure ? `••••${azure.key.slice(-4)}` : ''} bind:value={key}>
+      <label class="region" for="azureregion">{t('region_field')}</label>
+      <input id="azureregion" class="field region" type="text" list="azureregions"
+        spellcheck="false" bind:value={region}>
+      <datalist id="azureregions">{#each AZURE_REGIONS as name}<option value={name}></option>{/each}</datalist>
+      <p class="hint region">{t('region_hint')}</p>
+      <div class="row"><button class="btn primary save" disabled={checking}
+        onclick={() => void saveKey()}>{checking ? t('key_checking') : t('key_save')}</button><button
+        class="btn quiet forget" hidden={!azure}
+        onclick={() => void forgetKey()}>{t('key_forget')}</button></div>
     </div>
-  </details>
+  </Panel>
 
   <!-- Beside the language, because both are what this page is rather than what
        is in it. The three answers are one control: "follows the OS" is an
        answer too, and the default one — a two-state switch has to open in light
        or dark and so has to guess, which is how a tablet that dims itself at
        dusk ends up pinned bright. -->
-  <details class="panel" name="settings" id="p-theme">
-    <summary>
-      <span class="section">{t('panel_theme')}</span>
-      <span class="state" id="themestate">{themeLabel(theme)}</span>
-    </summary>
-    <div class="body">
-      <!-- role=group, not radiogroup: components.css marks the choice with
-           aria-pressed, which is what bildhaft's print dialog already uses, and
-           a radiogroup whose children are not radios reads worse than a
-           labelled group of buttons. -->
-      <div class="segmented" id="theme" role="group" aria-label={t('panel_theme')}>{#each THEMES as option}<button
-        type="button" aria-pressed={option === theme} onclick={() => {
-          saveTheme(THEME_KEY, option);
-          applyTheme(option);
-          // Nothing else on the page depends on the scheme — the tokens do that
-          // work, which is the point of there being tokens.
-          theme = option;
-        }}>{themeLabel(option)}</button>{/each}</div>
-      <p class="hint">{t('theme_hint')}</p>
-    </div>
-  </details>
+  <Panel id="p-theme" stateId="themestate" section={t('panel_theme')}
+    state={themeLabel(theme)} bind:open={folded.theme}>
+    <!-- role=group, not radiogroup: components.css marks the choice with
+         aria-pressed, which is what bildhaft's print dialog already uses, and
+         a radiogroup whose children are not radios reads worse than a
+         labelled group of buttons. -->
+    <div class="segmented" id="theme" role="group" aria-label={t('panel_theme')}>{#each THEMES as option}<button
+      type="button" aria-pressed={option === theme} onclick={() => {
+        saveTheme(THEME_KEY, option);
+        applyTheme(option);
+        // Nothing else on the page depends on the scheme — the tokens do that
+        // work, which is the point of there being tokens.
+        theme = option;
+      }}>{themeLabel(option)}</button>{/each}</div>
+    <p class="hint">{t('theme_hint')}</p>
+  </Panel>
 
   <!-- Getting your work out and back, and nothing else. The id stays p-data;
        the heading is „Wo alles liegt" because that is the one subject left in
        here since the reset moved out below. -->
-  <details class="panel" name="settings" id="p-data">
-    <summary>
-      <span class="section">{t('panel_backup')}</span>
-      <span class="state" id="datastate">{dataState}</span>
-    </summary>
-    <div class="body">
-      <!-- The store: one panel for every Lautstark programme, built by
-           @lautstark/sicherung/ablage-panel so the words and the order are the
-           same wherever somebody meets them. Everything below it is what
-           mitreden offers besides the store. -->
-      <div id="wherebox"><Vanilla node={store.node} /></div>
-      <hr class="hair" />
-      <p class="subhead">{t('panel_keep')}</p>
-      <!-- No „Sicherung." in front of it any more: the panel is called that
-           now, and a lead repeating its own heading is a word somebody reads
-           twice to learn nothing. -->
-      <p class="notice">{t('backup_intro')}</p>
+  <Panel id="p-data" stateId="datastate" section={t('panel_backup')}
+    state={dataState} bind:open={folded.data}>
+    <!-- The store: one panel for every Lautstark programme, built by
+         @lautstark/sicherung/ablage-panel so the words and the order are the
+         same wherever somebody meets them. Everything below it is what
+         mitreden offers besides the store. -->
+    <div id="wherebox"><Vanilla node={store.node} /></div>
+    <hr class="hair" />
+    <p class="subhead">{t('panel_keep')}</p>
+    <!-- No „Sicherung." in front of it any more: the panel is called that
+         now, and a lead repeating its own heading is a word somebody reads
+         twice to learn nothing. -->
+    <p class="notice">{t('backup_intro')}</p>
 
-      <!-- The folder first, because it is the one that keeps working after
-           somebody stops thinking about it. Hidden outright where there is
-           nothing to offer. -->
-      <div id="folderbox" class="folderbox" hidden={!keeping}>{#if keeping}<Vanilla node={keeping.node} />{/if}</div>
+    <!-- The folder first, because it is the one that keeps working after
+         somebody stops thinking about it. Hidden outright where there is
+         nothing to offer. -->
+    <div id="folderbox" class="folderbox" hidden={!keeping}>{#if keeping}<Vanilla node={keeping.node} />{/if}</div>
 
-      <!-- The two halves of the same subject, side by side. „Sicherung
-           einlesen" used to be „Importieren" in the rail, a screen away from
-           the button that makes the file it reads — history rather than intent,
-           since that button predates there being a backup format and quietly
-           gained a second job when one arrived. It still does both: importFile
-           routes on the file's own shape. -->
-      <div class="row">
-        <!-- Not primary. The panel above is @lautstark/sicherung's and its
-             „Ordner wählen" already carries the accent fill, which design.md
-             §4.3 gives to one thing per screen. Two filled buttons a few pixels
-             apart in one colour read as a single control — a visual baseline
-             showed it the moment one was taken. -->
-        <button class="btn sm" id="export" onclick={() => void exportAll()}>{t('backup_export')}</button>
-        <button class="btn sm" id="import2" onclick={() => file.click()}>{t('backup_import')}</button>
-      </div>
-      <p class="hint">{t('backup_hint')}</p>
-      <input type="file" id="importfile" accept="application/json,.json" hidden bind:this={file}
-        onchange={(event) => {
-          const input = event.currentTarget;
-          const picked = input.files?.[0];
-          input.value = '';
-          if (picked) void importFile(picked);
-        }}>
+    <!-- The two halves of the same subject, side by side. „Sicherung
+         einlesen" used to be „Importieren" in the rail, a screen away from
+         the button that makes the file it reads — history rather than intent,
+         since that button predates there being a backup format and quietly
+         gained a second job when one arrived. It still does both: importFile
+         routes on the file's own shape. -->
+    <div class="row">
+      <!-- Not primary. The panel above is @lautstark/sicherung's and its
+           „Ordner wählen" already carries the accent fill, which design.md
+           §4.3 gives to one thing per screen. Two filled buttons a few pixels
+           apart in one colour read as a single control — a visual baseline
+           showed it the moment one was taken. -->
+      <button class="btn sm" id="export" onclick={() => void exportAll()}>{t('backup_export')}</button>
+      <button class="btn sm" id="import2" onclick={() => file.click()}>{t('backup_import')}</button>
     </div>
-  </details>
+    <p class="hint">{t('backup_hint')}</p>
+    <input type="file" id="importfile" accept="application/json,.json" hidden bind:this={file}
+      onchange={(event) => {
+        const input = event.currentTarget;
+        const picked = input.files?.[0];
+        input.value = '';
+        if (picked) void importFile(picked);
+      }}>
+  </Panel>
 
   <!-- Its own panel. It was an <h3> inside „Daten", which is a second heading
        level doing a panel's job: a destructive reset is not a data-management
        chore filed under the same word as making a backup, and a column whose
        last entry says „Alles löschen" is more honest than one where you have to
        open „Daten" to find it. vorlaut never put the wipe in its Daten panel;
-       this is the other two catching up. -->
-  <details class="panel" name="settings" id="p-danger">
-    <summary>
-      <span class="section">{t('danger_title')}</span>
-    </summary>
-    <div class="body">
-      <p class="hint danger__body">{t('danger_body')}</p>
-      <button class="btn destructive sm" id="wipe" onclick={() => void wipeEverything()}>{t('danger_do')}</button>
-    </div>
-  </details>
-</dialog>
+       this is the other two catching up. §3.12.
+
+       `state` is left undefined rather than passed as `''`, and the difference
+       is measurable: Panel draws the `.state` span only when there is a state,
+       and below 560px the summary is a two-column grid where an empty span is
+       a second row and 2px of summary. This panel is the one whose state is
+       unknowable — "everything" is not a quantity worth restating — so it has
+       never carried a span and still does not. -->
+  <Panel id="p-danger" section={t('danger_title')} state={undefined}
+    bind:open={folded.danger}>
+    <p class="hint danger__body">{t('danger_body')}</p>
+    <button class="btn destructive sm" id="wipe" onclick={() => void wipeEverything()}>{t('danger_do')}</button>
+  </Panel>
+</Sheet>

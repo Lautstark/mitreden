@@ -110,6 +110,48 @@ test('opening a panel closes the one open before it', async ({ page }) => {
   await expect(page.locator('#p-lang')).toHaveJSProperty('open', false);
 });
 
+/**
+ * §3.11 on the *second* opening, which is where this product was out of
+ * compliance until 2026-09-17.
+ *
+ * „Sprache first and the only one open" was an `open` attribute in the markup,
+ * and this sheet is mounted for the life of the page — so it was true once, at
+ * mount, and after that the sheet reopened however it had been left. Somebody
+ * who had opened Azure to paste a key met Azure every time afterwards, with the
+ * one panel written for a reader who cannot read the rest of the sheet folded
+ * away.
+ *
+ * The last two lines are the other half, and they are the reason `open` is
+ * bound rather than passed one way: `<details name>` is the native accordion,
+ * so the browser removes a panel's `open` attribute *itself*. A component whose
+ * own record still said „open" would short-circuit on the next write and put
+ * nothing in the DOM — the panel would simply refuse to open, with nothing red
+ * anywhere. design/docs/conventions.md §6.2.
+ */
+test('the panels fold back to Sprache on every opening, not only the first', async ({ page }) => {
+  await page.click('#gear');
+  await page.click('#p-azure > summary');
+  await expect(page.locator('#p-azure')).toHaveJSProperty('open', true);
+
+  await page.click('#setupclose');
+  await expect(page.locator('#setup')).not.toBeVisible();
+  await page.click('#gear');
+  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
+  await expect(page.locator('#p-azure')).toHaveJSProperty('open', false);
+
+  // And after an Escape, which closes the dialog without any of this page's
+  // own code being asked first.
+  await page.click('#p-theme > summary');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#setup')).not.toBeVisible();
+  await page.click('#gear');
+  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
+
+  // A panel the browser folded opens again.
+  await page.click('#p-theme > summary');
+  await expect(page.locator('#p-theme')).toHaveJSProperty('open', true);
+});
+
 test('the page language is offered the way the scheme beside it is', async ({ page }) => {
   await page.click('#gear');
   // No click: this panel is the one that opens on arrival.
