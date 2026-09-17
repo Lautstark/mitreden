@@ -36,7 +36,6 @@
    */
   import Sheet from '@lautstark/design/svelte/Sheet';
   import { saveCollectionVoice } from '../db/repo.ts';
-  import { nameParts } from './dialog.ts';
   import { ALL, DECLARED, load } from './store.svelte.ts';
   import { chosenVoice, knownVoices } from './voices.svelte.ts';
   import { recordAgain } from './sammlung.ts';
@@ -45,9 +44,6 @@
   import VoicePicker from './pieces/VoicePicker.svelte';
 
   let { showing = $bindable() }: { showing: string | null } = $props();
-
-  let dialog = $state<HTMLDialogElement | undefined>(undefined);
-  $effect(() => nameParts(dialog, { close: 'colvoiceclose' }));
 
   let current = $derived(DECLARED().find((one) => one.id === showing));
 
@@ -102,14 +98,18 @@
      which is why it was never in a foot to begin with.
 
      `open` is one-way for InfoSheet's reason: `showing` is a `string | null`
-     and `bind:` cannot take a `$derived`. -->
+     and `bind:` cannot take a `$derived`.
+
+     `closeId` rather than `nameParts`: design v1.35.0 gives the ✕ an id of its
+     own, which is the prop ui/dialog.ts named as the fix, and this is the call
+     site taking it. Nothing writes to the frame after the fact any more. -->
 <Sheet
   id="colvoice"
   open={showing !== null}
   title={t('collection_voice_title')}
   closeLabel={t('close')}
+  closeId="colvoiceclose"
   onclose={() => { showing = null; }}
-  bind:dialog
 >
   {#snippet head()}<h2 id="colvoicetitle">{t('collection_voice_title')}</h2>{/snippet}
   <p class="hint" id="colvoicelead">{current ? t('collection_voice_lead', { name: current.name }) : ''}</p>

@@ -72,13 +72,9 @@
   import { exportAll, importFile, wipeEverything } from './settings.ts';
   import { lang, setLang, sourceOf, speaks, t, tn, type Key } from './words.svelte.ts';
   import { busy, say } from './dom.ts';
-  import { nameParts } from './dialog.ts';
   import VoicePicker from './pieces/VoicePicker.svelte';
 
   let { open = $bindable(), backup }: { open: boolean; backup: Sicherung } = $props();
-
-  let dialog = $state<HTMLDialogElement | undefined>(undefined);
-  $effect(() => nameParts(dialog, { close: 'setupclose' }));
 
   // ------------------------------------------------------------- das Falten
 
@@ -377,14 +373,18 @@
 
      `bind:open` here rather than the one-way form, because this one really is
      a boolean: App.svelte owns it and the frame writes it back on every way
-     out, which is what the hand-written `onclose` used to do. -->
+     out, which is what the hand-written `onclose` used to do.
+
+     `closeId` rather than `nameParts`: design v1.35.0 gives the ✕ an id of its
+     own, which is the prop ui/dialog.ts named as the fix, and this is the call
+     site taking it. Nothing writes to the frame after the fact any more. -->
 <Sheet
   id="setup"
   panels
   bind:open
   title={t('settings')}
   closeLabel={t('close')}
-  bind:dialog
+  closeId="setupclose"
 >
   <!-- First, and open on arrival. Somebody who cannot read this page needs this
        panel before any of the others, and the two options below name themselves
