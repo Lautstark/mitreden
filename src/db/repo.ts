@@ -9,9 +9,11 @@
  */
 
 import {
-  allPhrases, countIn, dropPhrase, getPhrase, idTaken, putPhrase, putPhrases, twinsOf,
+  allPhrases, countIn, dropPhrase, idTaken, patchPhrase, putPhrases, twinsOf,
 } from './phrases.ts';
-import { allCollections, dropCollection, getCollection, putCollection } from './collections.ts';
+import {
+  allCollections, dropCollection, getCollection, patchCollection, putCollection,
+} from './collections.ts';
 import { loadSettings, patchSettings, type Settings } from './settings.ts';
 import { dropAudio, getAudio, putAudio } from './audio.ts';
 import { record } from '../core/audio.ts';
@@ -272,8 +274,6 @@ export async function build(
       onStep?.(item.id, false);
       const { blob } = await record(item.text, voice, settings.azure);
       await putAudio(item.id, blob);
-      item.voice = voice;
-      item.fingerprint = mark;
       recorded += 1;
       // Saved before it is announced: the row answers by reading the store,
       // and a sentence reported as finished has to be findable there.
@@ -281,7 +281,14 @@ export async function build(
       // One sentence, not the library. This loop is where the JSON array cost
       // the most - two hundred recordings meant two hundred rewrites of a
       // two-hundred-entry array, each one to change two fields on one of them.
-      await putPhrase(item);
+      //
+      // And the two fields, not the sentence. `item` was read when this run
+      // started, and the recording above may have taken a minute: putting it
+      // back whole put back a text somebody had corrected in the meantime, and
+      // brought back a sentence somebody had deleted. patchPhrase merges into
+      // what is there now, inside its own transaction, and writes nothing for
+      // a row that is gone.
+      await patchPhrase(item.id, { voice, fingerprint: mark });
       onStep?.(item.id, true);
     } catch (error) {
       failed.push(`${item.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -291,14 +298,11 @@ export async function build(
   return { recorded, failed };
 }
 
-export async function editPhrase(id: string, text: string): Promise<Phrase | null> {
-  const item = await getPhrase(id);
-  if (!item) return null;
-  // The id stays. It is a file name, and the file may already be on a talker.
-  item.text = text;
-  await putPhrase(item);
-  return item;
-}
+/** The text, and only the text. The id stays: it is a file name, and the file
+ *  may already be on a talker. One transaction — see patchPhrase — so a
+ *  recording landing or a Sammlung going in the same moment is not undone. */
+export const editPhrase = (id: string, text: string): Promise<Phrase | null> =>
+  patchPhrase(id, { text });
 
 export async function deletePhrase(id: string): Promise<void> {
   await dropPhrase(id);
@@ -358,26 +362,18 @@ const named = async (name: string): Promise<boolean> =>
  * because stateOf compares the fingerprint against the voice the *Sammlung*
  * records in. That is the whole mechanism, and it is the one that already
  * existed; this function only moves the value it reads.
+ *
+ * One field, one transaction — patchCollection — so a rename on its way out
+ * at the same moment keeps its name and this keeps its voice. The Sammlung
+ * moves to the top of the list, as under a rename: picking its voice is
+ * working on it.
  */
-export async function saveCollectionVoice(id: string, voice: string): Promise<Collection | null> {
-  const hit = await getCollection(id);
-  if (!hit) return null;
-  hit.voice = voice;
-  // Keeps its place in the list, like a rename: putCollection carries the old
-  // stamp across, and setting a voice is not making a Sammlung.
-  await putCollection(hit);
-  return hit;
-}
+export const saveCollectionVoice = (id: string, voice: string): Promise<Collection | null> =>
+  patchCollection(id, { voice });
 
-export async function renameCollection(id: string, to: string): Promise<Collection | null> {
-  const hit = await getCollection(id);
-  if (!hit) return null;
-  hit.name = to.trim();
-  // Keeps its place in the list: putCollection carries the old stamp across,
-  // because renaming is not making.
-  await putCollection(hit);
-  return hit;
-}
+/** The name, and only the name; the same one transaction as the voice above. */
+export const renameCollection = (id: string, to: string): Promise<Collection | null> =>
+  patchCollection(id, { name: to.trim() });
 
 /** The Sammlung goes, the sentences stay: they are the irreplaceable half.
  *  One transaction, and only over the sentences that were actually in it. */
