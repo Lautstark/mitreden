@@ -26,8 +26,10 @@
  * single function, and said in so many words that the fix was a `closeId` and
  * a `bodyId` beside `id` in the package. design v1.35.0 has both, so the two
  * dialogs that own their own `Sheet` pass `closeId` and this is deleted rather
- * than kept working. The third, `#info`, is `./svelte/Legal` now and forwards
- * neither — see ui/InfoSheet.svelte, which says so rather than reaching.
+ * than kept working. The third, `#info`, is `./svelte/Legal`, which did not
+ * forward them and does as of design v1.37.0 — so all three dialogs name their
+ * own parts through props now and nothing in this product writes onto a frame
+ * the package drew.
  */
 
 import { confirmDialog as ask, openDialog as open } from '@lautstark/design/dialog';

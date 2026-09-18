@@ -304,7 +304,7 @@ test('the „Was ist mitreden?" sheet, at the width the package draws', async ({
   // The prose is written into the body from the i18n table, so the sheet has
   // its final height only once that has landed.
   await expect(page.locator('#info .head h2')).toHaveText('Was ist mitreden?');
-  await expect(page.locator('#info .body')).toContainText('Hugging Face');
+  await expect(page.locator('#infobody')).toContainText('Hugging Face');
   /* Said out loud beside the picture, because a picture cannot say which of
      several widths it is a picture of: 600 is the package's figure for a sheet
      that asks a question, and the point of this shot is that this product takes
