@@ -95,6 +95,78 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
 
 export const putPhrase = (item: Phrase): Promise<void> => putPhrases([item]);
 
+/** The fields of a sentence a caller may change without handing in the whole
+ *  of it. Never the id: it is a file name on somebody's talker. */
+export type PhrasePatch = Partial<Omit<Phrase, 'id'>>;
+
+/**
+ * Changes the fields named on the sentences named, leaves the rest of each
+ * alone, and writes all of them or none — inside one transaction.
+ *
+ * Two writers used to reach a sentence with a copy read a moment earlier.
+ * editPhrase read it, changed the text and put it back; build() put back the
+ * copy it had read at the *start* of the run, with the voice and the
+ * fingerprint filled in — a copy that could be minutes old by the time the
+ * recording landed. Either one landing beside another write to the same row put
+ * that write back the way it was: the text just corrected, or the membership a
+ * deleted Sammlung had just taken with it. Nothing failed.
+ *
+ * So a writer that means "these two fields" says these two fields, and the
+ * merge happens between the `get` and the `put` of one readwrite transaction —
+ * which IndexedDB runs one at a time against every other transaction over the
+ * same stores, in the order they were created. A row can no longer be put back
+ * from a snapshot something else has moved on from. patchSettings in
+ * settings.ts and patchCollection in collections.ts are the same rule for the
+ * other two records, and tests/unit/db-atomic-writes.test.ts holds all three.
+ *
+ * Everything putPhrases stamps is stamped here too, for the reasons written
+ * there: `norm` follows the text, `updatedAt` is what the folder compares, and
+ * the Sammlungen the sentences are in — and the one a sentence just left, as
+ * under dropPhrase — rise to the top of §1.4's order in the same transaction.
+ *
+ * A sentence that is not there is skipped rather than made: a patch to a row
+ * deleted a moment before must not bring it back, which is the other thing a
+ * put of an old copy did. A field named with `undefined` is removed, the rule
+ * the other two patch writers have. Announces once for the batch, and not at
+ * all when nothing was found to write.
+ */
+export async function patchPhrases(patches: ReadonlyMap<string, PhrasePatch>): Promise<Phrase[]> {
+  if (!patches.size) return [];
+  const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
+  const phrases = tx.objectStore('phrases');
+  const at = Date.now();
+  const stored: (StoredPhrase & { updatedAt: number })[] = [];
+  const moved: (string | undefined)[] = [];
+  for (const [id, patch] of patches) {
+    const held = await phrases.get(id);
+    if (!held) continue;
+    const merged = { ...held, ...patch };
+    for (const key of Object.keys(patch) as (keyof PhrasePatch)[]) {
+      if (patch[key] === undefined) delete (merged as Partial<Phrase>)[key];
+    }
+    const item = { ...merged, norm: normText(merged.text), updatedAt: at };
+    await phrases.put(item);
+    stored.push(item);
+    moved.push(held.collection, item.collection);
+  }
+  if (!stored.length) {
+    await tx.done;
+    return [];
+  }
+  await bump(tx, moved);
+  await tx.done;
+  for (const item of stored) await filePhrase(item);
+  await mirror('sammlungen');
+  touched();
+  return stored.map((item) => shown(item)!);
+}
+
+/** One sentence, some of its fields. Null when it is not there. */
+export async function patchPhrase(id: string, patch: PhrasePatch): Promise<Phrase | null> {
+  const [one] = await patchPhrases(new Map([[id, patch]]));
+  return one ?? null;
+}
+
 export async function dropPhrase(id: string): Promise<void> {
   const tx = (await db()).transaction(['phrases', 'collections'], 'readwrite');
   const phrases = tx.objectStore('phrases');

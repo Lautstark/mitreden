@@ -211,7 +211,13 @@ they were about.
    ask what used to be waiting for the write. And the ordering was not the worst
    of it: two *different* preferences saved in the same moment lost one of the
    two outright, deterministically, which no repeat of the e2e case would have
-   found (`tests/unit/settings-patch.test.ts`).
+   found (`tests/unit/settings-patch.test.ts`). The Sammlung and the sentence
+   had the same shape under `renameCollection`, `saveCollectionVoice`,
+   `editPhrase` and the save at the end of every recording in `build()`, and
+   went the same way on 2026-09-18: `patchCollection` and `patchPhrase`, one
+   transaction each, and a writer that means two fields says two fields rather
+   than putting back a copy read a minute earlier
+   (`tests/unit/db-atomic-writes.test.ts`).
 5. **The bundle names `svelte.dev` sixteen times.** Svelte throws
    `new Error('https://svelte.dev/e/effect_orphan')` rather than carrying the
    sentence, so the address *is* the message. Nothing is fetched and nothing is

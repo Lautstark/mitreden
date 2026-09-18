@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { onChanged } from '../../src/db/db.ts';
 import { dropAudio, putAudio } from '../../src/db/audio.ts';
-import { dropCollection, putCollection, putCollections } from '../../src/db/collections.ts';
-import { dropPhrase, putPhrase, putPhrases } from '../../src/db/phrases.ts';
+import {
+  dropCollection, patchCollection, putCollection, putCollections,
+} from '../../src/db/collections.ts';
+import { dropPhrase, patchPhrase, patchPhrases, putPhrase, putPhrases } from '../../src/db/phrases.ts';
 import { patchSettings, saveSettings } from '../../src/db/settings.ts';
 import { wipe } from '../../src/db/wipe.ts';
 
@@ -53,6 +55,24 @@ describe('the change notifier', () => {
     expect(heard).toBe(0);
   });
 
+  /* The writers that change some fields of a row rather than the row: the
+     text edit, and the voice and fingerprint at the end of a recording. */
+  it('patchPhrase() announces the write', async () => {
+    await putPhrase(phrase('a'));
+    heard = 0;
+    await patchPhrase('a', { text: 'Tschüss' });
+    expect(heard).toBe(1);
+  });
+
+  it('patchPhrases() announces once for the batch, and not at all for rows that are not there', async () => {
+    await putPhrases([phrase('a'), phrase('b', 'Tschüss')]);
+    heard = 0;
+    await patchPhrases(new Map([['a', { voice: 'v' }], ['b', { voice: 'v' }]]));
+    expect(heard).toBe(1);
+    await patchPhrases(new Map([['never-existed', { voice: 'v' }]]));
+    expect(heard, 'nothing was written, so there is nothing to back up').toBe(1);
+  });
+
   it('dropPhrase() announces — a sentence going is a change to the library', async () => {
     await putPhrase(phrase('a'));
     heard = 0;
@@ -68,6 +88,19 @@ describe('the change notifier', () => {
   it('putCollections() announces once for the whole batch', async () => {
     await putCollections([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
     expect(heard).toBe(1);
+  });
+
+  /* A rename, or the voice behind the ⋯: one field of one Sammlung. */
+  it('patchCollection() announces the write', async () => {
+    await putCollection({ id: 'k', name: 'K' });
+    heard = 0;
+    await patchCollection('k', { name: 'Küche' });
+    expect(heard).toBe(1);
+  });
+
+  it('patchCollection() on one that is not there announces nothing', async () => {
+    await patchCollection('never-existed', { name: 'Küche' });
+    expect(heard).toBe(0);
   });
 
   /* Deleting a Sammlung also rewrites every sentence that was in it — §4.3,

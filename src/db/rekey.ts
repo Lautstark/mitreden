@@ -42,10 +42,9 @@
  * stays stale, which is what it was.
  */
 
-import { allPhrases, putPhrases } from './phrases.ts';
+import { allPhrases, patchPhrases, type PhrasePatch } from './phrases.ts';
 import { loadSettings, patchSettings } from './settings.ts';
 import { fingerprint, formerNames } from '../core/ids.ts';
-import type { Phrase } from '../core/types.ts';
 
 /**
  * Which naming scheme the stored fingerprints are in.
@@ -69,7 +68,12 @@ export async function rekeyIfNeeded(): Promise<number> {
   if (settings.keyScheme === KEY_SCHEME) return 0;
 
   const items = await allPhrases();
-  const moved: Phrase[] = [];
+  /* The new name and only that, by id. The rows are read again inside the
+     write's own transaction rather than put back from this copy: the digests
+     below take a while, and a copy put back whole would put back whatever the
+     copy held. A sentence edited in the meantime keeps its edit and gets a name
+     that no longer matches it — stale, which is what it then is. */
+  const moved = new Map<string, PhrasePatch>();
 
   for (const item of items) {
     // Nothing to carry: a sentence that has never been recorded has no name to
@@ -84,13 +88,13 @@ export async function rekeyIfNeeded(): Promise<number> {
     // release — see formerNames().
     if (!(await formerNames(item.text, item.voice)).includes(item.fingerprint)) continue;
 
-    moved.push({ ...item, fingerprint: await fingerprint(item.text, item.voice) });
+    moved.set(item.id, { fingerprint: await fingerprint(item.text, item.voice) });
   }
 
-  if (moved.length) await putPhrases(moved);
+  if (moved.size) await patchPhrases(moved);
   // Last, and only once every sentence above is written: an interrupted run
   // leaves the mark unset and simply happens again, which is why the pass is
   // written to be idempotent rather than resumable.
   await patchSettings({ keyScheme: KEY_SCHEME });
-  return moved.length;
+  return moved.size;
 }
