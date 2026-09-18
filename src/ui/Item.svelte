@@ -20,7 +20,8 @@
   import { getAudio } from '../db/audio.ts';
   import { asFormat } from '../core/audio.ts';
   import { build, deletePhrase, editPhrase } from '../db/repo.ts';
-  import { menuOn } from '@lautstark/design/menu';
+  import Overflow from '@lautstark/design/svelte/Overflow';
+  import type { AddItem } from '@lautstark/design/menu';
   import { download } from '@lautstark/werkzeuge/download';
   import type { Format, PhraseWithState } from '../core/types.ts';
   import { endWork, load, queueWork, stepWork, workOn } from './store.svelte.ts';
@@ -87,23 +88,24 @@
 
   let line: HTMLElement;
 
-  function openMenu(button: HTMLElement): void {
-    menuOn(button, (add: (label: string, run: () => void, opts?: { danger?: boolean }) => void) => {
-      if (item.state !== 'missing') {
-        add(t('download_mp3'), () => void grab('mp3'));
-        add(t('download_wav'), () => void grab('wav'));
-      }
-      /* Not only when the recording is missing. A stale row has a clip that
-         plays and says „geändert seit der Aufnahme", and until now the only way
-         to act on that was to retype the sentence — which was a small gap when
-         the voice was the sentence's own and is not one now: changing a
-         Sammlung's voice makes every row in it stale at once, and a state
-         nothing can leave is a state that should not have been reachable. The
-         Sammlung's own ⋯ does all of them; this does the one you are looking
-         at. */
-      if (item.state !== 'ok') add(t('menu_record'), () => void again());
-      add(t('menu_delete_one'), () => void remove(), { danger: true });
-    });
+  /* Built each time the menu opens, which is what `Overflow` calls this for:
+     the items follow what is true of this row now rather than what was true
+     when it was drawn. */
+  function menu(add: AddItem): void {
+    if (item.state !== 'missing') {
+      add(t('download_mp3'), () => void grab('mp3'));
+      add(t('download_wav'), () => void grab('wav'));
+    }
+    /* Not only when the recording is missing. A stale row has a clip that
+       plays and says „geändert seit der Aufnahme", and until now the only way
+       to act on that was to retype the sentence — which was a small gap when
+       the voice was the sentence's own and is not one now: changing a
+       Sammlung's voice makes every row in it stale at once, and a state
+       nothing can leave is a state that should not have been reachable. The
+       Sammlung's own ⋯ does all of them; this does the one you are looking
+       at. */
+    if (item.state !== 'ok') add(t('menu_record'), () => void again());
+    add(t('menu_delete_one'), () => void remove(), { danger: true });
   }
 
   async function again(): Promise<void> {
@@ -212,7 +214,23 @@
          mislead, so both are off. -->
     <audio controls controlsList="nodownload noplaybackrate" {...NO_CAST} preload="none" src={url || undefined}></audio>
   {/if}
-  <div class="menu-anchor"><button class="dots" aria-haspopup="menu" aria-expanded="false"
-    title={t('more_actions')} aria-label={t('more_actions')}
-    onclick={(event) => openMenu(event.currentTarget)}>⋯</button></div>
+  <!-- @lautstark/design/svelte/Overflow, conventions.md §6.10. The ARIA was
+       already in the markup here rather than added at open, so what this brings
+       is the deduplication and vorlaut's collision handling — the flip upwards
+       and the height cap, which this trigger did not have and which is what a
+       row near the foot of a long list wants.
+
+       `.dots` rather than the component's `.btn.quiet.icon` default, and it is
+       the one trigger in the family that is not a `.btn`. It stays: this is an
+       inline control inside a dense row, beside an `<audio>`, and
+       src/styles/app.css already writes down `.flat`, `.dots` and
+       `.item .collection` as this page's three quiet inline controls sharing
+       one transition. `.btn.quiet.icon` is a pill; `.dots` is a box with a 9px
+       corner, its own padding and an 18px glyph, and switching it would change
+       every row in the list. It is also in no baseline, so that change would happen
+       with nothing watching it — which is the wrong thing to smuggle into a
+       commit whose whole point is that nothing moves. §6.10 has a `class` prop
+       for exactly this: a product that draws its ⋯ differently says so here
+       rather than wrapping the component. -->
+  <Overflow class="dots" label={t('more_actions')} build={menu} />
 </div>

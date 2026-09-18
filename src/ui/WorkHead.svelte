@@ -6,8 +6,10 @@
    * bildhaft's row, with Herunterladen where Drucken is — the same question,
    * answered in audio instead of paper.
    */
+  import Dropdown from '@lautstark/design/svelte/Dropdown';
+  import Overflow from '@lautstark/design/svelte/Overflow';
   import TitleField from '@lautstark/design/svelte/TitleField';
-  import { menuOn } from '@lautstark/design/menu';
+  import type { AddItem } from '@lautstark/design/menu';
   import { renameCollection } from '../db/repo.ts';
   import { ALL, here, load, nameCaret, searching, shown } from './store.svelte.ts';
   import { deleteCollection, packAll, packPen } from './sammlung.ts';
@@ -15,9 +17,6 @@
   import { t, tn } from './words.svelte.ts';
 
   let { showCollectionVoice }: { showCollectionVoice: (id: string) => void } = $props();
-
-  let download: HTMLButtonElement;
-  let more: HTMLButtonElement;
 
   /* Renaming is typing in the title (§1.6), and the field is
      @lautstark/design/svelte/TitleField — conventions.md §6.5, over
@@ -80,12 +79,10 @@
    * beside the point: what the browser draws belongs to no design language, and
    * this sat next to a ⋯ that opens the shared menu.
    */
-  function openDownload(): void {
-    menuOn(download, (add: (label: string, run: () => void) => void) => {
-      add(t('download_mp3'), () => void packAll('mp3'));
-      add(t('download_wav'), () => void packAll('wav'));
-      add(t('download_pen'), () => void packPen());
-    });
+  function downloads(add: AddItem): void {
+    add(t('download_mp3'), () => void packAll('mp3'));
+    add(t('download_wav'), () => void packAll('wav'));
+    add(t('download_pen'), () => void packPen());
   }
 
   /* conventions.md §3.6, in its own order: what acts on this Sammlung, then
@@ -99,16 +96,14 @@
      common outcome was the sentence „Alles hier ist schon … aufgenommen", and
      the settings sheet below it ended by telling you to come back up here and
      press it. It is a button in that sheet now, carrying its own count. */
-  function openMore(): void {
-    menuOn(more, (add: (label: string, run: () => void, opts?: { danger?: boolean }) => void) => {
-      const current = here();
-      if (!current) return;
-      add(t('collection_export'), () => void exportCollection(current));
-      add(t('collection_settings'), () => showCollectionVoice(current.id));
-      add(t('collection_delete'), () => {
-        void deleteCollection(current.id, current.name, current.count);
-      }, { danger: true });
-    });
+  function actions(add: AddItem): void {
+    const current = here();
+    if (!current) return;
+    add(t('collection_export'), () => void exportCollection(current));
+    add(t('collection_settings'), () => showCollectionVoice(current.id));
+    add(t('collection_delete'), () => {
+      void deleteCollection(current.id, current.name, current.count);
+    }, { danger: true });
   }
 </script>
 
@@ -125,10 +120,19 @@
   <span class="count" id="count">{count}</span>
   <!-- bildhaft's Drucken is one button because printing asks nothing further.
        This one has to ask which format, so it keeps the button's shape and
-       opens the same menu the ⋯ opens. -->
-  <span class="menu-anchor"><button id="dlall" class="btn quiet sm dropdown" bind:this={download}
-    aria-haspopup="menu" aria-expanded="false" onclick={openDownload}>{t('download_all')}</button></span>
-  <span class="menu-anchor"><button id="colmore" class="btn quiet icon" bind:this={more}
-    aria-haspopup="menu" aria-expanded="false" title={t('more_actions')}
-    aria-label={t('more_actions')} onclick={openMore}>⋯</button></span>
+       opens the same menu the ⋯ opens — @lautstark/design/svelte/Dropdown,
+       conventions.md §6.10, at `.btn.quiet.sm.dropdown` which is what this was
+       written out as.
+
+       Neither `labelledBy` nor `ariaLabel` is passed, and that is the one place
+       this call site differs from the component's usual one. §6.10's rule is
+       for a trigger whose only text is its current *answer*, which has no name
+       otherwise; „Alle herunterladen" is the question, so the button names
+       itself and a second name over the top of it would be the wrong one. -->
+  <Dropdown id="dlall" class="quiet sm" label={t('download_all')} build={downloads} />
+  <!-- And the ⋯ beside it, @lautstark/design/svelte/Overflow. The ARIA was in
+       this markup already; what the component brings is one copy of it and
+       vorlaut's `fit()` — the flip upwards and the height cap, which neither
+       trigger on this row had. -->
+  <Overflow id="colmore" label={t('more_actions')} build={actions} />
 </div>
