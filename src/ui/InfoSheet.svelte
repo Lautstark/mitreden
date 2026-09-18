@@ -34,17 +34,21 @@
    * the general rule, that a wrapper hiding a prop its own consumers need has
    * not simplified anything, it has moved the reach one level up.
    *
-   * `Legal` forwards both as of design v1.37.0 and this product is on v1.38.1,
+   * `Legal` forwards both as of design v1.37.0 and this product is on v1.40.0,
    * so `closeId` and `bodyId` are passed below and e2e/app.spec.ts names
    * `#infoclose` and `#infobody` again. Nothing is written onto the frame
    * afterwards, which was the rule the structural locators were holding.
    *
-   * `#infotitle` is the one that does not come back, and it is not waiting on
-   * an oversight: `Sheet` draws the `<h2>` from the `title` thunk and takes no
-   * `titleId`, so there is no seam for it in either component. `#info .head h2`
-   * is what names the heading, here and in e2e/visual.spec.ts, and it will go
-   * on doing so until the frame grows the prop — which nothing is asking it to,
-   * one product having one assertion.
+   * `#infotitle` is the one that does not come back, and the reason moved one
+   * component along in design v1.40.0. `Sheet` grew `titleId` — so the frame
+   * has the seam now, and the `head` snippet a product used to write for the
+   * want of it is gone from this repository. `Legal` does not forward it, which
+   * is the paragraph above happening a second time: the frame has the prop and
+   * the wrapper hides it. `#info .head h2` is what names the heading, here and
+   * in e2e/visual.spec.ts, and it goes on doing so until `Legal` forwards
+   * `titleId` too. Nothing is asking it to yet, and the id is worth no more
+   * than it was: it was read by nothing when it went and is read by nothing
+   * now. What waits here is a structural locator, not a missing id.
    *
    * What the component gives that this file never had is a per-page `<section>`
    * id, and the three below are the better half of the trade: each page is

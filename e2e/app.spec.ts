@@ -259,9 +259,10 @@ test('the headings follow what they describe', async ({ page }) => {
    and ui/InfoSheet.svelte passes them, so the ids are this product's names
    again.
 
-   The heading is the one still read structurally, and that is not a deferral:
-   `Sheet` draws the `<h2>` from the `title` thunk and takes no `titleId`, so
-   `#infotitle` has no seam in either component to arrive through.
+   The heading is the one still read structurally, and as of design v1.40.0 the
+   reason is the wrapper rather than the frame: `Sheet` takes a `titleId` now,
+   and `Legal` does not forward it. The same shape as `closeId` and `bodyId`
+   three releases earlier, so this locator waits the same way those two did.
 
    The section id is the one the component gave rather than gave back, and the
    assertion below uses it: `#info-about` resolves whichever page is open,
