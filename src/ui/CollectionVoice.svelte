@@ -102,7 +102,15 @@
 
      `closeId` rather than `nameParts`: design v1.35.0 gives the ✕ an id of its
      own, which is the prop ui/dialog.ts named as the fix, and this is the call
-     site taking it. Nothing writes to the frame after the fact any more. -->
+     site taking it. Nothing writes to the frame after the fact any more.
+
+     **And no `head` snippet.** There was one, and its whole content was the
+     same heading the frame draws from `title`, carrying `#colvoicetitle` —
+     an id that occurred exactly once in this repository, on that line. No
+     test named it and no stylesheet selected it, so the override existed to
+     hold an id nothing reached, and it cost the sheet the `<h2>` its own
+     frame would have drawn. `head` replaces the heading rather than sitting
+     beside it (§6.1), so this is the sheet drawing its own again. -->
 <Sheet
   id="colvoice"
   open={showing !== null}
@@ -111,7 +119,6 @@
   closeId="colvoiceclose"
   onclose={() => { showing = null; }}
 >
-  {#snippet head()}<h2 id="colvoicetitle">{t('collection_voice_title')}</h2>{/snippet}
   <p class="hint" id="colvoicelead">{current ? t('collection_voice_lead', { name: current.name }) : ''}</p>
   <div id="colvoices">
     <!-- The second picker, and a second instance on purpose: two tags are two
