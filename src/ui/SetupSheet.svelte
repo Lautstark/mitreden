@@ -72,7 +72,8 @@
   import { untrack } from 'svelte';
   import Panel from '@lautstark/design/svelte/Panel';
   import Sheet from '@lautstark/design/svelte/Sheet';
-  import { applyTheme, readTheme, saveTheme, THEMES, type Theme } from '@lautstark/design/theme';
+  import ThemePicker from '@lautstark/design/svelte/ThemePicker';
+  import { readTheme, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
   import AblagePanel from '@lautstark/sicherung/svelte/AblagePanel';
@@ -212,7 +213,19 @@
    * OS's answer and then corrects itself. That rules out the database the
    * sentences live in, which is asynchronous. @lautstark/design/theme carries
    * the reasoning; the inline script in index.html is the half that runs before
-   * this module exists.
+   * this module exists, and main.ts's `initTheme` is what subscribes to the
+   * machine changing its mind — conventions.md §6.10 names that call as the
+   * half of adopting the picker no component mounted in a sheet can make, and
+   * this product was already making it.
+   *
+   * The control itself is @lautstark/design/svelte/ThemePicker. What is left
+   * here is the three things the four products differed on and which are its
+   * three props: where the choice is kept, the three words in this page's
+   * language, and — through `bind:theme` — the text the panel's summary shows.
+   * The value is read here rather than left to the component's own fallback
+   * because this record is what draws the summary, and it has to say something
+   * true on the first frame rather than on the first frame after the picker
+   * mounts.
    */
   const THEME_KEY = 'mitreden.theme';
   const themeLabel = (theme: Theme): string => t(`theme_${theme}` as Key);
@@ -552,18 +565,20 @@
        dusk ends up pinned bright. -->
   <Panel id="p-theme" stateId="themestate" section={t('panel_theme')}
     state={themeLabel(theme)} bind:open={folded.theme}>
-    <!-- role=group, not radiogroup: components.css marks the choice with
-         aria-pressed, which is what bildhaft's print dialog already uses, and
-         a radiogroup whose children are not radios reads worse than a
-         labelled group of buttons. -->
-    <div class="segmented" id="theme" role="group" aria-label={t('panel_theme')}>{#each THEMES as option}<button
-      type="button" aria-pressed={option === theme} onclick={() => {
-        saveTheme(THEME_KEY, option);
-        applyTheme(option);
-        // Nothing else on the page depends on the scheme — the tokens do that
-        // work, which is the point of there being tokens.
-        theme = option;
-      }}>{themeLabel(option)}</button>{/each}</div>
+    <!-- conventions.md §6.10. This was the shared component's own `pick()`
+         body and the same role=group comment, word for word — including the
+         argument that §6.10 calls the strongest evidence in the audit that a
+         control is ready to be shared, which three of the four products were
+         still each carrying their own copy of. It is in ThemePicker.svelte
+         now, with the reasoning, and `#theme` is a prop because e2e/theme.spec.ts
+         names it four times. -->
+    <ThemePicker
+      id="theme"
+      key={THEME_KEY}
+      label={themeLabel}
+      ariaLabel={t('panel_theme')}
+      bind:theme
+    />
     <p class="hint">{t('theme_hint')}</p>
   </Panel>
 

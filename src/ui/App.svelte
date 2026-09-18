@@ -124,7 +124,6 @@
   let setup = $state(false);
   let collectionVoice = $state<string | null>(null);
 
-  let head: ReturnType<typeof WorkHead>;
   let status: HTMLElement;
 
   /* `body.collapsed` is what the stylesheet switches on: the work gets the
@@ -237,7 +236,7 @@
   {/snippet}
 
   {#snippet sections()}
-    <Collections {dismiss} nameNew={() => head?.focusName()} />
+    <Collections {dismiss} />
   {/snippet}
 
   <!-- Einstellungen at the foot, §3.2. `.flat` rather than the `.btn.quiet.sm`
@@ -260,7 +259,7 @@
        what `.status:empty` is written against. See ui/dom.ts. -->
   <p class="status" id="s" role="status" bind:this={status}></p>
 
-  <WorkHead bind:this={head} showCollectionVoice={(id) => { collectionVoice = id; }} />
+  <WorkHead showCollectionVoice={(id) => { collectionVoice = id; }} />
   <List />
 
   <!-- The page is the whole program now, so it has to say what it is and what

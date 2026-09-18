@@ -158,9 +158,11 @@
    phone, at a size that reads as the page's heading. */
 .title-input{letter-spacing:-.02em}
 .workhead .count{margin-left:auto;font-size:13.5px;color:var(--text-faint)}
-/* Smaller than the prose under it, and bold: bildhaft's, so the reset sits in
-   the Daten panel at the same weight in both products. */
-.danger__title{margin:24px 0 6px;font-size:13px}
+/* `.danger__title` was here and is gone: that heading is `Panel`'s `section`
+   prop since the panel became @lautstark/design/svelte/Panel, so nothing has
+   emitted the class since, and the comment on it went on claiming it aligned
+   the weight with bildhaft — a claim about a rule that reached nothing.
+   `.danger__body` below is still emitted (ui/SetupSheet.svelte) and stays. */
 .danger__body{margin:0 0 10px}
 #export+.hint{margin-top:8px}
 
@@ -204,7 +206,6 @@
 .chint .right{margin-left:auto}
 kbd{font-family:var(--mono);font-size:11px;background:var(--surface-2);
   color:var(--text-dim);border-radius:4px;padding:1px 5px}
-.into--none{color:var(--text-faint)}
 
 /* The icon button is components.css's `.btn.quiet.icon`. This page had a class
    of its own called `.icon` - its own padding, its own 8px radius, its own
@@ -323,11 +324,6 @@ button,input,select,textarea{font:inherit;color:inherit}
    a block with no content draws no line box, so the margin is the only part
    that would still show. display:none here would undo the whole point. */
 .status:empty{margin:0}
-.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  margin:40px 2px 4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.bar .count{font-weight:650;font-size:15px}
-/* Beside the title, where a page-wide setting belongs — not down at the list,
-   which would suggest it changes something about the list. */
 /* A sheet, not a wizard: a fresh install already speaks, so this is somewhere
    you go when you want more — never something standing in the way. */
 /* The sheet's look comes from components.css, its width included: `--sheet-w`
@@ -564,15 +560,8 @@ button,input,select,textarea{font:inherit;color:inherit}
   .compose textarea{font-size:19px}
 }
 @media (max-width:560px){
-  .hero{padding:16px 16px 12px}
   textarea{font-size:17px;min-height:112px}
   .item .line{font-size:17px}
-  .bar{gap:8px}
-  .tools{gap:8px}
-  /* Three controls in one row leaves the search box a stub — it gets its own
-     line, the format and the button share the next one. */
-  .tools input[type=search]{flex:1 1 100%;min-width:0}
-  .tools button{flex:1}
 }
 
 /* The standing Sicherung's block. The line and the buttons come from

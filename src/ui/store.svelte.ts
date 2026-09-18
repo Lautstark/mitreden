@@ -243,3 +243,28 @@ export async function load(): Promise<void> {
   if (!live.size && made.length) live.add(made[0]!.id);
   setOpen(live);
 }
+
+/**
+ * Whether the work head's name field is owed the caret.
+ *
+ * conventions.md §6.5's shape, which is bildhaft's: the controller that makes
+ * the Sammlung says the caret is owed, and whichever field takes it says so.
+ * What was here instead was a chain — `Collections` took a `nameNew` prop,
+ * `App` bound `this` on `WorkHead` and called an exported `focusName()` — which
+ * made the producer of a new Sammlung name the consumer of its caret. It also
+ * meant the field could only ever be reached from the one component that
+ * happened to be bound.
+ *
+ * A module-scope rune is what makes it reactive: `asked()` is read inside
+ * `TitleField`'s effect, so flipping this is what wakes it. `answered()` is
+ * said by the field that took the caret, so the next ask is a new one rather
+ * than a flag somebody has to remember to clear.
+ */
+let owed = $state(false);
+
+export const nameCaret = {
+  /** „+ Neue Sammlung" made one; its name wants the caret, selected (§1.5). */
+  ask: (): void => { owed = true; },
+  asked: (): boolean => owed,
+  answered: (): void => { owed = false; },
+};

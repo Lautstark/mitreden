@@ -24,18 +24,15 @@
    */
   import { drawCollections } from '@lautstark/design/collections';
   import { createCollection } from '../db/repo.ts';
-  import { ALL, DECLARED, OPEN, load, openAlso, openOnly } from './store.svelte.ts';
+  import { ALL, DECLARED, OPEN, load, nameCaret, openAlso, openOnly } from './store.svelte.ts';
   import { lang, t } from './words.svelte.ts';
   import { say } from './dom.ts';
 
-  let { dismiss, nameNew }: {
+  let { dismiss }: {
     /** Put the drawer away. Does nothing where the sidebar is a column of the
      *  page — choosing a Sammlung dismisses the layer, because it is in the way
      *  of the thing that was just asked for (§3.1). */
     dismiss: () => void;
-    /** Into the new Sammlung's name, selected. The field is in the head over
-     *  the list, so the caret is sent there rather than moved from here. */
-    nameNew: () => void;
   } = $props();
 
   let rows: HTMLElement;
@@ -89,8 +86,13 @@
     dismiss();
     say(t('done_collection_new', { name: made.name }));
     await load();
-    // Straight into the name, selected: typing replaces the date it was given.
-    nameNew();
+    /* Straight into the name, selected: typing replaces the date it was given.
+       The caret is *asked for* rather than moved — conventions.md §6.5, and
+       `nameCaret` in the store says why. This used to be a `nameNew` prop
+       whose one implementation reached an exported method on WorkHead through
+       App, which made the thing that creates a Sammlung responsible for
+       knowing which component draws its name. */
+    nameCaret.ask();
   }
 </script>
 

@@ -251,29 +251,34 @@ test('the headings follow what they describe', async ({ page }) => {
   await expect(page.locator('#datastate')).toHaveText('1 Satz');
 });
 
-/* `#info .head h2`, `#info .body` and `#info .head > button` rather than
-   `#infotitle`, `#infobody` and `#infoclose`. The dialog is
-   @lautstark/design/svelte/Legal since 2026-09-17 and that component forwards
-   neither `closeId` nor `bodyId` to the sheet under it and draws the `<h2>`
-   itself, so this product has no way to name those three elements any more. A
-   missing prop is said out loud rather than written onto the frame afterwards,
-   so these three read the frame's own vocabulary until the props exist. The
-   one id that *did* arrive is the section's, and the assertion below uses it:
-   `#info-about` resolves whichever page is open, which is the property drawing
-   all three pages is for. */
+/* `#infobody` and `#infoclose` again. The dialog is
+   @lautstark/design/svelte/Legal, which forwarded neither `closeId` nor
+   `bodyId` when this product adopted it — so these two read the frame's own
+   vocabulary for a while, a missing prop being said out loud rather than
+   written onto the frame afterwards. Legal forwards both as of design v1.37.0
+   and ui/InfoSheet.svelte passes them, so the ids are this product's names
+   again.
+
+   The heading is the one still read structurally, and that is not a deferral:
+   `Sheet` draws the `<h2>` from the `title` thunk and takes no `titleId`, so
+   `#infotitle` has no seam in either component to arrive through.
+
+   The section id is the one the component gave rather than gave back, and the
+   assertion below uses it: `#info-about` resolves whichever page is open,
+   which is the property drawing all three pages is for. */
 test('the footer answers what this is, and the two German legal questions', async ({ page }) => {
   await page.click('#about');
   await expect(page.locator('#info .head h2')).toHaveText('Was ist mitreden?');
   // The claim and its one exception, together — the rule the old footer broke.
-  await expect(page.locator('#info .body')).toContainText('Hugging Face');
-  await page.click('#info .head > button');
+  await expect(page.locator('#infobody')).toContainText('Hugging Face');
+  await page.click('#infoclose');
   for (const [id, title] of [['impressum', 'Impressum'], ['datenschutz', 'Datenschutz']] as const) {
     await page.click(`#${id}`);
     await expect(page.locator('#info .head h2')).toHaveText(title);
     // The other two pages are in the document and hidden, not unmounted — so
     // the about page is still addressable while the Impressum is showing.
     await expect(page.locator('#info-about')).toBeHidden();
-    await page.click('#info .head > button');
+    await page.click('#infoclose');
   }
 });
 
