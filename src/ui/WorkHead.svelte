@@ -6,38 +6,44 @@
    * bildhaft's row, with Herunterladen where Drucken is — the same question,
    * answered in audio instead of paper.
    */
-  import { renameField, type RenameField } from '@lautstark/design/rename';
+  import TitleField from '@lautstark/design/svelte/TitleField';
   import { menuOn } from '@lautstark/design/menu';
   import { renameCollection } from '../db/repo.ts';
-  import { ALL, here, load, searching, shown } from './store.svelte.ts';
+  import { ALL, here, load, nameCaret, searching, shown } from './store.svelte.ts';
   import { deleteCollection, packAll, packPen } from './sammlung.ts';
   import { exportCollection } from './settings.ts';
   import { t, tn } from './words.svelte.ts';
 
   let { showCollectionVoice }: { showCollectionVoice: (id: string) => void } = $props();
 
-  let title: HTMLInputElement;
-  let name: RenameField | null = null;
   let download: HTMLButtonElement;
   let more: HTMLButtonElement;
 
-  /**
-   * Straight into the name, selected: typing replaces the date a new Sammlung
-   * was given. Through refresh() like every other assignment — the field is not
-   * focused yet, because pressing "+ Neue Sammlung" is what took focus off it,
-   * so the package's guard passes and its idea of what it last wrote stays
-   * true.
-   */
-  export function focusName(): void {
-    name?.refresh(here()?.name ?? '');
-    title.focus();
-    title.select();
-  }
+  /* Renaming is typing in the title (§1.6), and the field is
+     @lautstark/design/svelte/TitleField — conventions.md §6.5, over
+     `@lautstark/design/rename` unchanged. The debounce, the write on the way
+     out, the refusal to write a value that has not moved and the guard against
+     a repaint typing over somebody were already the package's; what the
+     component takes with it is the three things this file had bolted onto that
+     separately.
 
-  /* Renaming is typing in the title (§1.6). The debounce, the write on the way
-     out and the guard against a repaint typing over you are the package's; what
-     is left here is this product's own answer to an empty name, which is to
-     refuse it — a Sammlung must always be callable by something in the sidebar.
+     `refresh()` before focusing, which §6.5 makes the rule and this product
+     already did, and `select`, which is true here: „+ Neue Sammlung" makes the
+     Sammlung at once and names it for the day, so the first keystroke has to
+     replace that date (§1.5). Both are inside the component now, reached
+     through `caret` — a rune in the store rather than an exported method two
+     levels of props away. See `nameCaret` there for why that direction is the
+     one §6.5 settled on.
+
+     The `oninput` echo is the third and is the reason `rename.js` binds with
+     `addEventListener` rather than taking the property: this listener sits
+     beside the package's own on the same field, and the component forwards it
+     rather than replacing it.
+
+     What stays here is this product's own answer to an empty name, which is to
+     refuse it — a Sammlung must always be callable by something in the
+     sidebar. §1.6 records that as correct and per product: vorlaut writes the
+     empty name and draws a fallback.
 
      Which Sammlung a pending rename is for is taken on the keystroke rather
      than read when the write runs. Pressing a sidebar row moves focus off the
@@ -45,23 +51,11 @@
      in practice — but that is an ordering, not a guarantee. */
   let renaming: { id: string; name: string } | null = null;
 
-  $effect(() => {
-    name = renameField(title, async (typed: string) => {
-      if (!renaming || !typed.trim() || typed === renaming.name) return;
-      await renameCollection(renaming.id, typed);
-      await load();
-    });
-    return () => { name?.stop(); name = null; };
-  });
-
-  /* The header names where you are. Through refresh() rather than by assigning:
-     the package declines while the field is being typed in — the caret jumping
-     mid-word is the reason that guard exists — and also while a keystroke is
-     still waiting out its debounce. */
-  $effect(() => {
-    const current = here();
-    name?.refresh(current?.name ?? '');
-  });
+  async function rename(typed: string): Promise<void> {
+    if (!renaming || !typed.trim() || typed === renaming.name) return;
+    await renameCollection(renaming.id, typed);
+    await load();
+  }
 
   /**
    * How much is here and how much of it is still open.
@@ -119,9 +113,15 @@
 </script>
 
 <div class="workhead">
-  <input id="colname" class="title-input" bind:this={title}
-    placeholder={t('collection_name_hint')} aria-label={t('collection_name_hint')}
-    autocomplete="off" oninput={() => { renaming = here() ?? null; }}>
+  <TitleField
+    id="colname"
+    value={here()?.name ?? ''}
+    write={rename}
+    oninput={() => { renaming = here() ?? null; }}
+    placeholder={t('collection_name_hint')}
+    label={t('collection_name_hint')}
+    caret={nameCaret}
+  />
   <span class="count" id="count">{count}</span>
   <!-- bildhaft's Drucken is one button because printing asks nothing further.
        This one has to ask which format, so it keeps the button's shape and
