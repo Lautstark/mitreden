@@ -201,8 +201,12 @@ export async function importBackup(backup: Backup): Promise<Restored> {
     const text = String(source?.text ?? '').trim();
     if (!text) continue;
     /* Membership, translated through whatever the Sammlungen became here. A
-       sentence naming a Sammlung the file did not carry is not dropped: it
-       keeps the tag, and shows up under it once that Sammlung exists again.
+       sentence naming a Sammlung the file did not carry is not dropped, and it
+       arrives uncollected rather than holding on to the name. This said it
+       kept the tag and would show up under it "once that Sammlung exists
+       again" — which nothing could ever bring about: every Sammlung that
+       arrives is given a fresh id above, so the old one never names anything
+       here, and the sentence sat under a tag no row could show.
 
        A version 1 sentence that was in two lands as two rows, for the same
        reason addPhrases() makes a second row rather than merging, and the same
@@ -210,7 +214,8 @@ export async function importBackup(backup: Backup): Promise<Restored> {
        now, and the arrangement the file recorded is worth keeping. `undefined`
        is the uncollected sentence, which is a real state and restores as one. */
     const into: (string | undefined)[] = memberships(source)
-      .map((was) => moved.get(was) ?? was);
+      .map((was) => moved.get(was))
+      .filter((id) => id !== undefined);
     if (!into.length) into.push(undefined);
 
     for (const target of into) {

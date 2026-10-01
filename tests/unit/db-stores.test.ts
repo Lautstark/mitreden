@@ -213,8 +213,8 @@ describe('last edited, first in the list', () => {
   });
 
   it('is unbothered by a sentence naming a Sammlung that is not here', async () => {
-    // importBackup keeps an unknown tag on purpose, so that the sentence shows
-    // up if that Sammlung ever comes back. There is nothing to move.
+    // A folder read back from another device can hold one. There is nothing
+    // to move.
     await putPhrases([{ id: 'fremd', text: 'Woanders.', collection: 'weg' }]);
     expect((await allCollections()).map((c) => c.id)).toEqual(['schlafen', 'kueche']);
   });

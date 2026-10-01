@@ -29,9 +29,9 @@ export async function bump(
   let next = await nextStamp(collections.index('updatedAt'));
   for (const id of wanted) {
     const held = await collections.get(id);
-    // A sentence may name a Sammlung that is not here — importBackup keeps an
-    // unknown tag on purpose, so that it shows up if that Sammlung ever
-    // returns. Nothing to move in that case.
+    // A sentence may name a Sammlung that is not here — one deleted on another
+    // device and read back from the folder before its members were. Nothing
+    // to move in that case.
     if (held) await collections.put({ ...held, updatedAt: next++ });
   }
 }

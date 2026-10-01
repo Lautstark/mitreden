@@ -198,6 +198,29 @@ describe('the round trip', () => {
     expect(done.merged).toBe(1);
   });
 
+  /* A sentence naming a Sammlung the file did not carry. Every Sammlung that
+     arrives gets a fresh id, so the old tag could never name one here again —
+     it arrives uncollected instead, once, and not under a name no row shows. */
+  it('restores a sentence whose Sammlung is not in the file as uncollected', async () => {
+    const file = await exportEverything(NOTICE);
+    const done = await importBackup({
+      ...file,
+      version: 1,
+      collections: [{ id: 'k', name: 'Küche' }],
+      phrases: [
+        { id: 'a', text: 'Woanders', collection: 'weg' },
+        { id: 'b', text: 'Ich habe Hunger', collections: ['k', 'weg'] },
+      ] as never,
+    });
+
+    expect(done.added).toBe(2);
+    const named = new Map((await allCollections()).map((c) => [c.id, c.name]));
+    const restored = await allPhrases();
+    expect(restored.find((one) => one.text === 'Woanders')!.collection).toBeUndefined();
+    expect(restored.filter((one) => one.text === 'Ich habe Hunger')
+      .map((one) => named.get(one.collection!))).toEqual(['Küche']);
+  });
+
   /*
    * A version 1 file, which is every Sicherung anybody already has: a sentence
    * names every Sammlung it was in. It restores the way the version 4 migration
