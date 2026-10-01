@@ -184,10 +184,19 @@ export async function dropCollection(id: string): Promise<boolean> {
   }
   await collections.delete(id);
 
+  /* Stamped, as putPhrases and patchPhrases stamp every sentence they write.
+     The folder decides what to rewrite by comparing `updatedAt`, so a member
+     put back without a new one was a record the mirror below skipped: the
+     file kept the membership, and the next pull — a reload, or the second
+     device — brought the deleted Sammlung's sentences back into it. */
+  const at = Date.now();
   const phrases = tx.objectStore('phrases');
   for (const member of await phrases.index('collection').getAll(id)) {
     const { collection: _gone, ...rest } = member;
-    await phrases.put(rest);
+    // Through a name, as putPhrases builds its records: `updatedAt` is the
+    // folder's field and not in StoredPhrase, which is the program's shape.
+    const stamped = { ...rest, updatedAt: at };
+    await phrases.put(stamped);
   }
   await tx.done;
   await unfileCollection(id);
