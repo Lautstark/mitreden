@@ -52,24 +52,35 @@
        same answer a Sammlung without one gets. */
     const where = into;
     busy('busy_add');
-    const { added, merged, ids } = await addPhrases(lines, where);
-    typed = '';
-    /* Show them before recording them. Waiting for the voice to exist before
-       drawing the row is how the list stays empty through a model download.
-       They are marked as being worked on before the draw, or every one of them
-       appears saying "noch nicht aufgenommen" — true, and the opposite of what
-       is happening to it. */
-    queueWork(ids);
-    await load();
-    if (!ids.length) { endWork(); return; }
-    setProgress((percent) => busy('busy_model', { percent }));
-    const { recorded, failed } = await build(ids, chosenVoice(), false, stepWork);
-    setProgress(null);
-    endWork();
-    say(t('done_add', { added, rendered: recorded })
-      + (merged ? t('done_add_twins', { n: merged }) : '') + '.'
-      + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));
-    await load();
+    /* Every way out says something, because saying is what takes the busy line
+       away again — and this runs as `void add()` from a key and a button, so an
+       error left to escape was an unhandled rejection with the page still
+       claiming to be busy and the sentences queued forever. What was typed
+       stays in the box if the write itself failed. */
+    try {
+      const { added, merged, ids } = await addPhrases(lines, where);
+      typed = '';
+      /* Show them before recording them. Waiting for the voice to exist before
+         drawing the row is how the list stays empty through a model download.
+         They are marked as being worked on before the draw, or every one of them
+         appears saying "noch nicht aufgenommen" — true, and the opposite of what
+         is happening to it. */
+      queueWork(ids);
+      await load();
+      if (!ids.length) { endWork(); return; }
+      setProgress((percent) => busy('busy_model', { percent }));
+      const { recorded, failed } = await build(ids, chosenVoice(), false, stepWork);
+      setProgress(null);
+      endWork();
+      say(t('done_add', { added, rendered: recorded })
+        + (merged ? t('done_add_twins', { n: merged }) : '') + '.'
+        + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));
+      await load();
+    } catch (error) {
+      setProgress(null);
+      endWork();
+      say(t('failed', { error: error instanceof Error ? error.message : String(error) }));
+    }
   }
 </script>
 

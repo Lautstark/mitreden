@@ -60,3 +60,71 @@ test('a finished sentence stops waiting while the rest of the batch runs', async
   await expect(page.locator('#s')).not.toHaveClass(/working/);
   await expect(page.locator('#count')).toContainText('all recorded');
 });
+
+/*
+ * And that it stops saying so when the job ends badly.
+ *
+ * The busy line is only ever taken away by the next thing the page says, so a
+ * way out that says nothing leaves it turning for the rest of the session.
+ * Adding had one — any error from the write escaped `void add()` as an
+ * unhandled rejection, with the rows still queued — and correcting a sentence
+ * had another: one deleted while it was being typed in came back from the
+ * write as nothing, and the edit returned quietly with the page still busy.
+ */
+test('a write that fails says so, and the page stops claiming to be busy', async ({ page }) => {
+  await page.goto('/?lang=de');
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+  // The store refuses every sentence, the way a full disk does.
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (this: IDBObjectStore, ...args: Parameters<typeof put>) {
+      if (this.name === 'phrases') throw new DOMException('Kein Platz mehr.', 'QuotaExceededError');
+      return put.apply(this, args);
+    };
+  });
+
+  await page.fill('#t', 'Ich habe Hunger.');
+  await page.click('#add');
+
+  await expect(page.locator('#s')).toContainText('Kein Platz mehr.');
+  await expect(page.locator('#s')).not.toHaveClass(/working/);
+  // Nothing was written, so nothing typed was thrown away.
+  await expect(page.locator('#t')).toHaveValue('Ich habe Hunger.');
+});
+
+test('correcting a sentence that was deleted meanwhile says so, and stops', async ({ page }) => {
+  await page.goto('/?lang=de');
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+  /* Written straight into the store rather than typed: a typed sentence starts
+     a recording, and its "done" at the end would say something over the line
+     this test is reading. */
+  const run = (script: string) => page.evaluate((code) => new Promise<void>((done, fail) => {
+    const request = indexedDB.open('mitreden');
+    request.onerror = () => fail(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const tx = database.transaction(['phrases', 'collections'], 'readwrite');
+      // eslint-disable-next-line no-new-func
+      new Function('tx', code)(tx);
+      tx.oncomplete = () => { database.close(); done(); };
+      tx.onerror = () => { database.close(); fail(tx.error); };
+    };
+  }), script);
+  await run(`tx.objectStore('collections').getAll().onsuccess = (event) => {
+    const [first] = event.target.result;
+    tx.objectStore('phrases').put({
+      id: 'ein-satz', text: 'Ein Satz.', norm: 'ein satz.', collection: first.id, updatedAt: Date.now(),
+    });
+  };`);
+  await page.reload();
+  await expect(page.locator('.item .line')).toHaveText('Ein Satz.');
+
+  await page.click('.item .line');
+  await run(`tx.objectStore('phrases').delete('ein-satz');`);
+  await page.keyboard.type('Ein anderer Satz.');
+  await page.keyboard.press('Enter');
+
+  await expect(page.locator('#s')).toHaveText('Den Satz gibt es nicht mehr.');
+  await expect(page.locator('#s')).not.toHaveClass(/working/);
+  await expect(page.locator('.item')).toHaveCount(0);
+});

@@ -65,6 +65,10 @@
   let clip = $derived(item.state === 'missing' ? '' : `${item.id}:${item.fingerprint ?? ''}:${item.state}`);
   let url = $state('');
   let fetched = '';
+  /* Set when the row leaves. A clip asked for just before that answers just
+     after it, and the URL made from it would belong to nothing: the teardown
+     below has already run, so nobody would ever revoke it. */
+  let gone = false;
 
   $effect(() => {
     const wanted = clip;
@@ -76,7 +80,7 @@
     if (!wanted) return;
     void getAudio(item.id).then((blob) => {
       // Only if nothing has moved on since this was asked for.
-      if (!blob || fetched !== wanted) return;
+      if (!blob || fetched !== wanted || gone) return;
       url = URL.createObjectURL(blob);
     });
   });
@@ -84,7 +88,10 @@
   /* The row is leaving, so its URL goes with it. This was a Map in the list and
      a loop at the top of every draw; it is the one line the browser gives you
      for free once a row owns its own clip. */
-  $effect(() => () => { if (url) URL.revokeObjectURL(url); });
+  $effect(() => () => {
+    gone = true;
+    if (url) URL.revokeObjectURL(url);
+  });
 
   let line: HTMLElement;
 
@@ -179,7 +186,15 @@
       if (!text || text === item.text) { line.textContent = item.text; return; }
       busy('busy_record');
       const changed = await editPhrase(item.id, text);
-      if (!changed) { line.textContent = item.text; return; }
+      /* Null is a sentence deleted while it was being typed in — on another
+         device, through the folder. Saying so is also what ends the busy line
+         above, which is only ever taken away by the next thing said. */
+      if (!changed) {
+        line.textContent = item.text;
+        say(t('edit_gone'));
+        await load();
+        return;
+      }
       queueWork([item.id]);
       // The Sammlung's voice decides, so there is nothing to pass but the last
       // resort. `true` is "record it again even though the fingerprint matches"

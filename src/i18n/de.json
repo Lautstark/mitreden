@@ -65,6 +65,7 @@
   "done_collection_new": "„{name}\" angelegt.",
   "done_delete_one": "Gelöscht: {text}",
   "done_edit": "Geändert: {text}",
+  "edit_gone": "Den Satz gibt es nicht mehr.",
   "done_import": "{added} hinzugefügt, {merged} gab es schon.",
   "done_import_revoiced": " Bei {n} davon fehlt die Stimme auf dieser Seite; sie werden mit der oben gewählten aufgenommen.",
   "done_pack": "{n} als {format} heruntergeladen.",

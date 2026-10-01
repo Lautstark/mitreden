@@ -65,6 +65,7 @@
   "done_collection_new": "\"{name}\" created.",
   "done_delete_one": "Deleted: {text}",
   "done_edit": "Changed: {text}",
+  "edit_gone": "That sentence is no longer there.",
   "done_import": "{added} added, {merged} already there.",
   "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.",
   "done_pack": "{n} downloaded as {format}.",
