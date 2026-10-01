@@ -18,7 +18,7 @@ import { loadSettings, patchSettings, type Settings } from './settings.ts';
 import { dropAudio, getAudio, putAudio } from './audio.ts';
 import { record } from '../core/audio.ts';
 import { fingerprint, free, normText, slug } from '../core/ids.ts';
-import { commonest } from '../core/voices.ts';
+import { commonest, reachable } from '../core/voices.ts';
 import type { Collection, CollectionWithCount, Phrase, PhraseWithState, State } from '../core/types.ts';
 
 /** A Sammlung named after the day, the way a new notebook gets a date. */
@@ -42,11 +42,30 @@ export async function ensureCollection(german: boolean): Promise<Collection[]> {
   // The settings voice, if there is one yet. On a genuinely first run there is
   // not, and the Sammlung goes without: voiceFor() falls through to whatever the
   // page is offering by then.
-  const { voice } = await loadSettings();
+  const voice = standingVoice(await loadSettings());
   if (voice) made.voice = voice;
   await putCollection(made);
   return [made];
 }
+
+/**
+ * The settings voice, when it can still be recorded in — and nothing when it
+ * cannot.
+ *
+ * The setting itself is left alone on purpose. ui/voices.svelte.ts keeps a
+ * saved voice through the Azure key going away so that the choice is back when
+ * the key is; what it does in the meantime is put a shipped voice in force on
+ * the page. This is the same answer for the store. Without it the two
+ * disagreed — the line beside the composer named the shipped voice while
+ * build() recorded in the saved Azure one and failed every sentence with "no
+ * azure key", and every Sammlung made in that state was born with the voice
+ * nobody could reach. Answering nothing here hands both to what the page is
+ * offering: build()'s `voiceId` is the page's voice in force, and a Sammlung
+ * made without a voice follows the default, which is the saved one again as
+ * soon as it can be.
+ */
+const standingVoice = (saved: Settings): string | undefined =>
+  saved.voice && reachable(saved.voice, saved.azure) ? saved.voice : undefined;
 
 /**
  * Which voice a sentence is supposed to be recorded in: its Sammlung's, or the
@@ -86,14 +105,14 @@ async function stateOf(item: Phrase, wanted: string | undefined): Promise<State>
  *  sentence: every caller here is about the whole library. */
 async function voiceMap(): Promise<Map<string, string | undefined>> {
   const [declared, saved] = await Promise.all([allCollections(), loadSettings()]);
-  return new Map(declared.map((c) => [c.id, c.voice ?? saved.voice]));
+  return new Map(declared.map((c) => [c.id, c.voice ?? standingVoice(saved)]));
 }
 
 export async function phrases(): Promise<PhraseWithState[]> {
   const [items, voices, saved] = await Promise.all([allPhrases(), voiceMap(), loadSettings()]);
   return Promise.all(items.map(async (item) => ({
     ...item,
-    state: await stateOf(item, voiceFor(item, voices, saved.voice)),
+    state: await stateOf(item, voiceFor(item, voices, standingVoice(saved))),
   })));
 }
 
@@ -189,7 +208,7 @@ export async function addPhrases(
   };
 
   const saved = await loadSettings();
-  const wanted = (into ? (await getCollection(into))?.voice : undefined) ?? saved.voice;
+  const wanted = (into ? (await getCollection(into))?.voice : undefined) ?? standingVoice(saved);
 
   const fresh: Phrase[] = [];
   const copying: [string, string][] = [];
@@ -266,7 +285,7 @@ export async function build(
        set — and `force` no longer means "in this voice regardless": there is
        one right voice for this sentence and force is about recording it again
        rather than about which one. */
-    const voice = voiceFor(item, voices, settings.voice ?? voiceId);
+    const voice = voiceFor(item, voices, standingVoice(settings) ?? voiceId);
     if (!voice) continue;
     try {
       const mark = await fingerprint(item.text, voice);
@@ -341,7 +360,7 @@ export async function createCollection(
      setting is now — unless the caller knows better. An import does: the file's
      sentences say which voice they were made in, and honouring that is what
      makes the same file record the same way on a second device. */
-  const decided = voice ?? (await loadSettings()).voice;
+  const decided = voice ?? standingVoice(await loadSettings());
   if (decided) made.voice = decided;
   await putCollection(made);
   return made;

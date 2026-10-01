@@ -37,6 +37,24 @@ export const shipped = (): readonly Offered[] => piperVoices(OFFERING);
 type AzureAccess = { key: string; region: string };
 
 /**
+ * Whether this page can record in a voice as things stand, asked without a
+ * request to anybody: a shipped voice the catalogue still offers, or an Azure
+ * voice while a key is set.
+ *
+ * `offered()` is the long form of the same question and the one the picker
+ * asks; it fetches Azure's list. The store needs the short form, because what
+ * it has to decide — whether the saved voice can stand in for a Sammlung that
+ * has none — comes up on every recording and on every read of the list. A key
+ * that is set but wrong still counts as reachable here: that failure has
+ * words on the settings card, and pretending the voice was never chosen would
+ * hide it.
+ */
+export function reachable(voice: string, azure?: AzureAccess): boolean {
+  if (voice.startsWith('azure:')) return Boolean(azure);
+  return shipped().some((one) => one.id === voice);
+}
+
+/**
  * Azure's catalogue, asked once per key and region: one settings-opening wants
  * it twice — the picker and the state line — and Azure's answer does not change
  * between the asks. The promise is cached rather than the list, so the two
