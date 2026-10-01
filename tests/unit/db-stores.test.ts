@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  allPhrases, countIn, countPhrases, dropPhrase, getPhrase, phrasesIn, putPhrases, twinsOf,
+  allPhrases, countIn, countPhrases, dropPhrase, phrasesIn, putPhrases, twinsOf,
 } from '../../src/db/phrases.ts';
 import {
   allCollections, dropCollection, putCollection, putCollections,
@@ -8,6 +8,10 @@ import {
 import { wipe } from '../../src/db/wipe.ts';
 import { collections, editPhrase } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
+
+/** One sentence, read the way the page reads them all. phrases.ts had a
+ *  getPhrase for this that nothing in the page called. */
+const getPhrase = async (id: string) => (await allPhrases()).find((one) => one.id === id);
 
 /**
  * What the stores buy, as behaviour rather than as shape.

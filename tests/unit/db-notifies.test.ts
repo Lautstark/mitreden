@@ -4,7 +4,7 @@ import { dropAudio, putAudio } from '../../src/db/audio.ts';
 import {
   dropCollection, patchCollection, putCollection, putCollections,
 } from '../../src/db/collections.ts';
-import { dropPhrase, patchPhrase, patchPhrases, putPhrase, putPhrases } from '../../src/db/phrases.ts';
+import { dropPhrase, patchPhrase, patchPhrases, putPhrases } from '../../src/db/phrases.ts';
 import { patchSettings, saveSettings } from '../../src/db/settings.ts';
 import { wipe } from '../../src/db/wipe.ts';
 
@@ -37,11 +37,6 @@ describe('the change notifier', () => {
 
   const phrase = (id: string, text = 'Hallo') => ({ id, text });
 
-  it('putPhrase() announces the write', async () => {
-    await putPhrase(phrase('a'));
-    expect(heard).toBe(1);
-  });
-
   /* Once for the batch, not once per sentence. It is one transaction and one
    * change to the library; announcing per record would make an import of six
    * hundred lines rewrite the backup file six hundred times. */
@@ -58,7 +53,7 @@ describe('the change notifier', () => {
   /* The writers that change some fields of a row rather than the row: the
      text edit, and the voice and fingerprint at the end of a recording. */
   it('patchPhrase() announces the write', async () => {
-    await putPhrase(phrase('a'));
+    await putPhrases([phrase('a')]);
     heard = 0;
     await patchPhrase('a', { text: 'Tschüss' });
     expect(heard).toBe(1);
@@ -74,7 +69,7 @@ describe('the change notifier', () => {
   });
 
   it('dropPhrase() announces — a sentence going is a change to the library', async () => {
-    await putPhrase(phrase('a'));
+    await putPhrases([phrase('a')]);
     heard = 0;
     await dropPhrase('a');
     expect(heard).toBe(1);
@@ -136,7 +131,7 @@ describe('the change notifier', () => {
   });
 
   it('wipe() announces, so an emptied library is backed up as empty', async () => {
-    await putPhrase(phrase('a'));
+    await putPhrases([phrase('a')]);
     heard = 0;
     await wipe();
     expect(heard).toBe(1);
@@ -158,7 +153,7 @@ describe('the change notifier', () => {
 
   it('stops telling a listener that unsubscribed', async () => {
     stop();
-    await putPhrase(phrase('a'));
+    await putPhrases([phrase('a')]);
     expect(heard).toBe(0);
   });
 });

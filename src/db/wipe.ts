@@ -7,7 +7,7 @@ import { SETTINGS } from './schema.ts';
  * Everything, gone: every store, for the settings dialog's last button.
  *
  * **And the folder with it.** This cleared the browser and stopped, which every
- * other mutation in db/ does not — `putPhrase`, `putCollection` and the rest
+ * other mutation in db/ does not — `putPhrases`, `putCollection` and the rest
  * all mirror afterwards. Where a folder is the store that omission made this
  * the one control that reports success and changes nothing durable: the files
  * stayed, `wipeEverything()` reloads the page, `pullFromFolder()` reads the

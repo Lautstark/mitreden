@@ -24,7 +24,7 @@
    */
   import { drawCollections } from '@lautstark/design/collections';
   import { createCollection } from '../db/repo.ts';
-  import { ALL, DECLARED, OPEN, load, nameCaret, openAlso, openOnly } from './store.svelte.ts';
+  import { DECLARED, OPEN, load, nameCaret, openAlso, openOnly } from './store.svelte.ts';
   import { lang, t } from './words.svelte.ts';
   import { say } from './dom.ts';
 
@@ -36,13 +36,6 @@
   } = $props();
 
   let rows: HTMLElement;
-
-  const counts = (): Map<string, number> => {
-    const out = new Map<string, number>();
-    for (const item of ALL())
-      if (item.collection) out.set(item.collection, (out.get(item.collection) ?? 0) + 1);
-    return out;
-  };
 
   /* The rows are @lautstark/design/collections'. What is left here is what a
      row means in this program: a Sammlung's count is how many sentences are in
@@ -60,16 +53,20 @@
 
      The module fills a container rather than handing back a node, so it is
      called in an effect over that container rather than hosted in a Vanilla.
-     Reading DECLARED(), OPEN() and ALL() inside the effect is the whole of the
+     Reading DECLARED() and OPEN() inside the effect is the whole of the
      subscription: the list is redrawn when a Sammlung is made, renamed,
      emptied or opened, and by nothing else. */
   $effect(() => {
-    const count = counts();
     drawCollections(rows, {
+      /* The count is the one collections() read off the membership index with
+         the Sammlungen. This used to tally ALL() again, every sentence for
+         every redraw, to arrive at the same number by another road — and ALL()
+         is the whole library, so the sidebar redrew on every recording that
+         landed, for a count that had not moved. */
       rows: DECLARED().map((collection) => ({
         id: collection.id,
         name: collection.name,
-        count: count.get(collection.id) ?? 0,
+        count: collection.count,
       })),
       open: OPEN(),
       onPick: (key: string, additive: boolean) => {

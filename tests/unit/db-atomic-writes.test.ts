@@ -2,13 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   dropCollection, getCollection, patchCollection, putCollection,
 } from '../../src/db/collections.ts';
-import { dropPhrase, getPhrase, patchPhrase, putPhrases } from '../../src/db/phrases.ts';
+import { allPhrases, dropPhrase, patchPhrase, putPhrases } from '../../src/db/phrases.ts';
 import { loadSettings } from '../../src/db/settings.ts';
 import { wipe } from '../../src/db/wipe.ts';
 import {
   createCollection, editPhrase, renameCollection, saveCollectionVoice, saveSidebarOpen,
   saveVoice,
 } from '../../src/db/repo.ts';
+
+
+/** One sentence, read the way the page reads them all. phrases.ts had a
+ *  getPhrase for this that nothing in the page called. */
+const getPhrase = async (id: string) => (await allPhrases()).find((one) => one.id === id);
 
 /**
  * Two writes to one record, a moment apart, both land.

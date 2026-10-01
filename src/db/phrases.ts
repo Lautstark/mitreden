@@ -34,9 +34,6 @@ export const countIn = async (id: string): Promise<number> =>
 /** How many there are at all. The delete-everything question asks this. */
 export const countPhrases = async (): Promise<number> => (await db()).count('phrases');
 
-export const getPhrase = async (id: string): Promise<Phrase | undefined> =>
-  shown(await (await db()).get('phrases', id));
-
 /**
  * Every sentence like this one. "Like" is normText's answer: punctuation stays
  * in, because "Nochmal!" and "Nochmal." are spoken differently.
@@ -92,8 +89,6 @@ export async function putPhrases(items: readonly Phrase[]): Promise<void> {
   await mirror('sammlungen');
   touched();
 }
-
-export const putPhrase = (item: Phrase): Promise<void> => putPhrases([item]);
 
 /** The fields of a sentence a caller may change without handing in the whole
  *  of it. Never the id: it is a file name on somebody's talker. */
