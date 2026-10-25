@@ -1,7 +1,7 @@
 /* The folder as the store: what is mirrored into it after a write, and what is
    read back out of it on start. folder.ts is the folder itself; this is the
    database's side of the arrangement. */
-import { normText } from '../core/ids.ts';
+import { carriedName, normText } from '../core/ids.ts';
 import {
   adopt, adopted, asPhrase, asStored, isStore, pushKind, readKind, type Kind,
 } from './folder.ts';
@@ -36,12 +36,32 @@ export async function pullFromFolder(): Promise<boolean> {
     readKind<Record<string, unknown>>('saetze'),
     readKind<StoredCollection>('sammlungen'),
   ]);
+
+  /* Every arriving sentence through the carry-across, and before the
+     transaction opens.
+
+     db/rekey.ts walks the library once on start and marks that it has; this
+     replaces every row in the library and can happen at any moment after
+     that — a folder connected in Einstellungen, or the watch firing because
+     the other machine in the household wrote. So a library whose names were
+     written before stimmquelle 2.12.2 arrives here long after the pass that
+     knew how to carry them, and the mark says there is nothing to do. The
+     recordings stay (see below), which is exactly what makes it visible: the
+     audio is current and the row says „geändert seit der Aufnahme".
+
+     Before the transaction because each of these is a digest, and db.ts is
+     emphatic about why one may not happen inside an open one. */
+  const arriving = await Promise.all(saetze.map(async (row) => {
+    const item = asPhrase(row);
+    const carried = await carriedName(item.text, item.voice, item.fingerprint);
+    return { ...item, ...carried ? { fingerprint: carried } : {}, norm: normText(item.text) };
+  }));
+
   const tx = database.transaction(['phrases', 'collections'], 'readwrite');
   await tx.objectStore('phrases').clear();
   await tx.objectStore('collections').clear();
-  for (const row of saetze) {
-    const item = asPhrase(row);
-    await tx.objectStore('phrases').put({ ...item, norm: normText(item.text) });
+  for (const item of arriving) {
+    await tx.objectStore('phrases').put(item);
   }
   for (const item of sammlungen) await tx.objectStore('collections').put(item);
   await tx.done;

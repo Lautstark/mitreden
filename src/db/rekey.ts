@@ -62,7 +62,7 @@
 
 import { allPhrases, patchPhrases, type PhrasePatch } from './phrases.ts';
 import { loadSettings, patchSettings } from './settings.ts';
-import { fingerprint, formerNames } from '../core/ids.ts';
+import { carriedName } from '../core/ids.ts';
 
 /**
  * Which naming scheme the stored fingerprints are in.
@@ -99,20 +99,15 @@ export async function rekeyIfNeeded(): Promise<number> {
      that no longer matches it — stale, which is what it then is. */
   const moved = new Map<string, PhrasePatch>();
 
+  /* One line, and the rule it asks is core/ids.ts's: only a recording whose
+     stored name belongs to a former scheme is current, and only a current one
+     may be renamed. It is written there rather than here because this is no
+     longer the only caller — a pull from the folder asks the same question of
+     every row arriving from another machine, and a rule that exists twice gets
+     relaxed once. */
   for (const item of items) {
-    // Nothing to carry: a sentence that has never been recorded has no name to
-    // change, and one recorded before the voice was stored cannot be checked
-    // against either formula — repo.ts's stateOf already calls that stale.
-    if (!item.fingerprint || !item.voice) continue;
-
-    // The load-bearing line. Only a recording whose old name still matches its
-    // own text and voice is current, and only a current one may be renamed.
-    // Several old names, because there have been two schemes before this one
-    // and the first of them spelled the engine differently in each stimmquelle
-    // release — see formerNames().
-    if (!(await formerNames(item.text, item.voice)).includes(item.fingerprint)) continue;
-
-    moved.set(item.id, { fingerprint: await fingerprint(item.text, item.voice) });
+    const name = await carriedName(item.text, item.voice, item.fingerprint);
+    if (name) moved.set(item.id, { fingerprint: name });
   }
 
   if (moved.size) await patchPhrases(moved);

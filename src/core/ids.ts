@@ -190,3 +190,43 @@ export async function formerNames(text: string, voiceId: string): Promise<string
 
   return [...first, ...rest];
 }
+
+/**
+ * The name a stored recording should be filed under now — or nothing at all,
+ * which is the usual answer and means it keeps the name it has.
+ *
+ * The whole of the carry-across rule, in the one place both callers read it
+ * from: db/rekey.ts walks the library with it on start, and db/mirror.ts puts
+ * every sentence arriving from the folder through it. It was rekey.ts's alone
+ * and that was the bug — see pullFromFolder, which replaces every row in the
+ * store while the recordings stay, so names written by another machine arrive
+ * long after the one pass that knew how to carry them had run.
+ *
+ * Three answers, and only the first writes anything:
+ *
+ *  - the stored name is one a former scheme gave this exact text and voice, so
+ *    the recording is current and is renamed;
+ *  - it is already what the live formula gives, so there is nothing to do —
+ *    asked first because it is true of nearly every sentence nearly every
+ *    time, and it costs one digest to find out instead of four;
+ *  - it is neither, so the sentence was stale before this ran and stays stale.
+ *    That is the load-bearing one: a text edited after it was recorded carries
+ *    a name that matches nothing, and the mismatch is a true statement about
+ *    it. Recomputing would erase it and leave audio nobody can tell is wrong.
+ *
+ * Pure, and deliberately: no store, no folder, no settings. That is what lets
+ * the pull correct a row before it is written rather than in a second pass
+ * over the library afterwards — and what keeps a digest out of an open
+ * IndexedDB transaction, which db.ts explains at length.
+ */
+export async function carriedName(
+  text: string, voice: string | undefined, stored: string | undefined,
+): Promise<string | undefined> {
+  // Nothing to carry: a sentence never recorded has no name, and one recorded
+  // before the voice was stored cannot be checked against any formula —
+  // db/repo.ts's stateOf already calls that stale.
+  if (!stored || !voice) return undefined;
+  const now = await fingerprint(text, voice);
+  if (stored === now) return undefined;
+  return (await formerNames(text, voice)).includes(stored) ? now : undefined;
+}
