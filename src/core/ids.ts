@@ -122,7 +122,7 @@ export async function fingerprint(text: string, voiceId: string): Promise<string
 const FORMER_ENGINES = ['stimmquelle@2.8.0 pipeline@3', 'stimmquelle@2.7.0 pipeline@3'];
 
 /**
- * Every name this recording could already be filed under, across the two
+ * Every name this recording could already be filed under, across the three
  * schemes that came before the one in force.
  *
  * db/rekey.ts uses it for one job: deciding whether a stored name belongs to a
@@ -137,6 +137,14 @@ const FORMER_ENGINES = ['stimmquelle@2.8.0 pipeline@3', 'stimmquelle@2.7.0 pipel
  * move off a package version was meant to end, paid one last time on the way
  * out. The engine string has to be the one that *wrote* the name, so the
  * candidates are enumerated rather than derived.
+ *
+ * **Scheme 3 is the same lesson again, and this time it caught `keyFor`.**
+ * Every candidate below is a name no code in the family produces any more, so
+ * not one of them may be asked of a live function: `keyFor` is whatever the
+ * installed stimmquelle says today, and a former name is a fact about a
+ * release that has shipped. Scheme 2's cloud candidate was derived, and 2.12.2
+ * silently turned it into the *current* name — the one case where a match
+ * proves nothing. Both cloud schemes are spelled out here instead.
  */
 export async function formerNames(text: string, voiceId: string): Promise<string[]> {
   const cloud = voiceId.startsWith('azure:');
@@ -154,9 +162,31 @@ export async function formerNames(text: string, voiceId: string): Promise<string
     : await Promise.all(FORMER_ENGINES.map((engine) =>
       short(JSON.stringify([text, 'piper', modelOf(voiceId), engine, OUT]))));
 
-  // Scheme 2: keyFor, but still naming stimmquelle as the engine — which is
-  // its default, so this is what a name looked like between the two commits.
-  const second = (await keyFor(text, voiceId, { rate: OUT.sampleRate, out: OUT })).slice(0, 12);
+  /* Schemes 2 and 3 for a cloud voice, which are one name.
+   *
+   * §3.4 is null on a backend this machine does not render, so the engine term
+   * is the whole of what separates the two schemes and an `azure:` name never
+   * carried it. What that one name is: keyFor's payload as stimmquelle built
+   * it up to and including 2.12.1, written out because 2.12.2 appends a term
+   * to it and nothing can ask for the shorter one again.
+   *
+   * 3 is `PIPELINE_VERSION`, by value and not by import, for the same reason.
+   * No §1, §2 or §3a rule has moved, so these recordings are current; if one
+   * ever does, the number in the live payload moves away from this and they
+   * correctly stop matching. */
+  const cloudBefore = async (): Promise<string[]> => [await short(JSON.stringify(
+    [text.trim(), 'azure', voiceId.slice(6), null, 3, { rate: OUT.sampleRate }, OUT],
+  ))];
 
-  return [...first, second];
+  // Scheme 2 for a local voice: keyFor, but still naming stimmquelle as the
+  // engine — which is its default, so this is what a name looked like between
+  // the two commits. Scheme 3 needs no local candidate: §3.4 names the pair
+  // that renders, and 2.12.2 left every piper name exactly as it was, so a
+  // current one already matches fingerprint() and has nothing to be carried
+  // across.
+  const rest = cloud
+    ? await cloudBefore()
+    : [(await keyFor(text, voiceId, { rate: OUT.sampleRate, out: OUT })).slice(0, 12)];
+
+  return [...first, ...rest];
 }

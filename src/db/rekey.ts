@@ -17,6 +17,24 @@
  * not to re-record — which is the whole point of the second change, since
  * naming the package meant paying this cost on every release of it.
  *
+ * ## And a third time, on 2026-10-02
+ *
+ * Taking stimmquelle 2.12.2 moved the names again, for `azure:` voices alone:
+ * §3 now ends a cloud name with the output format and the SSML prosody rate,
+ * because Azure renders from that rate and two rates are two recordings. The
+ * package calls the cost "Azure names change once, and a cache of them
+ * re-renders once" — true of vorlaut, where the name is a cache key. Here it
+ * is not a cache key. It is what decides whether a sentence reads *geändert
+ * seit der Aufnahme*, so the same release turned every Azure recording in the
+ * library into a lie about itself: a library recorded in a cloud voice said it
+ * had been changed since it was recorded, everywhere and all at once, with
+ * nothing having been changed. Same cause, same repair, and the same argument
+ * for renaming rather than re-recording — with a bill attached this time,
+ * since re-recording a cloud library is money.
+ *
+ * A piper recording is untouched by that release and needs no carrying; the
+ * pass walks it, finds its stored name under no former scheme, and leaves it.
+ *
  * ## Why it is not a database migration
  *
  * db.ts says why in its own words: a versionchange transaction commits the
@@ -49,13 +67,19 @@ import { fingerprint, formerNames } from '../core/ids.ts';
 /**
  * Which naming scheme the stored fingerprints are in.
  *
- * A number rather than a boolean, and it has already earned that: 2 was asking
- * stimmquelle for §3 instead of assembling it here, and 3 is naming the engine
- * that actually renders — piper-wasm and onnxruntime-web — rather than the
- * package that drives them, so that a stimmquelle release which changes no
- * audio stops re-recording the library.
+ * A number rather than a boolean, and it has already earned that three times:
+ * 2 was asking stimmquelle for §3 instead of assembling it here, 3 is naming
+ * the engine that actually renders — piper-wasm and onnxruntime-web — rather
+ * than the package that drives them, so that a stimmquelle release which
+ * changes no audio stops re-recording the library, and 4 is stimmquelle 2.12.2
+ * putting what the cloud was asked for into an `azure:` name.
+ *
+ * A piper name is identical under 3 and 4, and a library with no cloud
+ * recording in it is walked once and rewrites nothing. That is the cost of
+ * having one number for the family of names rather than one per backend, and
+ * it is a few hundred digests on a single boot.
  */
-export const KEY_SCHEME = 3;
+export const KEY_SCHEME = 4;
 
 /**
  * Renames every recording that is still current, and reports how many.

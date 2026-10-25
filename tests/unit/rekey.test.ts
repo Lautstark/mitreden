@@ -48,6 +48,23 @@ async function nameUnder(text: string, voice: string, engine: string): Promise<s
     .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
 }
 
+/**
+ * A cloud name as stimmquelle built it up to and including 2.12.1, built here
+ * rather than asked for, and for the reason above: `keyFor` is the live
+ * formula and 2.12.2 appends a term to every `azure:` name, so the only way to
+ * state what the old one was is to write it out. §3.4 is null on a backend
+ * this machine does not render, which is why one spelling covers both of the
+ * schemes that ran before it.
+ */
+async function cloudNameBefore(text: string, voice: string): Promise<string> {
+  const payload = JSON.stringify(
+    [text.trim(), 'azure', voice.slice(6), null, 3, { rate: OUT.sampleRate }, OUT],
+  );
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+}
+
 /** A sentence as the old scheme left it: recorded, and named by that scheme. */
 async function recorded(id: string, text: string, voice: string): Promise<void> {
   const [oldest] = await formerNames(text, voice);
@@ -76,6 +93,38 @@ describe('the pass', () => {
     const [item] = await allPhrases();
     expect(item!.fingerprint).toBe(await fingerprint('Ich habe Durst.', CLOUD));
   });
+
+  it('carries a cloud library across stimmquelle 2.12.2', async () => {
+    /* The whole library read „geändert seit der Aufnahme" the morning after
+       that release, and nothing had been changed: §3 started ending an
+       `azure:` name with the format and the prosody rate Azure was asked for,
+       which is right — two rates are two recordings — and moved every cloud
+       name this library had stored. The sound did not move, so the recordings
+       are current and must be renamed rather than bought again. */
+    const before = await cloudNameBefore('Ich habe Durst.', CLOUD);
+    // Said out loud, because without it the rest of this test passes on a
+    // library that never needed carrying: a rename to the name already there
+    // counts as one rename and asserts nothing.
+    expect(before).not.toBe(await fingerprint('Ich habe Durst.', CLOUD));
+    await putPhrases([{ id: 'durst', text: 'Ich habe Durst.', voice: CLOUD, fingerprint: before }]);
+
+    expect(await rekeyIfNeeded()).toBe(1);
+    expect((await allPhrases())[0]!.fingerprint)
+      .toBe(await fingerprint('Ich habe Durst.', CLOUD));
+  });
+
+  it('leaves a piper recording alone, because that release did not move it',
+    async () => {
+      // The other half of the same claim: local names were untouched, so a
+      // current one is already right and the pass has nothing to write for it.
+      // Without this, a candidate list that quietly matched the live formula
+      // would look exactly like a pass that worked.
+      const current = await fingerprint('Ich habe Hunger.', VOICE);
+      await putPhrases([{ id: 'hunger', text: 'Ich habe Hunger.', voice: VOICE, fingerprint: current }]);
+
+      expect(await rekeyIfNeeded()).toBe(0);
+      expect((await allPhrases())[0]!.fingerprint).toBe(current);
+    });
 
   it('leaves a sentence that was already stale exactly as it was', async () => {
     // The load-bearing case. Recorded, then the text edited and not spoken
