@@ -127,10 +127,18 @@ export function readFile(data: unknown):
   const lines: Line[] = [];
   for (const row of rows) {
     const record = asRecord(row);
+    /* A bildhaft Spiel's cards are picked, not typed: their rawInput is empty
+       and the word stands in the one slot's caption — or, where nobody renamed
+       it, in the token that found the symbol. A sentence somebody typed still
+       carries its rawInput and is read exactly as before; this is only where a
+       card that was all picture finds its word. */
+    const slot = asRecord(Array.isArray(record?.slots) ? record.slots[0] : null);
     const text = typeof row === 'string' ? row
       : typeof record?.text === 'string' ? record.text
-        : typeof record?.rawInput === 'string' ? record.rawInput
-          : null;
+        : typeof record?.rawInput === 'string' && record.rawInput.trim() ? record.rawInput
+          : typeof slot?.caption === 'string' && slot.caption.trim() ? slot.caption
+            : typeof slot?.sourceToken === 'string' ? slot.sourceToken
+              : null;
     if (!text?.trim()) continue;
     const voice = typeof record?.voice === 'string' ? record.voice : undefined;
     /* A count the file states outright wins over the board. Nothing writes one
