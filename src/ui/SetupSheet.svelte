@@ -90,6 +90,7 @@
   import { ALL, load } from './store.svelte.ts';
   import { chosenVoice, knownVoices, loadVoices, pickVoice, relangVoice } from './voices.svelte.ts';
   import { exportAll, importFile, wipeEverything } from './settings.ts';
+  import { recordEverything } from './sammlung.ts';
   import { lang, setLang, sourceOf, speaks, t, tn, type Key } from './words.svelte.ts';
   import { say } from './dom.ts';
 
@@ -394,6 +395,10 @@
      database here left this line blank at the moment somebody was reading it —
      which is the one thing this shape promises not to do. */
   let dataState = $derived(ALL().length ? tn('count', ALL().length) : t('count_none'));
+  /* How much of the library does not sound like itself: never recorded, or
+     changed since it was. The button below reads it, and so does whether there
+     is anything to press. */
+  let waiting = $derived(ALL().filter((item) => item.state !== 'ok').length);
 
   void readAzure();
 </script>
@@ -494,6 +499,25 @@
         {lang}
       />
     </div>
+
+    <!-- The library, brought up to date with its own voices.
+
+         Here rather than in „Wo alles liegt", because what it is about is
+         speech and not files, and because this is the panel somebody is
+         already in when they wonder why a Sammlung is silent. The number is
+         on the button rather than beside it: it is the whole reason to press
+         it, and a button offering to record nothing should say so before it
+         is pressed. -->
+    <hr class="hair" />
+    <p class="subhead">{t('record_all_title')}</p>
+    <!-- `hint` and not `notice`: notice is a tinted callout, and a secondary
+         action at the foot of a panel asking for that much attention reads as
+         the panel's subject rather than its afterthought. A picture showed it
+         — see the baseline this commit re-recorded. -->
+    <p class="hint">{t('record_all_hint')}</p>
+    <button class="btn sm" id="recordall" disabled={!waiting}
+      onclick={() => void recordEverything()}
+    >{t('record_all')}{waiting ? ` · ${t('record_all_waiting', { n: waiting })}` : ''}</button>
   </Panel>
 
   <!-- Which key, not merely that there is one: the last four characters tell

@@ -204,6 +204,40 @@ async function recordThese(ids: readonly string[]): Promise<void> {
 }
 
 /**
+ * Everything in the library that is still waiting, in one run.
+ *
+ * A recording run lives in the page and not in the database, so a reload
+ * throws the queue away — and an import that lands while the voice is still
+ * coming down leaves its Sammlung silent with nothing saying so. The way back
+ * was „Nochmal aufnehmen" on each Sammlung in turn, which is fine for one
+ * Sammlung and is not fine for the thirty-two Klettspiele somebody imported in
+ * an afternoon. That is where this came from.
+ *
+ * The whole library rather than what is on screen: the point is the Sammlungen
+ * nobody is looking at. `state !== 'ok'` takes the stale ones with the missing
+ * ones, which is the same net recordAgain casts over one Sammlung — a sentence
+ * whose text or voice has moved is a sentence that does not sound like itself
+ * any more, and this is the button for making the library true.
+ *
+ * Asked first, with the number in the question: this is minutes of synthesis
+ * and possibly a 60 MB download, and a button that quietly starts an hour of
+ * work is a button people learn to fear.
+ */
+export async function recordEverything(): Promise<void> {
+  const waiting = ALL().filter((item) => item.state !== 'ok').map((item) => item.id);
+  if (!waiting.length) {
+    say(t('nothing_to_record'));
+    return;
+  }
+  if (!await confirmDialog({
+    title: t('record_all_title'),
+    body: tn('record_all_ask', waiting.length),
+    confirmLabel: t('menu_record'),
+  })) return;
+  await recordThese(waiting);
+}
+
+/**
  * Nothing here has a recording yet, which is not a refusal.
  *
  * Both downloads used to answer this with one grey line — „Davon ist nichts

@@ -128,3 +128,38 @@ test('correcting a sentence that was deleted meanwhile says so, and stops', asyn
   await expect(page.locator('#s')).not.toHaveClass(/working/);
   await expect(page.locator('.item')).toHaveCount(0);
 });
+
+/*
+ * Everything that is still waiting, in one go.
+ *
+ * A recording run does not survive a reload — the queue is in the page, not in
+ * the database — and an import that arrives while the voice is still coming
+ * down leaves its Sammlung silent. Until now the only way back was „Nochmal
+ * aufnehmen" on each Sammlung in turn, which is fine for one and is not fine
+ * for the thirty-two Klettspiele somebody imported in an afternoon.
+ */
+test('takes every sentence that is still waiting, across the whole library', async ({ page }) => {
+  await page.fill('#t', 'Fuchs.\nEule.\nHase.');
+  await page.click('#add');
+  await expect(page.locator('#list .item')).toHaveCount(3);
+
+  /* The reload is the point: it throws the queue away and leaves three rows
+     that nothing is working on, which is exactly the state an interrupted
+     import leaves behind. */
+  await page.reload();
+  await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
+  await expect(page.locator('#list .item.busy')).toHaveCount(0);
+
+  await page.click('#gear');
+  await page.click('#p-voice > summary');
+  await expect(page.locator('#recordall')).toContainText('3');
+  await page.click('#recordall');
+
+  // It says what it is about to do before it does it: this is minutes of work
+  // and a model download, not a toggle.
+  const question = page.locator('dialog[open]').last();
+  await expect(question).toBeVisible();
+  await question.locator('.foot button.primary').click();
+
+  await expect(page.locator('#list .item.busy')).toHaveCount(3);
+});

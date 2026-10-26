@@ -92,7 +92,10 @@ test('with two open, the next sentence is in none — and both halves say so', a
   await expect(page.locator('#colvoice')).not.toBeVisible();
   // The panel says what it is for, so nobody reads it as the voice recording now.
   await expect(page.locator('#p-voice .section')).toHaveText('Standardstimme');
-  await expect(page.locator('#p-voice .hint')).toContainText('nächste neue Sammlung');
+  /* The panel's own lead, which is its first hint. There is a second one at
+     the foot of the panel now, under „Alles aufnehmen, was fehlt", so the one
+     being read has to be named rather than being the only one by accident. */
+  await expect(page.locator('#p-voice .hint').first()).toContainText('nächste neue Sammlung');
 });
 
 test('the ⋯ holds what the Sammlung is set to, under what acts on it', async ({ page }) => {
