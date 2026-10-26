@@ -68,6 +68,8 @@
   "edit_gone": "That sentence is no longer there.",
   "done_import": "{added} added, {merged} already there.",
   "done_import_revoiced": " {n} of them had a voice this page does not have; they will be recorded in the one selected above.",
+  "done_import_recorded_one": "1 sentence recorded.",
+  "done_import_recorded_other": "{n} sentences recorded.",
   "done_pack": "{n} downloaded as {format}.",
   "done_pen_bare_one": "{sentences} as an Anybook project, without a start code. Open it in Anybook Studio, transfer to the pen, then print the sheet.",
   "done_pen_bare_other": "{sentences} as an Anybook project on {n} sheets, without a start code. Open it in Anybook Studio, transfer to the pen, then print the sheets.",

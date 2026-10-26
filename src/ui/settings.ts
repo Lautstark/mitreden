@@ -20,10 +20,10 @@ import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.
 import { ablage } from '../db/folder.ts';
 import { createCollection, settings } from '../db/repo.ts';
 import { offered } from '../core/voices.ts';
-import { lang, t } from './words.svelte.ts';
+import { lang, t, tn } from './words.svelte.ts';
 import type { Line } from '../db/repo.ts';
 import type { Collection } from '../core/types.ts';
-import { load } from './store.svelte.ts';
+import { endWork, load, queueWork, stepWork } from './store.svelte.ts';
 import { busy, say } from './dom.ts';
 import { confirmDialog, openDialog } from './dialog.ts';
 import { downloadJson } from '@lautstark/werkzeuge/download';
@@ -146,13 +146,68 @@ export async function importFile(file: File): Promise<string | null> {
   const into = await createCollection(
     collection ?? file.name.replace(/\.json$/i, ''), lang() === 'de', votedVoice(lines, here),
   );
-  const { added, merged, revoiced } = await addPhrases(lines, into.id, here);
+  const { added, merged, revoiced, ids } = await addPhrases(lines, into.id, here);
   // The count, and then what became of the voices that did not survive the
   // journey. Silence there is what made the picker look like it was ignored.
   say(t('done_import', { added, merged })
     + (revoiced ? t('done_import_revoiced', { n: revoiced }) : ''));
   await load();
+  await speakArrivals(ids);
   return into.id;
+}
+
+/**
+ * What a file brought, recorded, without anybody pressing anything.
+ *
+ * A Sammlung is imported to be spoken. It used to arrive and sit there — every
+ * row reading "noch nicht aufgenommen", and the one thing the file was
+ * imported for another press away in a menu — which was a step nobody would
+ * ever decline and so was not a choice, only a wait.
+ *
+ * The shape is Compose.svelte's `add`, because this is the same act: sentences
+ * land, and then they are spoken. Queued before the list is drawn, or every
+ * arriving row announces itself as untouched at the exact moment it is being
+ * worked on. Everything fresh goes in and `build` decides: `force` stays false,
+ * so a sentence that arrived with a twin's recording already copied onto it
+ * (addPhrases) is skipped rather than made twice, and `endWork` clears what was
+ * skipped along with what was done.
+ *
+ * The import's own sentence is left standing while this runs. It is the only
+ * place the counts are said — how many arrived, how many were already here,
+ * whose voice did not survive the trip — and a "Wird aufgenommen …" written
+ * over it a millisecond later would cost the reader all three. The rows say
+ * what is happening meanwhile, and the model download has the status line when
+ * there is one to report.
+ *
+ * Its own function because `importFile` has a second caller shape — a whole
+ * Sicherung — that deliberately does not come through here: that restores a
+ * library rather than a Sammlung, often onto a machine with no voice
+ * downloaded yet, and several hundred recordings nobody asked for is an
+ * evening rather than an import. Those Sammlungen keep their „Nochmal
+ * aufnehmen".
+ */
+async function speakArrivals(ids: readonly string[]): Promise<void> {
+  if (!ids.length) return;
+  const [{ build }, { chosenVoice }, { setProgress }] = await Promise.all([
+    import('../db/repo.ts'), import('./voices.svelte.ts'), import('../core/audio.ts'),
+  ]);
+  queueWork(ids);
+  await load();
+  /* Every way out ends the work, because the queue is drawn from it: an error
+     escaping here would leave every arriving row saying it is waiting for a
+     recording that nothing is going to make. */
+  try {
+    setProgress((percent) => busy('busy_model', { percent }));
+    const { recorded, failed } = await build([...ids], chosenVoice(), false, stepWork);
+    say(tn('done_import_recorded', recorded)
+      + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));
+  } catch (error) {
+    say(t('failed', { error: error instanceof Error ? error.message : String(error) }));
+  } finally {
+    setProgress(null);
+    endWork();
+    await load();
+  }
 }
 
 /**

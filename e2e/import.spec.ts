@@ -193,3 +193,35 @@ test('a file naming one sentence twice adds it once', async ({ page }) => {
   await expect(page.locator('#s')).toContainText('1 gab es schon');
   expect(await stored(page)).toEqual([['Ich habe Hunger.', null]]);
 });
+
+/*
+ * A file arrives to be spoken.
+ *
+ * It used to arrive and sit there: every row saying "noch nicht aufgenommen",
+ * and the one thing anybody imports a Sammlung for still a button-press away
+ * in a menu. The sentences are queued the moment they land now, the same way
+ * typed ones are (Compose.svelte) — the recording itself is the engine's and
+ * is not what this asserts.
+ */
+test('what a file brings is queued to be recorded, not left sitting', async ({ page }) => {
+  await openData(page);
+  await importJson(page, 'spiel.json', [
+    { id: 'fuchs', text: 'Fuchs.', collections: [] },
+    { id: 'eule', text: 'Eule.', collections: [] },
+  ]);
+  await expect(page.locator('#s')).toContainText('2 hinzugefügt');
+
+  /* The sheet is still up and the arriving Sammlung is not the open one, so
+     the rows have to be gone to. That they are not shown is why the queue
+     matters: the work starts whether or not anybody is looking at it. */
+  await page.locator('dialog[open] .close, dialog[open] [aria-label="Schließen"]').first().click();
+  await page.click('#rows .collections__item:has-text("spiel")');
+
+  // Marked as being worked on before the voice exists — a row reading "noch
+  // nicht aufgenommen" while it is being recorded is the state the list is
+  // busiest in looking exactly like the one where nothing is happening.
+  await expect(page.locator('#list .item.busy')).toHaveCount(2);
+  await expect(page.locator('#list .item.recording')).toHaveCount(1);
+  await expect(page.locator('#list .item .state', { hasText: 'noch nicht aufgenommen' }))
+    .toHaveCount(0);
+});
