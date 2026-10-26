@@ -16,7 +16,7 @@ const base: SheetNotes = {
   title: 'Wörter', date: '2026-08-29', sentences: 4,
   product: 'Avery Zweckform 6222', per: 88,
   url: 'https://www.avery-zweckform.com/vorlage-6222',
-  startCode: true, start: 1, page: 1, pages: 1,
+  startCode: true, start: 1, page: 1, pages: 1, stickers: 4,
 };
 const notes = (over: Partial<SheetNotes> = {}) => sheetNotes({ ...base, ...over });
 
@@ -53,5 +53,24 @@ describe('what a sheet says about itself', () => {
     expect(paper).toContain('Avery Zweckform 6222');
     expect(paper).toContain('avery-zweckform.com/vorlage-6222');
     expect(paper).not.toContain('https://');
+  });
+
+  it('names the stickers when they outnumber the sentences', () => {
+    /* Thirty cards out of ten words. "10 Sätze" alone on a sheet of thirty
+       stickers reads as a sheet printed wrong, and the person at the printer
+       has nothing else to check it against. */
+    expect(notes({ sentences: 10, stickers: 30 })[0]).toContain('10 Sätze');
+    expect(notes({ sentences: 10, stickers: 30 })[0]).toContain('30 Aufkleber');
+    // One each is the ordinary case and says nothing worth the room. Matched
+    // with the number, because the start code's own line says "Aufkleber" too.
+    expect(notes({ sentences: 10, stickers: 10 })[0]).not.toContain('10 Aufkleber');
+    expect(notes({ sentences: 1, stickers: 1 })[0]).not.toContain('1 Aufkleber');
+  });
+
+  it('says it on the first sheet, where the counts are', () => {
+    expect(notes({ sentences: 10, stickers: 30, pages: 2, page: 1 })[0])
+      .toContain('30 Aufkleber');
+    expect(notes({ sentences: 10, stickers: 30, pages: 2, page: 2 })[0])
+      .not.toContain('30 Aufkleber');
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  cells, penProject, perSheet, SHEETS, sheetsFor, type PenAudio,
+  cells, circlesUsed, penProject, perSheet, SHEETS, sheetsFor, sheetsUsed,
+  type PenAudio,
 } from '../../src/core/anybook.ts';
 
 const SHEET = SHEETS['6222'];
@@ -206,6 +207,95 @@ describe('an Anybook project', () => {
     expect(project.Codes.every((c: { Type: number }) => c.Type === 1)).toBe(true);
     // The first sentence takes the first free circle itself.
     expect(project.Codes[0].X).toBeCloseTo((cells(SHEET)[4].x - 5) / 10, 3);
+  });
+
+  it('prints one sticker per copy, and carries the audio once', async () => {
+    /*
+     * The Klettspiel case: thirty cards, ten words. Every card wants a sticker
+     * of its own and all the cards of one word have to say the same thing — so
+     * the number multiplies the circles and not the recordings. A second zip
+     * entry under the same name would be a second copy of the same mp3 in the
+     * archive, and a second AudioFiles row would have Studio transcode it
+     * twice.
+     */
+    const blob = penProject('Test', [
+      { ...audio(1)[0], name: 'fuchs.mp3', caption: 'Fuchs', copies: 4 },
+      { ...audio(1)[0], name: 'eule.mp3', caption: 'Eule', copies: 3 },
+    ]);
+    const inside = await entries(blob);
+    expect([...inside.keys()].filter((name) => name.endsWith('.mp3')))
+      .toEqual(['fuchs.mp3', 'eule.mp3']);
+
+    const project = await projectOf(blob);
+    expect(project.AudioFiles.map((f: { FileName: string }) => f.FileName))
+      .toEqual(['fuchs.mp3', 'eule.mp3']);
+    // Seven stickers and the activation code, the copies of one word together.
+    expect(project.Codes.map((c: { AudioFileName: string }) => c.AudioFileName)).toEqual([
+      '', 'fuchs.mp3', 'fuchs.mp3', 'fuchs.mp3', 'fuchs.mp3',
+      'eule.mp3', 'eule.mp3', 'eule.mp3',
+    ]);
+    // Each one on its own circle, left to right.
+    const grid = cells(SHEET);
+    project.Codes.forEach((code: { X: number }, i: number) => {
+      expect(code.X).toBeCloseTo((grid[i].x - 5) / 10, 3);
+    });
+  });
+
+  it('writes the word under every copy of it', async () => {
+    // The sheet is read while it is peeled, so a circle with no word under it
+    // is a sticker nobody can place. Four copies, four captions.
+    const blob = penProject('Test', [{ ...audio(1)[0], caption: 'Fuchs', copies: 4 }]);
+    const pdf = (await entries(blob)).get('Test.pdf')!;
+    const page = new TextDecoder('latin1').decode(pdf);
+    expect(page.match(/\(Fuchs\)/g) ?? []).toHaveLength(4);
+    // Plus the activation code's own word: five circles are written on.
+    expect(page.match(/BT \/F1 5 Tf/g) ?? []).toHaveLength(5);
+  });
+
+  it('counts the copies when it runs out of paper, not the sentences', async () => {
+    // Ten sentences of nine copies is ninety stickers, which is past what one
+    // sheet of 88 holds however few sentences it came from.
+    const many = audio(10).map((one) => ({ ...one, copies: 9 }));
+    const project = await projectOf(penProject('Test', many));
+    expect(project.Codes).toHaveLength(91);
+    expect(project.PdfPageCount).toBe(2);
+    expect(project.Codes.filter((c: { PageNo: number }) => c.PageNo === 1)).toHaveLength(88);
+  });
+
+  it('treats an absent or spoilt count as one sticker', async () => {
+    // Absent is the ordinary case and must stay cheap to write. The rest are
+    // what a file from somewhere else can hold: a count is a number of
+    // stickers, so nothing below one is printable.
+    const odd = [
+      { ...audio(1)[0], name: 'a.mp3', caption: 'a' },
+      { ...audio(1)[0], name: 'b.mp3', caption: 'b', copies: 0 },
+      { ...audio(1)[0], name: 'c.mp3', caption: 'c', copies: -2 },
+      { ...audio(1)[0], name: 'd.mp3', caption: 'd', copies: 2.6 },
+    ];
+    const project = await projectOf(penProject('Test', odd));
+    expect(project.Codes.map((c: { AudioFileName: string }) => c.AudioFileName))
+      .toEqual(['', 'a.mp3', 'b.mp3', 'c.mp3', 'd.mp3', 'd.mp3']);
+  });
+
+  it('says how much paper a run takes from where it starts', () => {
+    /*
+     * What the dialog has to be able to say before anything is encoded, and
+     * what the message after it says. The old arithmetic counted sentences on
+     * a fresh sheet: it ignored `start`, so a run beginning at circle 80 of 88
+     * claimed one sheet and printed two.
+     */
+    expect(circlesUsed(30, true, 1)).toBe(31);
+    expect(circlesUsed(30, false, 1)).toBe(30);
+    expect(circlesUsed(30, true, 12)).toBe(42);
+
+    expect(sheetsUsed(SHEET, 88)).toBe(1);
+    expect(sheetsUsed(SHEET, 89)).toBe(2);
+    // One sentence on the last circle of a sheet is one sheet, not two.
+    expect(sheetsUsed(SHEET, circlesUsed(1, false, 88))).toBe(1);
+    // And the run that used to lie: ten stickers from circle 80.
+    expect(sheetsUsed(SHEET, circlesUsed(10, false, 80))).toBe(2);
+    // Nothing printed is still a sheet, because the dialog has to say a number.
+    expect(sheetsUsed(SHEET, 0)).toBe(1);
   });
 
   it('refuses a circle the sheet does not have', () => {

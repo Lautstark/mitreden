@@ -9,7 +9,8 @@
  */
 
 import {
-  allPhrases, countIn, dropPhrase, idTaken, patchPhrase, putPhrases, twinsOf,
+  allPhrases, countIn, dropPhrase, idTaken, patchPhrase, patchPhrases, putPhrases,
+  twinsOf,
 } from './phrases.ts';
 import {
   allCollections, dropCollection, getCollection, patchCollection, putCollection,
@@ -424,6 +425,22 @@ export const saveSidebarOpen = (sidebarOpen: boolean): Promise<void> =>
 
 /** Which sheet the export was for, and the circle the run ended on. */
 export const savePen = (pen: Settings['pen']): Promise<void> => patchSettings({ pen });
+
+/**
+ * How many Anybook stickers each of these sentences wants — see Phrase.copies.
+ *
+ * One each is written as an absent field rather than a 1, which is what makes a
+ * Sammlung nobody has counted indistinguishable from one counted back down to
+ * one: there is nothing to migrate, nothing to read in a backup written before
+ * the field existed, and `copies` on a sentence always means "more than the
+ * ordinary one". patchPhrases removes a field named `undefined`.
+ *
+ * Only what moved is handed in by the caller: this is reached by pressing
+ * *export*, and an export that rewrites every sentence in the Sammlung would
+ * bump the Sammlung up §1.4's order for having printed it unchanged.
+ */
+export const savePenCopies = (copies: ReadonlyMap<string, number>): Promise<Phrase[]> =>
+  patchPhrases(new Map([...copies].map(([id, n]) => [id, { copies: n > 1 ? n : undefined }])));
 
 /** The key, or forgetting it — one call either way: patchSettings removes a
  *  field named with undefined rather than storing an empty one. */

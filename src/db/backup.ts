@@ -228,6 +228,17 @@ export async function importBackup(backup: Backup): Promise<Restored> {
       const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
       const phrase: Phrase = { id, text };
       if (target !== undefined) phrase.collection = target;
+      /* How many stickers it wants, which is the only thing about a sentence
+         that no screen shows — so a Sicherung is the only thing that can lose
+         it, and losing it means counting thirty cards again after the restore
+         that was meant to spare that. Carried only where it is a number: a
+         file from somewhere else may hold anything, and core/anybook clamps
+         what it prints rather than trusting this.
+
+         The merge path above is untouched on purpose. Adds, never overwrites
+         — the rule at the head of this file — so a sentence already here keeps
+         its own count whatever the file says about its twin. */
+      if (typeof source.copies === 'number') phrase.copies = source.copies;
       // The voice and the fingerprint travel together or not at all: a
       // fingerprint without the voice it was taken with cannot decide staleness,
       // and would make a missing recording look current. They are a record of a

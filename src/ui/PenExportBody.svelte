@@ -3,12 +3,19 @@
    * The body of the Anybook export question: which sheet, whether a circle is
    * spent on the start code, and where on the paper this run begins.
    *
+   * Which is the first of two panels. The second is PenExportCopies, and this
+   * file holds the switch rather than the frame doing it: `openSheet` takes one
+   * body component, and the two panels are one question asked in two halves
+   * (see askPenExport). Both are rendered by the same component so that going
+   * back and forth costs nothing and neither loses what was typed into it.
+   *
    * The inline styles are what they were. This dialog has no baseline picture
    * and none of these is a token, but every one of them is a measurement
    * somebody made against a real sheet of paper, so they moved across as they
    * stood rather than being reasoned about again.
    */
-  import { SHEETS, sheetsFor } from '../core/anybook.ts';
+  import { circlesUsed, SHEETS, sheetsUsed } from '../core/anybook.ts';
+  import PenExportCopies from './PenExportCopies.svelte';
   import type { Choosing } from './penExport.svelte.ts';
   import { t, tn } from './words.svelte.ts';
 
@@ -16,14 +23,21 @@
 
   let total = $derived(s.sheet.cols * s.sheet.rows);
   let room = $derived(total - s.start + 1);
-  let need = $derived(s.sentences + (s.startCode ? 1 : 0));
+  /* Stickers, not sentences: a word on four cards fills four circles, and the
+     grid below has to draw what will really be printed. */
+  let stickers = $derived(s.items.reduce((n, one) => n + one.copies, 0));
+  let need = $derived(stickers + (s.startCode ? 1 : 0));
 
   let summary = $derived(t('pen_ask_summary', {
     // The Sammlung's own plural, which the list already says out loud.
-    n: tn('count', s.sentences),
+    n: tn('count', s.items.length),
     code: s.startCode ? t('pen_ask_with_code') : t('pen_ask_without_code'),
     start: s.start,
-    sheets: tn('pen_ask_sheets', sheetsFor(s.sheet, s.sentences + (s.start - 1) - (s.startCode ? 0 : 1))),
+    /* The run as it will actually be printed, counted from where it begins.
+       This used to be sheetsFor() fed an adjusted sentence count — which both
+       ignored how many stickers a sentence wants and had to add and subtract
+       the activation code back out of itself. */
+    sheets: tn('pen_ask_sheets', sheetsUsed(s.sheet, circlesUsed(stickers, s.startCode, s.start))),
   }));
 
   /* Three states, in the page's own tokens rather than borrowed ones: a circle
@@ -43,6 +57,7 @@
   }
 </script>
 
+{#if s.step === 1}
 <!-- Named on screen, not only to a screen reader: the control below it is a row
      of product codes, and the row beside the number field has a visible label.
      One of the two having none was the inconsistency. -->
@@ -82,3 +97,6 @@
 <!-- Named and linked, because the answer to "which paper is this" is a thing to
      buy and the reader is about to need it. -->
 <p class="hint"><a href={s.sheet.url} target="_blank" rel="noreferrer noopener">{s.sheet.product}</a> · {t('pen_ask_paper', { per: total })}</p>
+{:else}
+  <PenExportCopies {s} />
+{/if}

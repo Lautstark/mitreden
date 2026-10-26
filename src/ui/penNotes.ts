@@ -19,6 +19,14 @@ export interface SheetNotes {
   /** Already formatted; this does not know what a date looks like here. */
   date: string;
   sentences: number;
+  /**
+   * Circles this run prints, which is more than `sentences` when a sentence
+   * wants several stickers — see Phrase.copies. Named on paper only when the
+   * two differ: thirty stickers under the words "10 Sätze" read as a sheet
+   * printed wrong, and the person at the printer has nothing else to check it
+   * against.
+   */
+  stickers: number;
   product: string;
   /** Circles on one sheet of this kind. */
   per: number;
@@ -39,6 +47,11 @@ export function sheetNotes(o: SheetNotes): string[] {
         : o.page === 1
           ? t('pen_sheet_first', { title: o.title, date: o.date, of: o.pages })
           : t('pen_sheet_more', { title: o.title, date: o.date, n: o.page, of: o.pages }),
+      // The counts sit on the first sheet, where the sentence count is. On the
+      // ones after it the line says which sheet of how many and nothing to
+      // check a count against.
+      o.stickers > o.sentences && o.page === 1
+        ? tn('pen_stickers', o.stickers) : '',
       // Both are true of the first sheet only, and only when they are true at
       // all: the start code is a choice, and the sheets after the first begin
       // at the top of their own.

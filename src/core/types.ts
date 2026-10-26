@@ -31,6 +31,24 @@ export interface Phrase {
   voice?: string;
   /** Text and voice at the time of recording, so staleness is decidable. */
   fingerprint?: string;
+  /**
+   * How many Anybook stickers this sentence wants. Absent is one.
+   *
+   * A Klettspiel has thirty cards made of ten words, and every card needs a
+   * sticker of its own saying the same thing. mitreden holds a sentence once
+   * per Sammlung and keeps doing so — twins are collapsed by addPhrases() and
+   * by importBackup() — so the repetition cannot live in the list of sentences
+   * without undoing that. It lives here instead: one row, and a number beside
+   * it for the one thing that needs several.
+   *
+   * It is print, and nothing else reads it: no recording is made twice, no row
+   * is drawn twice, and the sentence list says nothing about it. The only
+   * screen it appears on is the Anybook export's own — see ui/penExport.
+   * Stored rather than asked per export so that a reprint in four weeks does
+   * not mean counting thirty cards again, and so that a file from bildhaft has
+   * somewhere to put a number it already knows.
+   */
+  copies?: number;
 }
 
 export interface PhraseWithState extends Phrase {

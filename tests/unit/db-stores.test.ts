@@ -6,7 +6,7 @@ import {
   allCollections, dropCollection, putCollection, putCollections,
 } from '../../src/db/collections.ts';
 import { wipe } from '../../src/db/wipe.ts';
-import { collections, editPhrase } from '../../src/db/repo.ts';
+import { collections, editPhrase, savePenCopies } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
 
 /** One sentence, read the way the page reads them all. phrases.ts had a
@@ -257,5 +257,44 @@ describe('the bookkeeping the stores need', () => {
     const file = await exportEverything('notice');
     for (const one of file.phrases) expect(one).not.toHaveProperty('norm');
     for (const one of file.collections) expect(one).not.toHaveProperty('createdAt');
+  });
+});
+
+describe('how many stickers a sentence wants', () => {
+  beforeEach(async () => {
+    await wipe();
+    await putCollection({ id: 'kueche', name: 'Küche' });
+    await putPhrases(LIBRARY);
+  });
+
+  /* The number is written by the Anybook export and read by nothing else, and
+     one each is written as no field at all — so a Sammlung nobody has counted
+     and one counted back down to one are the same record. That is what makes
+     an older Sicherung and an older database need no migration. */
+  it('writes more than one and removes the field at one', async () => {
+    await savePenCopies(new Map([['hunger', 4], ['durst', 1]]));
+    expect((await getPhrase('hunger'))?.copies).toBe(4);
+    expect((await getPhrase('durst'))?.copies).toBeUndefined();
+
+    // And counting one back down takes the field off again rather than
+    // leaving a 1 behind for a backup to carry.
+    await savePenCopies(new Map([['hunger', 1]]));
+    expect('copies' in ((await getPhrase('hunger')) ?? {})).toBe(false);
+  });
+
+  it('leaves the rest of the sentence alone', async () => {
+    // It travels beside the voice and the fingerprint, which say whether a
+    // recording is still the recording for this sentence. A write here must
+    // not be able to make a stale recording look current.
+    await putPhrases([{
+      id: 'hunger', text: 'Ich habe Hunger.', collection: 'kueche',
+      voice: 'piper:de_DE-thorsten-medium', fingerprint: 'aaaaaaaaaaaa',
+    }]);
+    await savePenCopies(new Map([['hunger', 3]]));
+
+    expect(await getPhrase('hunger')).toMatchObject({
+      text: 'Ich habe Hunger.', collection: 'kueche',
+      voice: 'piper:de_DE-thorsten-medium', fingerprint: 'aaaaaaaaaaaa', copies: 3,
+    });
   });
 });

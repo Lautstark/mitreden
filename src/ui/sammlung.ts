@@ -9,8 +9,13 @@
 
 import { asFormat, asPenMp3 } from '../core/audio.ts';
 import { getAudio } from '../db/audio.ts';
-import { build, deleteCollection as removeCollection, savePen } from '../db/repo.ts';
-import { cells, penProject, sheetsFor, type PenAudio, type Sheet } from '../core/anybook.ts';
+import {
+  build, deleteCollection as removeCollection, savePen, savePenCopies,
+} from '../db/repo.ts';
+import {
+  cells, circlesUsed, penProject, sheetsUsed, stickersFor,
+  type PenAudio, type Sheet,
+} from '../core/anybook.ts';
 import { zip, type ZipEntry } from '../core/zip.ts';
 import { download } from '@lautstark/werkzeuge/download';
 import { downloadSlug } from '@lautstark/werkzeuge/filename';
@@ -88,9 +93,23 @@ export async function packPen(): Promise<void> {
   }
   // Asked before anything is encoded: the answers decide the geometry, and
   // sixty re-encodings behind a dialog nobody confirmed would be sixty wasted.
-  const choice = await askPenExport(items.length);
+  const choice = await askPenExport(items.map((item) => ({
+    id: item.id, text: item.text, copies: item.copies ?? 1,
+  })));
   if (!choice) return;
-  const { sheet, startCode, start } = choice;
+  const { sheet, startCode, start, copies } = choice;
+  /* The counts as the dialog was left, on the sentences, before the paper is
+     drawn. Only the ones that moved — see savePenCopies — and only on the way
+     out through *export*: the ✕ and Escape settle null above and leave the
+     Sammlung exactly as it was.
+
+     Written here rather than in the dialog because this module is where a
+     press on this Sammlung becomes a write to it, and the dialog is a
+     question. */
+  const moved = new Map([...copies]
+    .filter(([id, n]) => n !== (items.find((item) => item.id === id)?.copies ?? 1)));
+  if (moved.size) await savePenCopies(moved);
+
   busy('busy_pen', { n: items.length });
   const audios: PenAudio[] = [];
   for (const item of items) {
@@ -100,8 +119,11 @@ export async function packPen(): Promise<void> {
       name: `${item.id}.mp3`,
       bytes: new Uint8Array(await (await asPenMp3(stored)).arrayBuffer()),
       caption: item.text,
+      // One recording, as many circles as there are cards.
+      copies: copies.get(item.id) ?? 1,
     });
   }
+  const stickers = stickersFor(audios);
   const current = here();
   const dated = stamp();
   const name = current?.name ?? 'sammlung';
@@ -120,7 +142,7 @@ export async function packPen(): Promise<void> {
       // printed on a sheet of paper, and nothing reads it back. `safe` above is
       // a file name — the project's, and its PDF's inside the .abs.
       notes: (page: number, pages: number) => sheetNotes({
-        title: name, date: dated, sentences: audios.length,
+        title: name, date: dated, sentences: audios.length, stickers,
         product: sheet.product, per: sheet.cols * sheet.rows, url: sheet.url,
         startCode, start, page, pages,
       }),
@@ -131,9 +153,13 @@ export async function packPen(): Promise<void> {
   // Where this run ended, offered as where the next one starts. A guess about
   // a sheet of paper, which is why the dialog shows it rather than assuming it.
   const per = sheet.cols * sheet.rows;
-  const ended = start - 1 + (startCode ? 1 : 0) + audios.length;
+  const ended = circlesUsed(stickers, startCode, start);
   await savePen({ sheet: sheet.id, next: (ended % per) + 1 });
-  say(tn(startCode ? 'done_pen' : 'done_pen_bare', sheetsFor(sheet, audios.length),
+  /* The sheets this run really covers, counted from where it began. It used to
+     be sheetsFor(sheet, audios.length): the sentence count on a fresh sheet,
+     which both ignored `start` — so a run of ten from circle 80 of 88 reported
+     one sheet and printed two — and now would ignore the stickers as well. */
+  say(tn(startCode ? 'done_pen' : 'done_pen_bare', sheetsUsed(sheet, ended),
     { sentences: tn('count', audios.length) }));
 }
 

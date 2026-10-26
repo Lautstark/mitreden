@@ -6,6 +6,19 @@
  * a start code decides whether one of those is spent on it. A menu cannot hold
  * that, so it is a dialog.
  *
+ * ## And a fourth, asked on its own panel
+ *
+ * How many stickers each sentence gets. A Klettspiel has thirty cards made of
+ * ten words, and mitreden holds each word once — so the repetition is a number
+ * beside the sentence rather than the sentence nine times over (Phrase.copies).
+ * It is asked here because here is the only place it is asked: the sentence
+ * list says nothing about it, which is the point. A print is the only thing
+ * that count is for.
+ *
+ * It is a second panel rather than a fourth field. The first three are about a
+ * sheet of paper somebody is holding; this one is about a game on the floor,
+ * and it is a row per sentence.
+ *
  * The one that is not obvious is the start. Label sheets are not used up in one
  * go — twenty come off for one Sammlung and sixty-eight are still perfectly
  * good — and an export that always begins at the first circle throws the rest
@@ -41,17 +54,60 @@ export interface PenChoice {
   startCode: boolean;
   /** The first circle this run may use, 1-based. */
   start: number;
+  /**
+   * How many stickers each sentence gets, by id, as the dialog was left.
+   *
+   * Every sentence is in here, the ones at one included, because the caller
+   * writes these back onto the sentences — see Phrase.copies — and a sentence
+   * turned back down to one has to be able to lose the number it had.
+   */
+  copies: Map<string, number>;
 }
 
-/** The three answers while they are being given, plus the one fact they are
- *  given against. The body and the foot share this object. */
+/** One sentence as the counting step shows it. */
+export interface PenItem {
+  id: string;
+  /** What the row says, and what is printed under its circles. */
+  text: string;
+  /** What the sentence holds now, or one. At least one, always: the list is of
+   *  sentences that are getting stickers. */
+  copies: number;
+}
+
+/** The answers while they are being given, plus the one fact they are given
+ *  against. The body and the foot share this object. */
 export interface Choosing {
   sheet: Sheet;
   startCode: boolean;
   start: number;
-  /** How many sentences want a circle. Read only to say how much room is
-   *  needed; nothing here touches the recordings. */
-  sentences: number;
+  /**
+   * The sentences and their counts, editable.
+   *
+   * It used to be `sentences: number` — how many circles were wanted, which
+   * was the sentence count because every sentence got exactly one. A sentence
+   * can want several now, so the thing the geometry is computed against is
+   * this list and not its length. Nothing here touches the recordings: a word
+   * on four cards is still recorded once.
+   */
+  items: PenItem[];
+  /**
+   * What the sentences held when the dialog opened, so the counting panel's
+   * third quick choice can put them back — the undo for the other two. Built
+   * here rather than in the panel because it is a fact about what was handed
+   * in, and the panel's own copy of it would be a read of state it is about to
+   * change.
+   */
+  held: ReadonlyMap<string, number>;
+  /**
+   * Which of the two panels is showing.
+   *
+   * Two steps rather than one long sheet, because the two questions are asked
+   * of different things: the first is about a sheet of paper in the reader's
+   * hand, the second about a game spread out on the floor. Putting ten rows of
+   * plus and minus under a grid of eighty-eight circles would also push both
+   * off the dialog.
+   */
+  step: 1 | 2;
   /**
    * The answer, given by the press that gave it, and only the first one counts.
    *
@@ -83,7 +139,7 @@ export interface Choosing {
  * first is the answer. §6.1 recorded this file as the one place in the family
  * diverging from §3.4; it no longer is.
  */
-export async function askPenExport(sentences: number): Promise<PenChoice | null> {
+export async function askPenExport(items: readonly PenItem[]): Promise<PenChoice | null> {
   const remembered = (await loadSettings()).pen;
   const sheet = SHEETS[remembered?.sheet ?? DEFAULT_SHEET] ?? SHEETS[DEFAULT_SHEET]!;
 
@@ -98,7 +154,16 @@ export async function askPenExport(sentences: number): Promise<PenChoice | null>
      what owns the guard, and `openSheet` is not called until it does. A field
      rather than a closure threaded through two components because `s` is the
      only thing the frame hands them (§6.1's `SheetContent`). */
-  const s = $state<Choosing>({ sheet, startCode: true, start, sentences, settle: () => {} });
+  /* Copied rather than held: the counts are edited in the dialog and a cancel
+     has to leave the sentences as they were. What leaves is the map in
+     `settle`, and the caller decides what to write. */
+  const counted = items.map((one) => ({ ...one, copies: Math.max(1, Math.floor(one.copies)) }));
+  const s = $state<Choosing>({
+    sheet, startCode: true, start, step: 1,
+    items: counted,
+    held: new Map(counted.map((one) => [one.id, one.copies])),
+    settle: () => {},
+  });
 
   return new Promise<PenChoice | null>((done) => {
     let settled = false;

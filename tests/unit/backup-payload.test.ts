@@ -328,4 +328,48 @@ describe('the round trip', () => {
     expect(restored.find((o) => o.text === 'Mit Stimme')).toMatchObject({ voice: 'v1', fingerprint: 'f1' });
     expect(restored.find((o) => o.text === 'Ohne Stimme')?.fingerprint).toBeUndefined();
   });
+
+  it('carries how many stickers a sentence wants', async () => {
+    /*
+     * The number is on the sentence and nowhere on screen, so a Sicherung is
+     * the only thing that can lose it — and losing it means re-typing thirty
+     * counts after the restore that was supposed to make that unnecessary.
+     * Absent stays absent: one sticker is the ordinary case and writing a 1
+     * onto every sentence in the file would say something the file does not
+     * know.
+     */
+    await putCollections([{ id: 'k', name: 'K' }]);
+    await putPhrases([
+      { id: 'a', text: 'Fuchs', collection: 'k', copies: 4 },
+      { id: 'b', text: 'Einmal', collection: 'k' },
+    ]);
+    const backup = await exportEverything(NOTICE);
+    expect(backup.phrases.find((o) => o.text === 'Fuchs')?.copies).toBe(4);
+    await wipe();
+    await importBackup(backup);
+
+    const restored = await allPhrases();
+    expect(restored.find((o) => o.text === 'Fuchs')?.copies).toBe(4);
+    expect(restored.find((o) => o.text === 'Einmal')?.copies).toBeUndefined();
+  });
+
+  it('leaves the count on a sentence it merges into rather than overwriting it', async () => {
+    /* Adds, never overwrites — the rule at the head of importBackup, reaching
+       this field too. A restore must not be able to change how many stickers a
+       sentence already here wants. */
+    await putCollections([{ id: 'k', name: 'Küche' }]);
+    await putPhrases([{ id: 'a', text: 'Fuchs', collection: 'k', copies: 4 }]);
+    const file = await exportEverything(NOTICE);
+
+    const done = await importBackup({
+      ...file,
+      collections: [{ id: 'k', name: 'Küche' }],
+      phrases: [{ id: 'a', text: 'Fuchs', collection: 'k', copies: 9 }],
+    });
+
+    expect(done.merged).toBe(0);
+    // A fresh Sammlung, so the arriving row lands in it with its own 9 and the
+    // one already here keeps its 4.
+    expect((await allPhrases()).map((o) => o.copies).sort()).toEqual([4, 9]);
+  });
 });

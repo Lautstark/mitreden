@@ -75,6 +75,13 @@ async function ask(page: import('@playwright/test').Page) {
   return sheet;
 }
 
+/** The counting panel, which is the second half of the same dialog. */
+async function counting(sheet: import('@playwright/test').Locator) {
+  await sheet.locator('.foot button', { hasText: 'Weiter' }).click();
+  await expect(sheet.locator('.foot button', { hasText: 'Exportieren' })).toBeVisible();
+  return sheet;
+}
+
 /** The circles, which are the only buttons inside the map's grid. */
 const dots = (sheet: import('@playwright/test').Locator) =>
   sheet.locator('div[style*="grid-template-columns"] button');
@@ -125,6 +132,53 @@ test('a start past the end of the chosen sheet is refused rather than exported',
   // nowhere to go, and Studio would not say so.
   await sheet.locator('#penstart').fill('400');
   await expect(sheet.locator('#penstart')).toHaveValue('88');
+});
+
+test('the second step counts stickers, not sentences', async ({ page }) => {
+  /*
+   * The Klettspiel case, as small as it goes: one sentence that wants more
+   * than one sticker. The numbers under the list are the point of the panel —
+   * thirty stickers of eighty-eight is a sheet and ninety is two, and that is
+   * a decision somebody makes before printing rather than after.
+   */
+  const sheet = await counting(await ask(page));
+  const count = sheet.locator('input[type=number]');
+  await expect(count).toHaveValue('1');
+  // One sticker and the activation code ahead of it.
+  await expect(sheet).toContainText('1 Aufkleber · 2 Kreise');
+
+  await sheet.locator('button[aria-label*="Ein Aufkleber mehr"]').click();
+  await sheet.locator('button[aria-label*="Ein Aufkleber mehr"]').click();
+  await expect(count).toHaveValue('3');
+  await expect(sheet).toContainText('3 Aufkleber · 4 Kreise');
+  await expect(sheet).toContainText('danach sind 84 Kreise frei');
+
+  // Typing it is the other way in, and nothing below one is printable.
+  await count.fill('0');
+  await expect(sheet).toContainText('1 Aufkleber · 2 Kreise');
+
+  // All at once, and back to what the sentences actually hold.
+  await sheet.locator('.segmented button', { hasText: 'Alle 2×' }).click();
+  await expect(count).toHaveValue('2');
+  await sheet.locator('.segmented button', { hasText: 'Wie gespeichert' }).click();
+  await expect(count).toHaveValue('1');
+});
+
+test('the counts and the paper are the same question, so going back keeps both', async ({ page }) => {
+  const sheet = await counting(await ask(page));
+  await sheet.locator('input[type=number]').fill('4');
+
+  await sheet.locator('.foot button', { hasText: 'Zurück' }).click();
+  // The map is back, and it is drawn around the four stickers rather than one:
+  // the sheet question and the counting question answer each other.
+  await expect(dots(sheet)).toHaveCount(88);
+  await sheet.locator('#penstart').fill('86');
+  await expect(sheet.locator('p.hint').filter({ hasText: 'Position' }))
+    .toContainText('braucht 2 Bögen');
+
+  // And what was typed into the other panel is still there.
+  await counting(sheet);
+  await expect(sheet.locator('input[type=number]')).toHaveValue('4');
 });
 
 test('Abbrechen closes it and exports nothing', async ({ page }) => {

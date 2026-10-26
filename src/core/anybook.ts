@@ -147,14 +147,59 @@ export const perSheet = (sheet: Sheet): number => cellCount(sheet) - 1;
 export const sheetsFor = (sheet: Sheet, sentences: number): number =>
   Math.max(1, Math.ceil((sentences + 1) / cellCount(sheet)));
 
-/** One sticker: the audio it plays and the word printed under it. */
+/**
+ * Every circle a run touches, counting the ones already peeled ahead of it.
+ *
+ * The honest version of what `sheetsFor` approximates, and the one the dialog
+ * and the message after it both need: a run is not "this many sentences on a
+ * fresh sheet" once the count can multiply the stickers and the start can be
+ * anywhere. `sheetsFor` is kept for the sentence-shaped question — it answers
+ * how much paper a Sammlung of this size wants — and these two answer the
+ * question about a particular run.
+ */
+export const circlesUsed = (stickers: number, startCode: boolean, start: number): number =>
+  start - 1 + (startCode ? 1 : 0) + stickers;
+
+/** How many sheets that many circles cover. Never none: a dialog about paper
+ *  has to be able to say a number. */
+export const sheetsUsed = (sheet: Sheet, circles: number): number =>
+  Math.max(1, Math.ceil(circles / cellCount(sheet)));
+
+/** One recording: the audio, the word printed under it, and how many circles
+ *  play it. */
 export interface PenAudio {
   /** The name inside the archive, and what `Codes[].AudioFileName` points at. */
   name: string;
   bytes: Uint8Array<ArrayBuffer>;
   /** Printed under the circle, so a sheet can be read while it is peeled. */
   caption: string;
+  /**
+   * How many stickers this one recording gets. Absent is one.
+   *
+   * It multiplies the circles and nothing else: one entry in the archive, one
+   * row in `AudioFiles`, and as many codes as there are cards — all naming the
+   * same file, so every card of one word says the same thing and Studio
+   * transfers the audio once. See Phrase.copies for why the number is not a
+   * second sentence.
+   */
+  copies?: number;
 }
+
+/**
+ * How many stickers one recording asks for.
+ *
+ * Clamped here rather than trusted, because the number can arrive from a file
+ * somebody else wrote — see Phrase.copies. A count is a number of stickers, so
+ * anything under one circle is one circle, and a fraction is floored: half a
+ * sticker cannot be printed and refusing the whole export over it would be
+ * worse than printing the nine of nine-and-a-half.
+ */
+const copiesOf = (audio: PenAudio): number =>
+  Math.max(1, Math.floor(audio.copies ?? 1));
+
+/** Every sticker a run prints, in the order they come off the sheet. */
+export const stickersFor = (audios: readonly PenAudio[]): number =>
+  audios.reduce((n, audio) => n + copiesOf(audio), 0);
 
 const MM = 72 / 25.4;
 
@@ -359,7 +404,11 @@ function sheetsPdf(
  */
 function projectJson(
   sheet: Sheet, grid: { x: number; y: number }[],
-  title: string, pdfName: string, audios: readonly PenAudio[], hasThumbnail: boolean,
+  title: string, pdfName: string, audios: readonly PenAudio[],
+  /** One entry per sticker, so a recording wanted four times appears four
+   *  times here and once in `audios`. */
+  stickers: readonly PenAudio[],
+  hasThumbnail: boolean,
   sheets: number, startCode: boolean, start: number,
 ): string {
   // The first circle of the first sheet is the activation code and the
@@ -416,7 +465,9 @@ function projectJson(
       ...(startCode
         ? [{ Type: 0, ...at(start - 1), AudioFileName: '', HasAudioFileName: false }]
         : []),
-      ...audios.map((audio, i) => ({
+      // One per sticker, several of them naming the same file when a word is
+      // on several cards.
+      ...stickers.map((audio, i) => ({
         // Centimetres from the top left, and the corner rather than the centre —
         // see CODE.
         Type: 1,
@@ -425,6 +476,8 @@ function projectJson(
         HasAudioFileName: true,
       })),
     ],
+    // One row per recording and not per sticker: a file named twice here is a
+    // file Studio transcodes twice and stores twice on the pen.
     AudioFiles: audios.map((audio) => ({
       FileName: audio.name,
       // True because asPenMp3() already wrote them at the pen's own rate. Left
@@ -494,13 +547,20 @@ export function penProject(
   if (start < 1 || start > per)
     throw new Error(`A sheet of ${per} has no circle ${start}.`);
 
+  /* Every sticker, in the order they come off the sheet: the copies of one
+     word together, so a sheet is peeled a card at a time rather than hunted
+     through. The recordings themselves stay one each — this is the list of
+     circles, not of audio. */
+  const stickers = audios.flatMap((audio) =>
+    Array.from({ length: copiesOf(audio) }, () => audio));
+
   /* Every circle this run touches, in order, with the ones already peeled left
      empty ahead of them. The activation code leads when there is one, which is
      the first circle of *this* run and not of the sheet — on a part-used sheet
      circle one is long gone. */
   const placed: (string | null)[] = Array.from({ length: start - 1 }, () => null);
   if (startCode) placed.push(startCaption);
-  for (const audio of audios) placed.push(audio.caption);
+  for (const sticker of stickers) placed.push(sticker.caption);
 
   const count = Math.max(1, Math.ceil(placed.length / per));
   const pages = Array.from({ length: count }, (_, i) => ({
@@ -516,8 +576,8 @@ export function penProject(
   files.push({
     name: '_Project_.json',
     bytes: new TextEncoder().encode(
-      projectJson(sheet, grid, title, pdfName, audios, Boolean(thumbnail), count,
-        startCode, start),
+      projectJson(sheet, grid, title, pdfName, audios, stickers, Boolean(thumbnail),
+        count, startCode, start),
     ),
   });
   return zip(files);
