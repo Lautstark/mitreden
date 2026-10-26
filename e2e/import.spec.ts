@@ -225,3 +225,79 @@ test('what a file brings is queued to be recorded, not left sitting', async ({ p
   await expect(page.locator('#list .item .state', { hasText: 'noch nicht aufgenommen' }))
     .toHaveCount(0);
 });
+
+/** Text and sticker count, as the library really holds them. */
+async function copies(page: Page): Promise<[string, number | null][]> {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const open = indexedDB.open('mitreden');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const ask = open.result.transaction('phrases').objectStore('phrases').getAll();
+      ask.onerror = () => reject(ask.error);
+      ask.onsuccess = () => resolve((ask.result as { text: string; copies?: number }[])
+        .map((one) => [one.text, one.copies ?? null] as [string, number | null]));
+    };
+  }));
+}
+
+/*
+ * A Klettspiel arriving whole: thirty cards made of ten words, and the stickers
+ * counted off the Spielblatt rather than asked for again here. bildhaft writes
+ * no number — its cards are rows held once however often they are laid out —
+ * so the count is a tally of `collection.game`, and a file exported before any
+ * of this existed carries it just the same.
+ */
+test('a Spiel brings the stickers its board calls for', async ({ page }) => {
+  await openData(page);
+  await importJson(page, 'tiere-im-wald.json', {
+    format: 'bildhaft.collection', version: 1, exportedAt: '2026-10-26T10:00:00.000Z',
+    collection: {
+      id: 'c1', name: 'Tiere im Wald', createdAt: 0, updatedAt: 0,
+      game: { rows: [
+        { id: 'r1', zellen: [{ karte: 's1', platz: true }, { karte: 's2', platz: true }] },
+        { id: 'r2', zellen: [{ karte: 's1', platz: true }, { karte: 's1', platz: true }] },
+      ] },
+    },
+    sentences: [
+      { id: 's1', normalizedInput: 'fuchs', rawInput: 'Fuchs', slots: [], collectionId: 'c1',
+        createdAt: 0, updatedAt: 0 },
+      { id: 's2', normalizedInput: 'eule', rawInput: 'Eule', slots: [], collectionId: 'c1',
+        createdAt: 0, updatedAt: 0 },
+    ],
+    notice: '',
+  });
+  await expect(page.locator('#s')).toContainText('2 hinzugefügt');
+  /* And what that is in stickers, because the number came out of the file
+     rather than from anybody here — two sentences arriving as four stickers
+     is the one thing about this import nobody could have predicted. */
+  await expect(page.locator('#s')).toContainText('4 Aufkleber');
+
+  /* Three cells of Fuchs, one of Eule — and one each writes no field, so the
+     sentence that is on one card looks exactly like every other sentence.
+     In the store's own order, which is by id: the ids are slugs of the text. */
+  expect(await copies(page)).toEqual([['Eule', null], ['Fuchs', 3]]);
+});
+
+/*
+ * A Sicherung restores a library and no recordings: they are reproducible and
+ * are deliberately not in the file. So every row it brings back is silent, and
+ * waiting for somebody to press „Nochmal aufnehmen" on each Sammlung in turn is
+ * the restore only half done.
+ */
+test('a restored Sicherung is spoken again without being asked', async ({ page }) => {
+  await openData(page);
+  await importJson(page, 'mitreden-sicherung-2026-10-26.json', {
+    format: 'mitreden-backup', version: 2, exportedAt: '2026-10-26T10:00:00.000Z',
+    collections: [{ id: 'k', name: 'Küche' }],
+    phrases: [
+      { id: 'hunger', text: 'Ich habe Hunger.', collection: 'k' },
+      { id: 'durst', text: 'Ich habe Durst.', collection: 'k' },
+    ],
+    settings: {}, notice: '',
+  });
+  await expect(page.locator('#s')).toContainText('wiederhergestellt');
+
+  await page.locator('dialog[open] .close, dialog[open] [aria-label="Schließen"]').first().click();
+  await page.click('#rows .collections__item:has-text("Küche")');
+  await expect(page.locator('#list .item.busy')).toHaveCount(2);
+});

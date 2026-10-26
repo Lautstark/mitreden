@@ -6,7 +6,7 @@ import {
   allCollections, dropCollection, putCollection, putCollections,
 } from '../../src/db/collections.ts';
 import { wipe } from '../../src/db/wipe.ts';
-import { collections, editPhrase, savePenCopies } from '../../src/db/repo.ts';
+import { addPhrases, collections, editPhrase, savePenCopies } from '../../src/db/repo.ts';
 import { exportEverything } from '../../src/db/backup.ts';
 
 /** One sentence, read the way the page reads them all. phrases.ts had a
@@ -296,5 +296,33 @@ describe('how many stickers a sentence wants', () => {
       text: 'Ich habe Hunger.', collection: 'kueche',
       voice: 'piper:de_DE-thorsten-medium', fingerprint: 'aaaaaaaaaaaa', copies: 3,
     });
+  });
+});
+
+describe('a sentence arriving with a count', () => {
+  beforeEach(async () => {
+    await wipe();
+    await putCollection({ id: 'kueche', name: 'Küche' });
+  });
+
+  /* The count travels on the line, because the only thing that knows it is the
+     file: a Spiel's board says how many cards carry a word, and by the time a
+     sentence is a row here that board is gone. */
+  it('keeps what the file said, and writes nothing where it said nothing', async () => {
+    await addPhrases([
+      { text: 'Fuchs', copies: 4 },
+      { text: 'Eule' },
+      'Hase',
+    ], 'kueche');
+
+    const held = new Map((await allPhrases()).map((one) => [one.text, one.copies]));
+    expect(held.get('Fuchs')).toBe(4);
+    expect(held.get('Eule')).toBeUndefined();
+    expect(held.get('Hase')).toBeUndefined();
+  });
+
+  it('writes no field for one each, so an ordinary import stays ordinary', async () => {
+    await addPhrases([{ text: 'Fuchs', copies: 1 }], 'kueche');
+    expect('copies' in ((await allPhrases())[0] ?? {})).toBe(false);
   });
 });

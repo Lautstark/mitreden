@@ -372,4 +372,27 @@ describe('the round trip', () => {
     // one already here keeps its 4.
     expect((await allPhrases()).map((o) => o.copies).sort()).toEqual([4, 9]);
   });
+
+  it('says which rows it wrote, so they can be recorded', async () => {
+    /* A Sicherung carries no recordings — they are reproducible and would be
+       the big half by three orders of magnitude — so everything it restores
+       arrives silent. The ids are how the page knows what to speak without
+       asking the library what is missing a moment after writing it. */
+    await putCollections([{ id: 'k', name: 'Küche' }]);
+    const file = await exportEverything(NOTICE);
+    const done = await importBackup({
+      ...file,
+      collections: [{ id: 'k', name: 'Küche' }],
+      phrases: [
+        { id: 'a', text: 'Fuchs', collection: 'k' },
+        { id: 'b', text: 'Eule', collection: 'k' },
+      ],
+    });
+
+    expect(done.added).toBe(2);
+    expect(done.ids).toHaveLength(2);
+    // The ids as they were minted here, not as the file had them.
+    const here = (await allPhrases()).map((one) => one.id);
+    for (const id of done.ids) expect(here).toContain(id);
+  });
 });

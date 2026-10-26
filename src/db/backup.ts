@@ -113,6 +113,17 @@ export interface Restored {
   collections: number;
   added: number;
   merged: number;
+  /**
+   * The rows this restore wrote, by the ids they were minted here.
+   *
+   * A Sicherung carries no recordings — see the head of this file — so
+   * everything it restores arrives silent, and the page speaks it straight
+   * away (speakArrivals in ui/settings.ts). Handed back rather than looked up
+   * afterwards: "what in this library has no recording" is a different
+   * question with a different answer, and it would sweep in whatever was
+   * already here and unspoken.
+   */
+  ids: string[];
 }
 
 export const isBackup = (data: unknown): data is Backup =>
@@ -256,5 +267,5 @@ export async function importBackup(backup: Backup): Promise<Restored> {
 
   await putCollections(landed);
   await putPhrases([...writing.values()]);
-  return { collections: moved.size, added, merged };
+  return { collections: moved.size, added, merged, ids: [...writing.keys()] };
 }

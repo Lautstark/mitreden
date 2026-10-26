@@ -127,10 +127,16 @@ export async function collections(): Promise<CollectionWithCount[]> {
 
 /**
  * A sentence on its way in: the text alone, or the text with the voice it was
- * recorded in. Only a file carries the second — somebody typing cannot know a
- * voice yet, and picks one afterwards.
+ * recorded in and how many stickers it wants. Only a file carries either —
+ * somebody typing cannot know a voice yet, and picks one afterwards, and
+ * nobody types a sticker count into a box meant for sentences.
+ *
+ * `copies` is Phrase.copies arriving. The file is the only thing that knows
+ * it: a Spiel's board in a bildhaft archive says how many cards carry a word,
+ * and by the time the sentence is a row here that board is gone. See readFile
+ * in ui/settings.ts, which does the counting.
  */
-export type Line = string | { text: string; voice?: string };
+export type Line = string | { text: string; voice?: string; copies?: number };
 
 export interface Added {
   added: number;
@@ -230,6 +236,12 @@ export async function addPhrases(
     const id = await free(slug(text), async (c) => writing.has(c) || idTaken(c));
     const item: Phrase = { id, text };
     if (into !== undefined) item.collection = into;
+    /* How many Anybook stickers it wants. One each writes no field, the way
+       savePenCopies does and for its reason: absent is the ordinary case, and
+       a 1 on every sentence of every arriving file would be a number nobody
+       asked for in every Sicherung from here on. */
+    const asked = typeof line === 'string' ? undefined : line.copies;
+    if (asked !== undefined && asked > 1) item.copies = Math.floor(asked);
     /* Already recorded, in the voice this Sammlung records in: the clip is the
        same sound, so it is copied rather than made a second time. The
        fingerprint comes with it — the two travel together (db/backup.ts) — and
