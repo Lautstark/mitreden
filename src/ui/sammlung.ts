@@ -36,7 +36,7 @@ const stamp = (): string => new Date().toISOString().slice(0, 10);
 export async function packAll(format: Format): Promise<void> {
   const ids = shown().filter((item) => item.state !== 'missing').map((item) => item.id);
   if (!ids.length) {
-    say(t('nothing_recorded'));
+    await offerToRecord();
     return;
   }
   busy('busy_pack', { n: ids.length });
@@ -88,7 +88,7 @@ async function sheetThumbnail(sheet: Sheet): Promise<Uint8Array<ArrayBuffer> | u
 export async function packPen(): Promise<void> {
   const items = shown().filter((item) => item.state !== 'missing');
   if (!items.length) {
-    say(t('nothing_recorded'));
+    await offerToRecord();
     return;
   }
   // Asked before anything is encoded: the answers decide the geometry, and
@@ -186,15 +186,48 @@ export async function recordAgain(id: string): Promise<void> {
     say(t('nothing_to_record'));
     return;
   }
+  await recordThese(ids);
+}
+
+/** These sentences, spoken, with the queue drawn while it happens. The half of
+ *  recordAgain that is about doing it rather than about deciding which. */
+async function recordThese(ids: readonly string[]): Promise<void> {
   busy('busy_record');
   queueWork(ids);
   // The voice is the Sammlung's and build() reads it; this is the last resort
   // it falls back to when nothing anywhere has decided one.
-  const { recorded, failed } = await build(ids, chosenVoice(), false, stepWork);
+  const { recorded, failed } = await build([...ids], chosenVoice(), false, stepWork);
   endWork();
   say(tn('done_record_again', recorded)
     + (failed.length ? ` ${tn('not_recorded', failed.length, { why: failed[0]! })}` : ''));
   await load();
+}
+
+/**
+ * Nothing here has a recording yet, which is not a refusal.
+ *
+ * Both downloads used to answer this with one grey line — „Davon ist nichts
+ * aufgenommen." — and from where the reader sits that is a menu item that does
+ * nothing. It is also the one dead end in this product with an obvious next
+ * step, because the thing that is missing is exactly what mitreden makes. So
+ * it is offered, and the recording is the primary button.
+ *
+ * Over everything on screen rather than one Sammlung: that is what the two
+ * downloads work on, and with two Sammlungen open the thing somebody pressed
+ * download for is both of them.
+ */
+async function offerToRecord(): Promise<void> {
+  const waiting = shown().filter((item) => item.state === 'missing').map((item) => item.id);
+  if (!waiting.length) {
+    say(t('nothing_recorded'));
+    return;
+  }
+  if (!await confirmDialog({
+    title: t('nothing_recorded_title'),
+    body: tn('nothing_recorded_ask', waiting.length),
+    confirmLabel: t('menu_record'),
+  })) return;
+  await recordThese(waiting);
 }
 
 export async function deleteCollection(key: string, name: string, n: number): Promise<void> {

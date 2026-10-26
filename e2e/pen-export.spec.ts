@@ -47,7 +47,7 @@ const SEEDED = `
       tx.objectStore('collections').put({ id: 'kueche', name: 'Küche', updatedAt: 1 });
       tx.objectStore('settings').put(
         { voice: 'piper:de_DE-thorsten-medium', open: ['kueche'] }, 'settings');
-      tx.objectStore('audio').put(new Blob([new Uint8Array([1, 2, 3])]), 'hunger');
+      if (RECORDED) tx.objectStore('audio').put(new Blob([new Uint8Array([1, 2, 3])]), 'hunger');
       tx.oncomplete = () => { database.close(); keep(); };
       tx.onerror = () => drop(tx.error);
     };
@@ -55,14 +55,18 @@ const SEEDED = `
 `;
 
 /** The dialog, open, with one recorded sentence behind it. */
-async function ask(page: import('@playwright/test').Page) {
+async function ask(
+  page: import('@playwright/test').Page, { recorded = true }: { recorded?: boolean } = {},
+) {
   /* The bundle is held off for the first visit, which is upgrade.spec.ts's
      trick and is here for its reason: the page makes the database itself on
      arrival, and a seed written afterwards is a seed written into a library
      that already exists at a later version. */
   await page.route('**/*.js', (route) => route.abort());
   await page.goto('/?lang=de');
-  await page.evaluate(SEEDED);
+  /* The seed is an expression, so the one flag it reads is wrapped around it
+     rather than declared before it. */
+  await page.evaluate(`(() => { const RECORDED = ${recorded}; return (${SEEDED}); })()`);
   await page.unroute('**/*.js');
   await page.reload();
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
@@ -194,4 +198,28 @@ test('Abbrechen closes it and exports nothing', async ({ page }) => {
   await expect(page.locator('dialog:not([id])')).toHaveCount(0);
   await page.waitForTimeout(300);
   expect(downloads).toEqual([]);
+});
+
+/*
+ * A Sammlung with nothing recorded in it yet.
+ *
+ * The menu offers „Als Anybook-Projekt …" whether or not there is anything to
+ * put on a sticker, and pressing it used to answer with one grey line —
+ * „Davon ist nichts aufgenommen." — which from where the reader sits is a
+ * button that does nothing. It is also the one case with an obvious next step,
+ * since the thing missing is exactly what this product makes.
+ */
+test('offers the recording when there is nothing to put on a sticker', async ({ page }) => {
+  await ask(page, { recorded: false });
+
+  const question = page.locator('dialog[open]');
+  await expect(question).toBeVisible();
+  await expect(question).toContainText('aufgenommen');
+  // The answer is the recording, not an apology, and it is the primary button.
+  await expect(question.locator('.foot button.primary')).toContainText('aufnehmen');
+
+  // And declining leaves the Sammlung exactly as it was.
+  await question.locator('.foot button:not(.primary)').first().click();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await expect(page.locator('#list .item.busy')).toHaveCount(0);
 });
