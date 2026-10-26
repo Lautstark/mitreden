@@ -3,17 +3,23 @@
    * The second panel of the Anybook export: how many stickers each sentence
    * gets.
    *
-   * ## Why this is a list and not one number
+   * ## Why this is a list and nothing else
    *
    * A Klettspiel has thirty cards made of ten words, and the words are not
    * evenly spread — four foxes, three owls, one title. A single "times two"
-   * would be wrong for every row of such a game, so the number is per sentence
-   * and the quick choices only set them all at once.
+   * would be wrong for every row of such a game, so the number is per
+   * sentence.
    *
-   * Three of them, and each is a thing somebody actually wants: back to one
-   * each for a plain Sammlung, two each for a pair of sheets, and the counts
-   * the sentences already hold for a reprint of a game that has not changed.
-   * The last is the undo for the other two, which is why it is there at all.
+   * There was a bank of quick choices over it — alle 1×, alle 2×, wie
+   * gespeichert — and it is gone. Three actions drawn as a segmented control,
+   * which is the shape that says "one of these is the current one" about three
+   * things that are none of them a state: it sat above the list looking
+   * broken, with nothing selected, and it was the first thing anybody asked
+   * about. What it offered was thin, too. The list opens on what the sentences
+   * already hold, one each being what a sentence holds when nobody has said
+   * otherwise (Phrase.copies), and a Spiel arrives with its counts off the
+   * board — so "alle 1×" was a reset for a state hardly anybody is in, and the
+   * undo for it was the third button.
    *
    * ## What the numbers underneath are for
    *
@@ -40,9 +46,6 @@
    *  one word more would cost a whole second sheet. */
   let free = $derived(sheets * s.sheet.cols * s.sheet.rows - circles);
 
-  const all = (n: number): void => {
-    for (const one of s.items) one.copies = n;
-  };
   /* Clamped on the way in rather than refused: a field somebody is in the
      middle of typing is briefly empty, and an empty field that snaps to 1
      cannot be typed into. Floored because half a sticker cannot be printed. */
@@ -51,20 +54,21 @@
   };
 </script>
 
-<div class="segmented" style="margin:0 0 16px" role="group" aria-label={t('pen_copies_quick')}>
-  <button type="button" onclick={() => all(1)}>{t('pen_copies_all_one')}</button>
-  <button type="button" onclick={() => all(2)}>{t('pen_copies_all_two')}</button>
-  <button type="button" onclick={() => {
-    for (const one of s.items) one.copies = s.held.get(one.id) ?? 1;
-  }}>{t('pen_copies_held')}</button>
-</div>
+<!-- What the numbers are, in one line. The list is a column of steppers with
+     nothing else saying what they count, and „1" beside a sentence could as
+     easily be a position as a quantity. -->
+<p class="hint" style="margin:0 0 8px">{t('pen_copies_lead')}</p>
 
 <!-- Scrolls, because a Sammlung is as long as it is and the numbers below it
      are what the panel is for: pushing them off the sheet would leave somebody
-     counting stickers in their head. -->
-<div style="border:1px solid var(--line);border-radius:var(--radius-sm);max-height:280px;overflow-y:auto">
+     counting stickers in their head.
+
+     Whole rows: the rows are a fixed height and the box is eight of them, so
+     the list is cut between two rows rather than through one. A half-row at
+     the edge reads as something that failed to draw. -->
+<div style="border:1px solid var(--line);border-radius:var(--radius-sm);max-height:320px;overflow-y:auto">
   {#each s.items as item (item.id)}
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line)">
+    <div style="display:flex;align-items:center;gap:10px;height:40px;box-sizing:border-box;padding:0 10px;border-bottom:1px solid var(--line)">
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{item.text}</span>
       <!-- The three kept together as one control, because they are one: a
            number with a way up and a way down, not three things on a row. -->

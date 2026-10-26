@@ -161,11 +161,12 @@ test('the second step counts stickers, not sentences', async ({ page }) => {
   await count.fill('0');
   await expect(sheet).toContainText('1 Aufkleber · 2 Kreise');
 
-  // All at once, and back to what the sentences actually hold.
-  await sheet.locator('.segmented button', { hasText: 'Alle 2×' }).click();
-  await expect(count).toHaveValue('2');
-  await sheet.locator('.segmented button', { hasText: 'Wie gespeichert' }).click();
-  await expect(count).toHaveValue('1');
+  /* And no bank of quick choices over the list. It was three actions drawn as
+     a segmented control — a shape that says "one of these is the current one"
+     about three things that are none of them a state, so it sat there looking
+     broken with nothing selected. The list already opens on what the sentences
+     hold, which is one each where nobody has said otherwise. */
+  await expect(sheet.locator('.segmented')).toHaveCount(0);
 });
 
 test('the counts and the paper are the same question, so going back keeps both', async ({ page }) => {

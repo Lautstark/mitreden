@@ -91,14 +91,6 @@ export interface Choosing {
    */
   items: PenItem[];
   /**
-   * What the sentences held when the dialog opened, so the counting panel's
-   * third quick choice can put them back — the undo for the other two. Built
-   * here rather than in the panel because it is a fact about what was handed
-   * in, and the panel's own copy of it would be a read of state it is about to
-   * change.
-   */
-  held: ReadonlyMap<string, number>;
-  /**
    * Which of the two panels is showing.
    *
    * Two steps rather than one long sheet, because the two questions are asked
@@ -157,11 +149,9 @@ export async function askPenExport(items: readonly PenItem[]): Promise<PenChoice
   /* Copied rather than held: the counts are edited in the dialog and a cancel
      has to leave the sentences as they were. What leaves is the map in
      `settle`, and the caller decides what to write. */
-  const counted = items.map((one) => ({ ...one, copies: Math.max(1, Math.floor(one.copies)) }));
   const s = $state<Choosing>({
     sheet, startCode: true, start, step: 1,
-    items: counted,
-    held: new Map(counted.map((one) => [one.id, one.copies])),
+    items: items.map((one) => ({ ...one, copies: Math.max(1, Math.floor(one.copies)) })),
     settle: () => {},
   });
 
