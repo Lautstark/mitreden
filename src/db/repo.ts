@@ -9,8 +9,8 @@
  */
 
 import {
-  allPhrases, countIn, dropPhrase, idTaken, patchPhrase, patchPhrases, putPhrases,
-  twinsOf,
+  allPhrases, countIn, dropPhrase, idTaken, patchPhrase, patchPhrases, phrasesIn,
+  putPhrases, twinsOf, type PhrasePatch,
 } from './phrases.ts';
 import {
   allCollections, dropCollection, getCollection, patchCollection, putCollection,
@@ -360,7 +360,7 @@ export async function deletePhrase(id: string): Promise<void> {
  * suggestion rather than about uniqueness.
  */
 export async function createCollection(
-  name: string | null, german: boolean, voice?: string,
+  name: string | null, german: boolean, voice?: string, origin?: string,
 ): Promise<Collection> {
   let shown = name?.trim() ?? '';
   if (!shown) {
@@ -375,8 +375,80 @@ export async function createCollection(
      makes the same file record the same way on a second device. */
   const decided = voice ?? standingVoice(await loadSettings());
   if (decided) made.voice = decided;
+  /* Which file it came from, where a file named itself — see Collection.origin.
+     Evidence, never identity: the id above is still minted. */
+  if (origin) made.origin = origin;
   await putCollection(made);
   return made;
+}
+
+/** What bringing a Sammlung up to date from a newer file came to. */
+export interface Refreshed {
+  /** Rows whose sticker count moved. */
+  changed: number;
+  /** Rows the file has that the Sammlung did not. */
+  added: number;
+  /** Rows the Sammlung has that the file no longer names, by id. */
+  gone: string[];
+  /** The ids of what was added, for the page to record — as addPhrases. */
+  ids: string[];
+}
+
+/**
+ * The same Sammlung again, out of a newer file.
+ *
+ * The Klettspiel that changed: two cards added, one taken out, a word now on
+ * four cards instead of two. Importing adds and never overwrites (db/backup.ts,
+ * and bildhaft's import follows the same rule), which is right for a file
+ * landing in a library it knows nothing about and wrong for this — the choice
+ * was a second Sammlung beside the first, or typing it again.
+ *
+ * Matched on the normalised text, the way twins are found everywhere else, so
+ * a file whose spelling drifted does not add a second row of what is already
+ * there. The text itself is left as it stands: a file's spelling is not news
+ * about a sentence, and rewriting it would re-key what this product has
+ * learned about it — `id` is a slug of the text and a file name on somebody's
+ * talker.
+ *
+ * Nothing here removes anything. A row the file no longer names is handed back
+ * in `gone` and left exactly as it is, recording and all: there is no way back
+ * into a Sammlung in this product's UI, so taking one out would be a one-way
+ * door nobody opened on purpose. What becomes of them is a question for the
+ * page, which can ask.
+ */
+export async function refreshCollection(
+  id: string, lines: readonly Line[], reachable?: ReadonlySet<string>,
+): Promise<Refreshed> {
+  const held = await phrasesIn(id);
+  const byText = new Map(held.map((one) => [normText(one.text), one]));
+  const met = new Set<string>();
+  const patches = new Map<string, PhrasePatch>();
+  const fresh: Line[] = [];
+
+  for (const line of lines) {
+    const text = (typeof line === 'string' ? line : line.text).trim();
+    if (!text) continue;
+    const there = byText.get(normText(text));
+    if (!there) {
+      fresh.push(line);
+      continue;
+    }
+    met.add(there.id);
+    /* One each is no field, here as in addPhrases and savePenCopies, so a card
+       down from two to one loses the number rather than keeping a 1. */
+    const asked = typeof line === 'string' ? undefined : line.copies;
+    const now = asked !== undefined && asked > 1 ? Math.floor(asked) : undefined;
+    if (there.copies !== now) patches.set(there.id, { copies: now });
+  }
+
+  await patchPhrases(patches);
+  const { added, ids } = await addPhrases(fresh, id, reachable);
+  return {
+    changed: patches.size,
+    added,
+    gone: held.filter((one) => !met.has(one.id)).map((one) => one.id),
+    ids,
+  };
 }
 
 /** Whether a Sammlung is already called this. The one question here that is

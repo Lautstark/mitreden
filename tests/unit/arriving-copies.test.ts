@@ -80,3 +80,21 @@ describe('a Spiel arriving from bildhaft', () => {
     expect(counted(['Fuchs', 'Eule'])).toEqual([['Fuchs', undefined], ['Eule', undefined]]);
   });
 });
+
+describe('which file a Sammlung arrived from', () => {
+  it('takes the id a bildhaft archive gives its collection', () => {
+    // Somebody else's id, kept as evidence so the next version of this file is
+    // recognisable as the same material — see Collection.origin.
+    expect(readFile(game([['s1']])).origin).toBe('c1');
+  });
+
+  it('takes the one mitreden writes beside its own export', () => {
+    expect(readFile({ collection: 'Tiere im Wald', origin: 'abc', items: [] }).origin)
+      .toBe('abc');
+  });
+
+  it('has none for a bare list, which named nothing', () => {
+    expect(readFile(['Fuchs']).origin).toBeUndefined();
+    expect(readFile({ collection: 'Tiere', items: [] }).origin).toBeUndefined();
+  });
+});

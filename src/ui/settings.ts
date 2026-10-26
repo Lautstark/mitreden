@@ -15,6 +15,7 @@
  */
 
 import { countPhrases, phrasesIn } from '../db/phrases.ts';
+import { allCollections } from '../db/collections.ts';
 import { wipe, wipeReaches } from '../db/wipe.ts';
 import { exportEverything, importBackup, isBackup, TOO_NEW } from '../db/backup.ts';
 import { ablage } from '../db/folder.ts';
@@ -38,7 +39,11 @@ const stamp = (): string => new Date().toISOString().slice(0, 10);
 export async function exportCollection(collection: Collection): Promise<void> {
   // Off the membership index rather than by filtering the whole library.
   const items = await phrasesIn(collection.id);
-  downloadJson({ collection: collection.name, items },
+  /* `origin` so that this file coming back is recognised as this Sammlung
+     rather than landing beside it — see Collection.origin. Its own id where it
+     has no origin of its own: that is what identifies this material, and a
+     Sammlung that arrived from bildhaft keeps naming bildhaft's. */
+  downloadJson({ collection: collection.name, origin: collection.origin ?? collection.id, items },
                `mitreden-${downloadSlug(collection.name, 'sammlung')}-${stamp()}.json`);
 }
 
@@ -111,7 +116,8 @@ function cardsPerSentence(root: Record<string, unknown> | null): Map<string, num
  * that is right until the day it is quietly wrong — and the only place it
  * would show is a sheet of stickers after it is printed.
  */
-export function readFile(data: unknown): { lines: Line[]; collection: string | null } {
+export function readFile(data: unknown):
+{ lines: Line[]; collection: string | null; origin?: string } {
   const root = asRecord(data);
   const cards = cardsPerSentence(root);
   const rows = Array.isArray(data) ? data
@@ -138,7 +144,15 @@ export function readFile(data: unknown): { lines: Line[]; collection: string | n
     lines.push({ text: text.trim(), voice, copies: copies && copies > 1 ? copies : undefined });
   }
   const name = typeof root?.collection === 'string' ? root.collection : null;
-  return { lines, collection: name };
+  /* What the file calls itself — see Collection.origin. bildhaft's archive
+     names its collection as a record and `portable()` keeps the id; mitreden's
+     own single-Sammlung export writes one beside the name, so a file that went
+     out from here and comes back is recognised as well. A bare list names
+     nothing and gets a Sammlung of its own, as it always did. */
+  const named = asRecord(root?.collection)?.id;
+  const origin = typeof root?.origin === 'string' ? root.origin
+    : typeof named === 'string' ? named : undefined;
+  return { lines, collection: name, origin };
 }
 
 /**
@@ -187,7 +201,7 @@ export async function importFile(file: File): Promise<string | null> {
     return null;
   }
 
-  const { lines, collection } = readFile(parsed);
+  const { lines, collection, origin } = readFile(parsed);
   if (!lines.length) {
     say(t('import_empty'));
     return null;
@@ -198,6 +212,29 @@ export async function importFile(file: File): Promise<string | null> {
   // here rather than failing at recording time. Azure's catalogue is memoised,
   // and the dialog this import runs from has already asked for it.
   const here = new Set((await offered((await settings()).azure)).map((voice) => voice.id));
+
+  /* The same file again. A Sammlung remembers which one it was made from
+     (Collection.origin), so this is a fact rather than a guess at a name two
+     Sammlungen are allowed to share — and it is asked rather than assumed,
+     because both answers are reasonable: the Klettspiel that gained two cards
+     wants bringing up to date, and the same file handed to somebody else's
+     child wants a Sammlung of its own.
+
+     A dismissed dialog falls to „daneben legen", which is what every import
+     did before this existed: the answer that changes nothing that is already
+     here. */
+  const known = origin
+    ? (await allCollections()).find((one) => one.origin === origin)
+    : undefined;
+  if (known && await confirmDialog({
+    title: t('import_again_title'),
+    body: t('import_again', { name: known.name }),
+    confirmLabel: t('import_again_do'),
+    cancelLabel: t('import_again_beside'),
+  })) {
+    return refreshInto(known, lines, here);
+  }
+
   /* The Sammlung takes the voice the file was made in, rather than the sentences
      each keeping their own: the voice belongs to the Sammlung now, so that is
      where a file's voice has to land for the same file to record the same way on
@@ -205,6 +242,9 @@ export async function importFile(file: File): Promise<string | null> {
      most of them used — see votedVoice. */
   const into = await createCollection(
     collection ?? file.name.replace(/\.json$/i, ''), lang() === 'de', votedVoice(lines, here),
+    // What the file calls itself, so the next version of it is recognised as
+    // this Sammlung rather than landing beside it — see Collection.origin.
+    origin,
   );
   const { added, merged, revoiced, ids } = await addPhrases(lines, into.id, here);
   /* How many stickers the file asked for, when that is not simply one each.
@@ -222,6 +262,43 @@ export async function importFile(file: File): Promise<string | null> {
   await load();
   await speakArrivals(ids);
   return into.id;
+}
+
+/**
+ * The Sammlung this file was made from, brought up to date.
+ *
+ * Counts moved, new cards added, and what the file no longer names handed back
+ * rather than removed — refreshCollection says why. This is where that last
+ * part becomes a question, because it is the only destructive thing an import
+ * can do and nobody should discover it afterwards: the sentences are named,
+ * the recordings go with them, and the default is to keep them.
+ *
+ * Asked before the recording starts rather than after it. A run of forty takes
+ * minutes, and a dialog that opens at the end of it is a dialog nobody is
+ * sitting in front of any more.
+ */
+async function refreshInto(
+  known: Collection, lines: readonly Line[], here: ReadonlySet<string>,
+): Promise<string> {
+  const { deletePhrase, refreshCollection } = await import('../db/repo.ts');
+  const done = await refreshCollection(known.id, lines, here);
+  say(t('done_refresh', { name: known.name, added: done.added, changed: done.changed }));
+  await load();
+
+  if (done.gone.length && await confirmDialog({
+    title: t('import_gone_title'),
+    body: tn('import_gone', done.gone.length),
+    confirmLabel: t('import_gone_do'),
+    cancelLabel: t('import_gone_keep'),
+    danger: true,
+  })) {
+    for (const id of done.gone) await deletePhrase(id);
+    say(tn('done_gone', done.gone.length));
+    await load();
+  }
+
+  await speakArrivals(done.ids);
+  return known.id;
 }
 
 /**

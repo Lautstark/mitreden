@@ -84,6 +84,26 @@ export interface Collection {
    * so feeding it a different voice is all it takes.
    */
   voice?: string;
+  /**
+   * The id the file had that this Sammlung was made from, where it came from
+   * one. Somebody else's id, kept as evidence and never as identity: nothing
+   * here is ever looked up by it, and §1.1's rule that an id is minted and
+   * never carried is untouched.
+   *
+   * It exists so that the same file arriving again can be recognised as the
+   * same material. An import adds and never overwrites — see db/backup.ts, and
+   * bildhaft's import does the same — which is right for a file landing in a
+   * library it knows nothing about, and wrong for the Klettspiel that gained
+   * two cards since last month. With this, the page can offer to bring the
+   * Sammlung up to date instead of putting a second one beside it
+   * (refreshCollection), and the offer is made from a fact rather than from a
+   * name two Sammlungen are allowed to share.
+   *
+   * Absent for everything made by hand, and for everything that arrived before
+   * this existed — both of which simply get the old answer, a Sammlung of
+   * their own.
+   */
+  origin?: string;
 }
 
 export interface CollectionWithCount extends Collection {

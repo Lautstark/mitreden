@@ -301,3 +301,79 @@ test('a restored Sicherung is spoken again without being asked', async ({ page }
   await page.click('#rows .collections__item:has-text("Küche")');
   await expect(page.locator('#list .item.busy')).toHaveCount(2);
 });
+
+/** A Spiel as bildhaft exports one: its cards, and the board that repeats them. */
+const spiel = (cards: string[][], sentences: [string, string][]) => ({
+  format: 'bildhaft.collection', version: 1, exportedAt: '2026-10-26T10:00:00.000Z',
+  collection: {
+    id: 'c1', name: 'Tiere im Wald', createdAt: 0, updatedAt: 0,
+    game: { rows: cards.map((row, i) => ({
+      id: `r${i}`, zellen: row.map((karte) => ({ karte, platz: true })),
+    })) },
+  },
+  sentences: sentences.map(([id, rawInput]) => ({
+    id, normalizedInput: rawInput.toLowerCase(), rawInput, slots: [],
+    collectionId: 'c1', createdAt: 0, updatedAt: 0,
+  })),
+  notice: '',
+});
+
+/** The dialog's two ways out, by class rather than by words: this page has two
+ *  languages and the runner picks one. */
+const settle = async (page: Page, how: 'confirm' | 'cancel') => {
+  const question = page.locator('dialog[open]').last();
+  await expect(question).toBeVisible();
+  await question.locator(how === 'confirm'
+    ? '.foot button.primary, .foot button.destructive'
+    : '.foot button:not(.primary):not(.destructive)').first().click();
+};
+
+/*
+ * The Klettspiel that changed.
+ *
+ * An import adds and never overwrites, which is right for a file landing in a
+ * library it knows nothing about and wrong for the fourth version of a game
+ * somebody is still making. The Sammlung remembers which file it came from, so
+ * the page can offer to bring it up to date — and offer is the word: the same
+ * file handed to another child wants a Sammlung of its own.
+ */
+test('the same file again can bring its Sammlung up to date', async ({ page }) => {
+  await openData(page);
+  await importJson(page, 'tiere.json', spiel(
+    [['s1', 's2'], ['s1', 's1']],
+    [['s1', 'Fuchs'], ['s2', 'Eule']],
+  ));
+  await expect(page.locator('#s')).toContainText('2 hinzugefügt');
+
+  // The game gained a card and lost a word; Fuchs is down to two cells.
+  await importJson(page, 'tiere.json', spiel(
+    [['s1', 's3'], ['s1', 's3']],
+    [['s1', 'Fuchs'], ['s3', 'Dachs']],
+  ));
+  await settle(page, 'confirm');
+  await expect(page.locator('#s')).toContainText('aufgefrischt');
+
+  // Eule is no longer in the file. Keeping it is the default and the safe one:
+  // nothing in this product can put a sentence back into a Sammlung.
+  await settle(page, 'cancel');
+
+  // One Sammlung, not two, and the counts are the new game's.
+  await expect(page.locator('#rows .collections__item')).toHaveCount(2);
+  expect(await copies(page)).toEqual([['Dachs', 2], ['Eule', null], ['Fuchs', 2]]);
+});
+
+test('or lie down beside it, which is what every import did before', async ({ page }) => {
+  await openData(page);
+  const file = spiel([['s1', 's1']], [['s1', 'Fuchs']]);
+  await importJson(page, 'tiere.json', file);
+  await expect(page.locator('#s')).toContainText('1 hinzugefügt');
+
+  await importJson(page, 'tiere.json', file);
+  await settle(page, 'cancel');
+  await expect(page.locator('#s')).toContainText('1 hinzugefügt');
+
+  // Two Sammlungen of the same name, which is allowed: the identity is never
+  // the name, and somebody who imports the same file twice asked for two.
+  await expect(page.locator('#rows .collections__name', { hasText: 'tiere' })).toHaveCount(2);
+  expect(await copies(page)).toEqual([['Fuchs', 2], ['Fuchs', 2]]);
+});
