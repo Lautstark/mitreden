@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * The second panel of the Anybook export: how many stickers each sentence
-   * gets.
+   * The right-hand column of the Anybook export: how many stickers each
+   * sentence gets.
    *
    * ## Why this is a list and nothing else
    *
@@ -21,30 +21,28 @@
    * board — so "alle 1×" was a reset for a state hardly anybody is in, and the
    * undo for it was the third button.
    *
-   * ## What the numbers underneath are for
+   * ## What the number underneath is for
    *
    * Thirty stickers of eighty-eight is a sheet; ninety is two, and the second
    * is nearly empty. That is a decision somebody makes before printing — leave
    * one word out, or buy the small paper — and it cannot be made from a count
-   * of sentences. So the panel says what it will cost in circles and in sheets,
-   * against the sheet and the start chosen on the first panel.
+   * of sentences. The run's own total sits in the foot beside the button it is
+   * about; what is here is the room left afterwards, which is what one more
+   * sticker would cost.
    *
    * The inline styles are this dialog's own, as in PenExportBody: there is no
    * baseline picture for it and these are measurements somebody made against a
    * real sheet of paper.
    */
-  import { circlesUsed, sheetsUsed } from '../core/anybook.ts';
-  import type { Choosing } from './penExport.svelte.ts';
+  import { roomFor, type Choosing } from './penExport.svelte.ts';
   import { t, tn } from './words.svelte.ts';
 
   let { s }: { s: Choosing } = $props();
 
-  let stickers = $derived(s.items.reduce((n, one) => n + one.copies, 0));
-  let circles = $derived(circlesUsed(stickers, s.startCode, s.start));
-  let sheets = $derived(sheetsUsed(s.sheet, circles));
-  /** Circles left on the paper this run covers. The number that says whether
-   *  one word more would cost a whole second sheet. */
-  let free = $derived(sheets * s.sheet.cols * s.sheet.rows - circles);
+  /** Circles left on the paper this run covers — the number that says whether
+   *  one word more would cost a whole second sheet. The rest of the same
+   *  arithmetic is in the foot; roomFor is where it is worked out once. */
+  let free = $derived(roomFor(s).free);
 
   /* Clamped on the way in rather than refused: a field somebody is in the
      middle of typing is briefly empty, and an empty field that snaps to 1
@@ -87,14 +85,10 @@
   {/each}
 </div>
 
-<!-- Circles rather than "x of 88": past one sheet there is no single number of
-     circles to be out of, and the room left is the line below. -->
-<p style="margin:16px 0 0">{t('pen_copies_total', {
-  stickers: tn('pen_stickers', stickers),
-  circles,
-  sheets: tn('pen_ask_sheets', sheets),
-})}</p>
-<p class="hint" style="margin:4px 0 0">{t('pen_copies_room', {
+<!-- What is left on the paper afterwards. The run's own total is in the foot,
+     beside the button it is about; this is the one that belongs under the list,
+     because it is what one more sticker would cost. -->
+<p class="hint" style="margin:8px 0 0">{t('pen_copies_room', {
   n: tn('count', s.items.length),
-  free,
+  free: tn('pen_free', free),
 })}</p>

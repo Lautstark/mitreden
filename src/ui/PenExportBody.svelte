@@ -3,21 +3,21 @@
    * The body of the Anybook export question: which sheet, whether a circle is
    * spent on the start code, and where on the paper this run begins.
    *
-   * Which is the first of two panels. The second is PenExportCopies, and this
-   * file holds the switch rather than the frame doing it: `openSheet` takes one
-   * body component, and the two panels are one question asked in two halves
-   * (see askPenExport). Both are rendered by the same component so that going
-   * back and forth costs nothing and neither loses what was typed into it.
+   * The left of two columns. The right is PenExportCopies, and they are one
+   * question: how many stickers decides how much paper, and where the run
+   * starts decides whether they fit. They were two panels with „Weiter"
+   * between them until 2026-10-27 — see askPenExport for why that was wrong
+   * twice over.
    *
    * The inline styles are what they were. This dialog has no baseline picture
    * and none of these is a token, but every one of them is a measurement
    * somebody made against a real sheet of paper, so they moved across as they
    * stood rather than being reasoned about again.
    */
-  import { circlesUsed, SHEETS, sheetsUsed } from '../core/anybook.ts';
+  import { SHEETS } from '../core/anybook.ts';
   import PenExportCopies from './PenExportCopies.svelte';
   import type { Choosing } from './penExport.svelte.ts';
-  import { t, tn } from './words.svelte.ts';
+  import { t } from './words.svelte.ts';
 
   let { s }: { s: Choosing; handle: unknown } = $props();
 
@@ -28,17 +28,6 @@
   let stickers = $derived(s.items.reduce((n, one) => n + one.copies, 0));
   let need = $derived(stickers + (s.startCode ? 1 : 0));
 
-  let summary = $derived(t('pen_ask_summary', {
-    // The Sammlung's own plural, which the list already says out loud.
-    n: tn('count', s.items.length),
-    code: s.startCode ? t('pen_ask_with_code') : t('pen_ask_without_code'),
-    start: s.start,
-    /* The run as it will actually be printed, counted from where it begins.
-       This used to be sheetsFor() fed an adjusted sentence count — which both
-       ignored how many stickers a sentence wants and had to add and subtract
-       the activation code back out of itself. */
-    sheets: tn('pen_ask_sheets', sheetsUsed(s.sheet, circlesUsed(stickers, s.startCode, s.start))),
-  }));
 
   /* Three states, in the page's own tokens rather than borrowed ones: a circle
      already peeled, one this run will use, and the start code. The start code
@@ -57,7 +46,10 @@
   }
 </script>
 
-{#if s.step === 1}
+<!-- Two columns, and one on a phone: the paper on the left, the sentences on
+     the right. app.css has the breakpoint — `.penexport .cols`. -->
+<div class="cols">
+  <div>
 <!-- Named on screen, not only to a screen reader: the control below it is a row
      of product codes, and the row beside the number field has a visible label.
      One of the two having none was the inconsistency. -->
@@ -93,10 +85,13 @@
   type="button" style={dot(i)} aria-label={t('pen_ask_position', { n: i })}
   onclick={() => { s.start = i; }}></button>{/each}</div>
 
-<p class="hint" style="margin:16px 0 0">{summary}</p>
 <!-- Named and linked, because the answer to "which paper is this" is a thing to
-     buy and the reader is about to need it. -->
-<p class="hint"><a href={s.sheet.url} target="_blank" rel="noreferrer noopener">{s.sheet.product}</a> · {t('pen_ask_paper', { per: total })}</p>
-{:else}
-  <PenExportCopies {s} />
-{/if}
+     buy and the reader is about to need it. What the run costs is in the foot,
+     where it is beside the button it is about and stays on screen. -->
+<p class="hint" style="margin:10px 0 0"><a href={s.sheet.url} target="_blank" rel="noreferrer noopener">{s.sheet.product}</a> · {t('pen_ask_paper', { per: total })}</p>
+  </div>
+
+  <div>
+    <PenExportCopies {s} />
+  </div>
+</div>

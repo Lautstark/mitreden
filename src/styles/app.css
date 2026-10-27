@@ -580,3 +580,35 @@ button,input,select,textarea{font:inherit;color:inherit}
 .subhead{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.07em;
   text-transform:uppercase;color:var(--text-faint)}
 .hair{border:0;border-top:1px solid var(--line);margin:14px 0 10px}
+
+/* The Anybook export, which is the one sheet in this product tall enough to
+   need saying out loud what happens when it does not fit.
+   @lautstark/design's components.css caps a sheet at the viewport and leaves
+   the scrolling to the product in so many words — so until this block existed
+   the whole dialog scrolled and carried „Abbrechen" and „Exportieren" off the
+   bottom with it. On the small sheet that is 315 circles to scroll past before
+   finding the way out. The head and the foot stand; the body between them is
+   what moves. */
+.penexport{display:flex;flex-direction:column}
+.penexport>.body{overflow-y:auto;min-height:0}
+/* The paper beside the sentences, because the two answer each other: how many
+   stickers decides how much paper, and where the run begins decides whether
+   they fit. 230px is the wider sheet's map at the size it is drawn. */
+.penexport .cols{display:grid;gap:20px;grid-template-columns:minmax(0,230px) minmax(0,1fr)}
+@media (max-width:700px){
+  /* One column, and the sentences above the paper — the reverse of the wide
+     layout, where the eye reads left to right and the paper is the left-hand
+     thing. Stacked, "first" means "what you see without scrolling", and the
+     counts are what changes from print to print: the sheet, the start code
+     and the position are remembered from last time and are usually already
+     right. A phone that opened on 315 circles would have the reader scrolling
+     past the half they came to confirm to reach the half they came to
+     change. */
+  .penexport .cols{grid-template-columns:minmax(0,1fr);gap:16px}
+  .penexport .cols>:first-child{order:2}
+}
+/* The foot gains a sentence, so it is allowed to become two rows where the
+   words need them — a total pushed onto the buttons' line and squeezing them
+   is worse than a foot one line taller. */
+.penexport>.foot{flex-wrap:wrap}
+.penexport .pensum{margin:0 auto 0 0;font-size:13px;color:var(--text-dim)}

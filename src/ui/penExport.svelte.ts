@@ -6,7 +6,7 @@
  * a start code decides whether one of those is spent on it. A menu cannot hold
  * that, so it is a dialog.
  *
- * ## And a fourth, asked on its own panel
+ * ## And a fourth, beside them
  *
  * How many stickers each sentence gets. A Klettspiel has thirty cards made of
  * ten words, and mitreden holds each word once — so the repetition is a number
@@ -15,9 +15,14 @@
  * list says nothing about it, which is the point. A print is the only thing
  * that count is for.
  *
- * It is a second panel rather than a fourth field. The first three are about a
- * sheet of paper somebody is holding; this one is about a game on the floor,
- * and it is a row per sentence.
+ * It had a panel of its own for a while, with „Weiter" between the two. That
+ * was wrong twice over. The two halves answer each other — how many stickers
+ * decides how much paper, and where the run starts decides whether they fit —
+ * so seeing what a number did meant pressing Weiter and Zurück. And the button
+ * that did the pressing sat under a map of 315 circles, which made the dialog
+ * taller than a laptop screen: the whole sheet scrolled and took its own
+ * buttons with it. One sheet, two columns, and the paper is beside the list
+ * rather than a page away from it.
  *
  * The one that is not obvious is the start. Label sheets are not used up in one
  * go — twenty come off for one Sammlung and sixty-eight are still perfectly
@@ -42,7 +47,9 @@
  */
 
 import { openSheet } from '@lautstark/design/svelte/sheet';
-import { DEFAULT_SHEET, SHEETS, type Sheet } from '../core/anybook.ts';
+import {
+  circlesUsed, DEFAULT_SHEET, SHEETS, sheetsUsed, type Sheet,
+} from '../core/anybook.ts';
 import { loadSettings } from '../db/settings.ts';
 import { t } from './words.svelte.ts';
 import PenExportBody from './PenExportBody.svelte';
@@ -91,16 +98,6 @@ export interface Choosing {
    */
   items: PenItem[];
   /**
-   * Which of the two panels is showing.
-   *
-   * Two steps rather than one long sheet, because the two questions are asked
-   * of different things: the first is about a sheet of paper in the reader's
-   * hand, the second about a game spread out on the floor. Putting ten rows of
-   * plus and minus under a grid of eighty-eight circles would also push both
-   * off the dialog.
-   */
-  step: 1 | 2;
-  /**
    * The answer, given by the press that gave it, and only the first one counts.
    *
    * This replaces a `answer: PenChoice | null` field that the foot wrote and
@@ -109,6 +106,22 @@ export interface Choosing {
    * for whatever runs next.
    */
   settle(choice: PenChoice | null): void;
+}
+
+/**
+ * What a run of these answers costs, in the words the foot and the list use.
+ *
+ * One place, because two would drift: the foot says how many sheets it takes
+ * and the list says how much room is left afterwards, and those are two
+ * readings of the same arithmetic.
+ */
+export function roomFor(s: Choosing): {
+  stickers: number; circles: number; sheets: number; free: number;
+} {
+  const stickers = s.items.reduce((n, one) => n + one.copies, 0);
+  const circles = circlesUsed(stickers, s.startCode, s.start);
+  const sheets = sheetsUsed(s.sheet, circles);
+  return { stickers, circles, sheets, free: sheets * s.sheet.cols * s.sheet.rows - circles };
 }
 
 /**
@@ -150,7 +163,7 @@ export async function askPenExport(items: readonly PenItem[]): Promise<PenChoice
      has to leave the sentences as they were. What leaves is the map in
      `settle`, and the caller decides what to write. */
   const s = $state<Choosing>({
-    sheet, startCode: true, start, step: 1,
+    sheet, startCode: true, start,
     items: items.map((one) => ({ ...one, copies: Math.max(1, Math.floor(one.copies)) })),
     settle: () => {},
   });
@@ -169,6 +182,15 @@ export async function askPenExport(items: readonly PenItem[]): Promise<PenChoice
 
     openSheet({
       title: t('pen_ask_title'),
+      /* Two columns need the room: `panels` is 900px, which holds a 230px
+         column of paper beside a list of sentences and still falls to one
+         column on a phone. */
+      panels: true,
+      /* The scrolling is this product's — components.css says so outright, and
+         until it did it the dialog scrolled whole and took its buttons with
+         it. The class is what app.css hangs that on; it lands on the <dialog>
+         itself. */
+      class: 'penexport',
       /* Per call, like ui/dialog.ts's: this page changes language without
          reloading and a label captured at module scope would be the previous
          one. A sheet opened now is named in the language showing now. */

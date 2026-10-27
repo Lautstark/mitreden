@@ -27,30 +27,38 @@
    * close with no press at all still answers.
    */
   import type { Handle } from '@lautstark/design/svelte/sheet';
-  import type { Choosing } from './penExport.svelte.ts';
-  import { t } from './words.svelte.ts';
+  import { roomFor, type Choosing } from './penExport.svelte.ts';
+  import { t, tn } from './words.svelte.ts';
 
   let { s, handle }: { s: Choosing; handle: Handle } = $props();
+
+  /* What the run costs, beside the button that starts it. In the foot because
+     the foot is the one part of this sheet that is always on screen — the body
+     scrolls — and because this is the sentence somebody reads immediately
+     before pressing Exportieren. */
+  let room = $derived(roomFor(s));
 </script>
 
-{#if s.step === 1}
-  <button class="btn" type="button" onclick={() => {
-    s.settle(null);
-    handle.close();
-  }}>{t('cancel')}</button>
-  <button class="btn primary" type="button" onclick={() => { s.step = 2; }}
-  >{t('pen_ask_next')}</button>
-{:else}
-  <button class="btn" type="button" onclick={() => { s.step = 1; }}>{t('pen_ask_back')}</button>
-  <button class="btn primary" type="button" onclick={() => {
-    s.settle({
-      sheet: s.sheet,
-      startCode: s.startCode,
-      start: s.start,
-      // Every sentence, the ones at one included: the caller writes these back,
-      // and a sentence turned back down has to lose the number it had.
-      copies: new Map(s.items.map((one) => [one.id, one.copies])),
-    });
-    handle.close();
-  }}>{t('pen_ask_do')}</button>
-{/if}
+<p class="pensum">{t('pen_copies_total', {
+  stickers: tn('pen_stickers', room.stickers),
+  // Its own plural: one sticker on a bare sheet is „1 Kreis", and „1 Kreise"
+  // is the same defect in a smaller coat — see the sheet notes, which learned
+  // this about „1 Sätze".
+  circles: tn('pen_circles', room.circles),
+  sheets: tn('pen_ask_sheets', room.sheets),
+})}</p>
+<button class="btn" type="button" onclick={() => {
+  s.settle(null);
+  handle.close();
+}}>{t('cancel')}</button>
+<button class="btn primary" type="button" onclick={() => {
+  s.settle({
+    sheet: s.sheet,
+    startCode: s.startCode,
+    start: s.start,
+    // Every sentence, the ones at one included: the caller writes these back,
+    // and a sentence turned back down has to lose the number it had.
+    copies: new Map(s.items.map((one) => [one.id, one.copies])),
+  });
+  handle.close();
+}}>{t('pen_ask_do')}</button>
