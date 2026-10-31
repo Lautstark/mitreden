@@ -1,72 +1,41 @@
 <script lang="ts">
   /**
    * Einstellungen: what this page is, which voice a new Sammlung starts with,
-   * where the work lives, and the one act that destroys something.
+   * and where the work lives.
    *
-   * ## Six panels, not three tabs
+   * ## Three panels, and the rule each one follows
    *
-   * A tab hides two thirds of the settings behind a choice you have to make
-   * before you can look; a panel says what it holds in its own heading — which
-   * voice, whether Azure has a key, how many sentences there are — so a look is
-   * enough and opening is a decision. components.css's `.panel`, native
-   * `<details>`, so the browser owns the folding and the keyboard.
+   * „Sprache & Aussehen", „Standardstimme" and „Deine Daten" — five panels
+   * until 2026-10-31, when the language and the scheme became one panel and
+   * Azure moved under the voices, the way bildhaft had just done it. The rule
+   * is „Deine Daten"'s: one box that says how things stand, at most one button
+   * where something is to be done, and the rest in a `⋯`, so a person who has
+   * never heard of a Speech resource can still answer every question here.
    *
-   * `name="settings"` makes the six one exclusive group — opening one closes
-   * the rest — which is the platform's own accordion and behaves like a radio
-   * group. Without it the sheet becomes a scroll through everything anybody has
-   * ever opened, and the state in each heading, which is the whole reason they
-   * are folded, stops being readable at a glance.
+   * Each panel says what it holds in its own heading — which voice, which
+   * language, how many sentences — so a look is enough and opening is a
+   * decision. components.css's `.panel`, native `<details>`, and
+   * `name="settings"` makes them one exclusive group — opening one closes the
+   * rest — which is the platform's own accordion.
    * @lautstark/design conventions.md §3.5.
-   *
-   * ## Why the headings are drawn rather than fetched on opening
-   *
-   * They read what the page already has in memory, which is the property
-   * e2e/app.spec.ts asks for by clicking the gear and reading the four headings
-   * in the same tick. `openSetup()` used to write „Wird geladen …" into the
-   * Azure one by hand, because that answer comes from the database and the
-   * panel was drawn at the moment of the press. The sheet is in the page from
-   * the start now, so the read has already happened — and `azureLoaded` is
-   * still here, because the *first* frame of the *first* visit has not, and a
-   * state is what this summary is for while empty is not.
    *
    * ## The frame, and the one rule that had to come with it
    *
-   * @lautstark/design/svelte/Sheet since 2026-09-17, and the six panels are
-   * @lautstark/design/svelte/Panel. What kept this dialog hand-written was
-   * that it had no `.body` region at all — the panels were the dialog's own
-   * children — and the shared frame always draws one. `.sheet > .body` sets
-   * `color: var(--text-dim)` and `font-size: 14px`, and both are **inherited**
-   * rather than selected, so a child combinator cannot protect what is under
-   * them: every panel heading in this column would lose its colour, and
-   * `.where-panel p`, `.where` and `.backup-panel > p` — markup two *other*
-   * packages draw — would shift with it.
-   *
-   * conventions.md §6.1 leaves that at a fork and names the reason: „Wo alles
-   * liegt" is the one shot in this product that photographs another
-   * repository's panels, and e2e/visual.spec.ts says that is exactly what it
-   * exists to watch. Re-recording it inside a design-frame change spends the
-   * evidence it was taken for. So this took the first branch of the fork — the
-   * panels keep their colour by a rule that says so — and that rule is
-   * `#setup > .body` in src/styles/app.css, which hands the inherited pair
-   * straight back. wo-alles-liegt.png, standardstimme.png and
-   * alles-loeschen.png are unchanged by this commit, and that is by
-   * construction rather than by luck: nothing inside the body region inherits
-   * anything it did not inherit before.
+   * @lautstark/design/svelte/Sheet, whose `.sheet > .body` sets
+   * `color: var(--text-dim)` and `font-size: 14px` — both **inherited**, so a
+   * child combinator cannot protect what is under them, and the boxes two
+   * other packages draw in here would shift with it. `#setup > .body` in
+   * src/styles/app.css hands the inherited pair straight back.
+   * conventions.md §6.1.
    *
    * ## The panels inside the panels
    *
-   * Four of these six hold a block another repository draws, and since
-   * 2026-09-17 every one of them is a component rather than a node in a
-   * `Vanilla`: @lautstark/sicherung's `AblagePanel` and `BackupPanel`,
-   * @lautstark/stimmquelle's `VoicePicker` and `AzurePanel`. What that bought
-   * is conventions.md §6.8 — the repaint, the subscription and its teardown are
-   * the framework's, `lang` is a prop rather than a thunk read per paint, and a
-   * job still in flight when the sheet closes no longer writes into a tree
-   * nobody can see. Four `refresh()` calls, two `dispose()`s and an `onDestroy`
-   * went with them.
-   *
-   * The one still hosted in a `Vanilla` is the language row, and that is not an
-   * oversight: @lautstark/design ships no Svelte twin of `languagePicker`. Its
+   * Three blocks here are another repository's: @lautstark/sicherung's
+   * `DatenPanel`, @lautstark/stimmquelle's `VoicePicker` and
+   * `AzureConnection`. The repaint, the subscription and its teardown are the
+   * framework's, and `lang` is a prop rather than a thunk read per paint
+   * (conventions.md §6.8). The one still hosted in a `Vanilla` is the language
+   * row: @lautstark/design ships no Svelte twin of `languagePicker`, and its
    * `langs.node.id = 'lang'` below is the last imperative seam in this file.
    */
   import { untrack } from 'svelte';
@@ -78,8 +47,8 @@
   import Vanilla from '@lautstark/design/svelte/Vanilla';
   import DatenPanel from '@lautstark/sicherung/svelte/DatenPanel';
   import type { Sicherung } from '@lautstark/sicherung';
-  import AzurePanel from '@lautstark/stimmquelle/svelte/AzurePanel';
-  import type { AzureAccess, AzureWords } from '@lautstark/stimmquelle/svelte/AzurePanel';
+  import AzureConnection, { type AzureConnectionWords } from '@lautstark/stimmquelle/svelte/AzureConnection';
+  import type { AzureAccess } from '@lautstark/stimmquelle/svelte/AzurePanel';
   import VoicePicker from '@lautstark/stimmquelle/svelte/VoicePicker';
   import { ablage } from '../db/folder.ts';
   import { adoptFolder } from '../db/mirror.ts';
@@ -114,9 +83,9 @@
    * writes itself back from `ontoggle`, so this record is what the browser
    * actually did.
    */
-  const PANELS = ['lang', 'voice', 'azure', 'theme', 'data'];
-  /** §3.11: Sprache first, and the only one open. */
-  const OPENS_WITH = 'lang';
+  const PANELS = ['look', 'voice', 'data'];
+  /** §3.11: Sprache & Aussehen first, and the only one open. */
+  const OPENS_WITH = 'look';
   const arrival = (): Record<string, boolean> =>
     Object.fromEntries(PANELS.map((one) => [one, one === OPENS_WITH]));
   const folded = $state<Record<string, boolean>>(arrival());
@@ -234,36 +203,38 @@
   // ------------------------------------------------------------ der Schlüssel
 
   /**
-   * The key, and whether Azure answers for it.
+   * Azure, as a connection that is there or not.
    *
-   * The panel is @lautstark/stimmquelle/svelte/AzurePanel since 2026-09-17 —
-   * conventions.md §6.9, three consumers and one of them is this one. What
-   * went is 90 lines of field, region, placeholder, probe and save that
-   * wochenwerk and vorlaut-editor had each written too, and the region list
-   * that all three carried character for character. What stayed here is
-   * everything the panel deliberately does not own:
+   * @lautstark/stimmquelle/svelte/AzureConnection since 2026-10-31, under the
+   * voice list rather than in a panel of its own: „Stimmen von Microsoft
+   * Azure", whether they are connected, and one button. The button unfolds
+   * the key and the region together, with a cancel beside the save; once Azure
+   * answers, its voices join the list above and there is nothing else to find.
+   * bildhaft took the same two pieces the same day.
+   *
+   * What stays here is everything the package deliberately does not own:
    *
    * - **the probe**. This product has exactly one regex for Azure's refusal and
    *   it lives in core/voices.ts, where the picker's own catalogue call shares
-   *   its memoisation — one settings-opening asks Azure once, not twice. A
-   *   panel that brought a second probe would be duplicating a function this
-   *   product already has, so §6.9 injects it.
-   * - **the words**, including `failed`, which takes Azure's own message. A
-   *   codes-only seam would have deleted it from the sentence.
-   * - **the plural**, because a count is a number the panel has and only this
-   *   product can put into its own language's plural.
-   * - **the two paragraphs above the fields**: `azure_body` is prose and
+   *   its memoisation — one settings-opening asks Azure once, not twice. §6.9
+   *   injects it.
+   * - **the words**, including `failed`, which takes Azure's own message, and
+   *   the plural, which only this product can put into its own language.
+   * - **the region as a place**. Somebody who has never opened the Azure portal
+   *   knows „Frankfurt" and not `germanywestcentral`. Only the European ones
+   *   are named; anything else reads as Azure's code. The default region is
+   *   still the package's: this product has never chosen one of its own.
+   * - **the two paragraphs over the fields**: `azure_body` is prose and
    *   `azure_warn` is a `.notice.bad.warn`, which is a rule of this product's
-   *   and which §6.0 forbids the package emitting. They arrive as snippets.
-   *
-   * `azure` and `azureLoaded` stay because the *heading* is this file's: which
-   * key, not merely that there is one.
+   *   and which §6.0 forbids the package emitting. They are the children, so
+   *   they show while connecting for the first time — the moment somebody is
+   *   deciding whether to.
    */
   type Azure = { key: string; region: string };
   let azure = $state<Azure | undefined>(undefined);
   let azureLoaded = $state(false);
 
-  /** What the database says now. The panel redraws itself off `hasKey` and
+  /** What the database says now. The box redraws itself off `hasKey` and
    *  `region`, so this is the whole of what a save or a forget has to do here. */
   async function readAzure(): Promise<void> {
     const saved = await settings();
@@ -271,37 +242,40 @@
     azureLoaded = true;
   }
 
+  /* Read through `t()` on each call, so a language changed two rows up
+     reaches the box's next paint. */
+  const REGIONS: Record<string, () => string> = {
+    germanywestcentral: () => 'Frankfurt',
+    westeurope: () => t('region_westeurope'),
+    northeurope: () => t('region_northeurope'),
+    switzerlandnorth: () => 'Zürich',
+    francecentral: () => 'Paris',
+    uksouth: () => 'London',
+    swedencentral: () => t('region_sweden'),
+    norwayeast: () => 'Oslo',
+  };
+  const regionName = (code: string): string => REGIONS[code]?.() ?? code;
+
   /**
-   * Every sentence the panel can say, all of them this page's.
+   * Every sentence the box and its form can say, all of them this page's.
    *
-   * `$derived`, so a language changed in the panel two rows above this one
-   * reaches it: the object is new and the panel redraws. That is §6.8's „`lang`
-   * is a prop and reactivity is the framework's" in the form the Azure panel
-   * takes it — there is no `lang` prop here, because the language arrives with
-   * the words.
+   * `$derived`, so a language changed in the panel above reaches it: the
+   * object is new and the box redraws. There is no `lang` prop here, because
+   * the language arrives with the words.
    *
-   * `refusedOnSave` is longer than `refused` on purpose and the panel asks for
-   * exactly that distinction: a key is bound to one region and the wrong
-   * pairing answers the same 401 as a wrong key, so at the moment somebody is
-   * making the pairing, saying which is more use than repeating Azure. On the
-   * probe line, where nothing is being made, the short sentence is right.
-   *
-   * `failed` has one form where this page had two, and that is the one wording
-   * change in the adoption. The probe line used to say „Die Abfrage ist
-   * fehlgeschlagen — später noch einmal versuchen" while a save said „Azure hat
-   * nicht geantwortet (…)", with Azure's own message in the brackets. The panel
-   * renders what the probe returns, so both are the second sentence now and
-   * `azure_failed` is gone from both tables. It is the better of the two: it
-   * was the same condition described twice, once without the only piece of
-   * evidence there is.
+   * `refusedOnSave` is longer than `refused` on purpose: a key is bound to one
+   * region and the wrong pairing answers the same 401 as a wrong key, so at
+   * the moment somebody is making the pairing, saying which is more use than
+   * repeating Azure.
    */
-  const azureWords = $derived<AzureWords>({
+  const azureWords = $derived<AzureConnectionWords>({
     key: t('key_field'),
     region: t('region_field'),
     regionHint: t('region_hint'),
     save: t('key_save'),
     saving: t('key_checking'),
     forget: t('key_forget'),
+    cancel: t('cancel'),
     asking: t('azure_asking'),
     typeFirst: t('type_first'),
     answers: (count) => tn('azure_answers', count),
@@ -310,6 +284,16 @@
     refused: t('azure_refused'),
     refusedOnSave: t('key_failed', { error: t('azure_bad_pair') }),
     failed: (words) => t('azure_no_answer', { error: words }),
+    title: t('azure_title'),
+    off: t('azure_off'),
+    on: t('azure_on'),
+    refusedState: t('azure_refused_state'),
+    offNote: t('azure_off_note'),
+    onNote: (hint, region) => t('azure_on_note', { hint, region }),
+    refusedNote: t('azure_refused_note'),
+    connect: t('azure_connect'),
+    change: t('azure_change'),
+    check: t('azure_check'),
   });
 
   /* The probe, adapted at the seam and nowhere else. The panel's `AzureAccess`
@@ -322,7 +306,7 @@
 
   async function keepKey(next: AzureAccess): Promise<void> {
     await saveAzure({ key: next.key ?? '', region: next.region });
-    // The heading and the picker are what this save feeds. The dialog stays
+    // The box and the picker are what this save feeds. The dialog stays
     // open, so both land on the screen the key was typed into; the probe is
     // memoised per key and region, so neither asks Azure again.
     await loadVoices();
@@ -358,7 +342,7 @@
    *
    * This is the whole reason the tabs went: a tab is a promise that something
    * is behind it, and you have to open it to find out what. A heading that
-   * already says "Kristin · Mitgeliefert · Englisch", "Kein Schlüssel" or "42
+   * already says "Kristin · Mitgeliefert · Englisch", "Deutsch · Hell" or "42
    * Sätze" is usually the entire question, and opening becomes a decision
    * rather than the only way to look.
    */
@@ -369,7 +353,7 @@
   /* The same endonym the pressed button carries, off the same table — the
      heading and the row must not be able to disagree about what „de" is
      called. */
-  let langState = $derived.by(() => { void lang(); return NAMES[lang()] ?? lang(); });
+  let lookState = $derived.by(() => `${NAMES[lang()] ?? lang()} · ${themeLabel(theme)}`);
   /* ALL(), not a fresh read: the sentences are already in memory, and a heading
      that carries state has to carry it from the first frame. Reading the
      database here left this line blank at the moment somebody was reading it —
@@ -407,186 +391,129 @@
   closeId="setupclose"
 >
   <!-- First, and open on arrival. Somebody who cannot read this page needs this
-       panel before any of the others, and the two options below name themselves
-       — „Deutsch" and „English" are the same words whichever language the rest
+       panel before any of the others, and the language row names itself —
+       „Deutsch" and „English" are the same words whichever language the rest
        of the sheet is in. vorlaut put it here first and said why; the reasoning
-       is not vorlaut's, it is the page's.
+       is not vorlaut's, it is the page's. The `open` attribute this used to
+       carry is `folded` above now — see there for why arrival state cannot be
+       markup in a sheet that is never unmounted.
 
-       It is also why nothing else opens on arrival: one panel open is a choice
-       about which one somebody most needs, and this is the only one where not
-       reading the page is the case being answered. The `open` attribute this
-       used to carry is `folded` above now — see there for why arrival state
-       cannot be markup in a sheet that is never unmounted. -->
-  <Panel id="p-lang" stateId="langstate" section={t('panel_language')}
-    state={langState} bind:open={folded.lang}>
-    <!-- The same segmented control as the scheme below it, and that pairing
-         is the point: two facts about this page, offered the same way. It was
-         a native select first — it drew its own chevron from a hex baked into
-         a data URI, which cannot read a token, so it was the one control that
-         could not follow the theme — and then a button and a menu, which put
-         the choice behind a press. A menu is for a list of things to do; this
-         is a list of what the page is. -->
-    <Vanilla node={langs.node} />
-    <!-- The key stays on the element as well as in the text. It is what
-         e2e/app.spec.ts names to ask that this sentence exists at all — the
-         one assertion in that file the compiler could not make — and the two
-         cannot drift, because the attribute and the lookup are the same
-         string on the same line. -->
-    <p class="hint" data-i18n="language_hint">{t('language_hint')}</p>
+       Language and scheme are one panel since 2026-10-31: both are what this
+       page is rather than what is in it, both live in this browser only, and
+       they are offered the same way — two segmented rows, one caption each,
+       and one sentence under both. The captions are `.subhead`, this file's
+       uppercase caption; `.opt` is only the row. -->
+  <Panel id="p-look" stateId="lookstate" section={t('panel_look')}
+    state={lookState} bind:open={folded.look}>
+    <!-- A native select first — it drew its own chevron from a hex baked into
+         a data URI, which cannot read a token — and then a button and a menu,
+         which put the choice behind a press. A menu is for a list of things to
+         do; this is a list of what the page is. -->
+    <div class="opt">
+      <p class="subhead">{t('panel_language')}</p>
+      <Vanilla node={langs.node} />
+    </div>
+    <!-- conventions.md §6.10. `#theme` is a prop because e2e/theme.spec.ts
+         names it. "Follows the device" is an answer too, and the default one —
+         a two-state switch has to open in light or dark and so has to guess,
+         which is how a tablet that dims itself at dusk ends up pinned bright. -->
+    <div class="opt">
+      <p class="subhead">{t('panel_theme')}</p>
+      <ThemePicker
+        id="theme"
+        key={THEME_KEY}
+        label={themeLabel}
+        ariaLabel={t('panel_theme')}
+        bind:theme
+      />
+    </div>
+    <!-- The key stays on the element as well as in the text: it is what
+         e2e/app.spec.ts names to ask that this sentence exists at all. -->
+    <p class="hint" data-i18n="look_note">{t('look_note')}</p>
   </Panel>
 
   <!-- The default a new Sammlung starts with, and not the voice the next
-       sentence gets — which is what this panel used to say and what it stopped
-       being when the voice moved onto the Sammlung. What one particular
-       Sammlung records in is behind the ⋯ beside its name; conventions.md §3.10
-       is the test that put it there, and the hint below is how somebody
-       standing in front of this list finds it. -->
+       sentence gets. What one particular Sammlung records in is behind the ⋯
+       beside its name; conventions.md §3.10 is the test that put it there, and
+       the hint below is how somebody standing in front of this list finds it. -->
   <Panel id="p-voice" stateId="voicestate" section={t('panel_voice_default')}
     state={voiceState} bind:open={folded.voice}>
     <p class="hint">{t('voice_default_hint')}</p>
     <!-- The field, the language pills and the list are one block from
-         @lautstark/stimmquelle/svelte/VoicePicker, which brings its own markup
-         and its own words in both languages. `#voices` is this page's name for
-         where the block goes; the suite reaches the field and the rows
-         through it.
+         @lautstark/stimmquelle/svelte/VoicePicker. `#voices` is this page's
+         name for where the block goes; the suite reaches it through it.
+
+         `folded` (stimmquelle 2.15.0): with a voice chosen, the box shows that
+         voice and „Andere Stimme …", and the search and the rows come out only
+         when somebody asks for them. A row chosen there folds them away again.
+         With nothing chosen the list is open, because there is nothing to fold
+         to.
 
          ## Two instances, and never one
 
          There are two — what a new Sammlung starts with, here, and what one
          particular Sammlung records in, in ui/CollectionVoice.svelte — and
          they are different questions about the same catalogue, so each gets
-         its own tag rather than a shared one that drifts.
-
-         A shared instance would have been cheaper and wrong: the query and the
-         language filter are somebody's place in a list of hundreds, and
-         carrying a search for „kerstin" out of one dialog into the other would
-         look like the second one had lost most of its voices. The component
-         holds that state per instance, and two tags being two pickers is what
-         keeps the rule without anything having to remember it.
+         its own tag. The query and the language filter are somebody's place in
+         a list of hundreds, and the component holds that state per instance.
+         The Sammlung's sheet stays unfolded: it is opened to choose, and
+         nothing else is in it.
 
          `hear` is not passed: this page speaks a voice by recording with it,
-         which is minutes of synthesis and a file, and there is nothing here
-         that plays a sample. So no `▶` is drawn — the component draws the row
-         wrapper either way, so the day this page grows a sample player nothing
-         else moves.
+         and there is nothing here that plays a sample.
 
          `voices` and `current` are read on every paint rather than passed
-         once: an Azure key saved in the panel directly below this one adds
-         several hundred rows, and the Sammlung's sheet draws for a different
-         Sammlung each time it opens. -->
+         once: an Azure key saved directly below adds several hundred rows. -->
     <div id="voices">
       <VoicePicker
         voices={knownVoices}
         current={chosenVoice}
         pick={(id) => void pickVoice(id)}
+        folded
         {lang}
       />
     </div>
 
-    <!-- The library, brought up to date with its own voices.
+    <!-- Azure under the voices it adds. Gated on the first read of the
+         database, so the box does not say „nicht verbunden" for one frame to
+         somebody who is. The ids are the form's, and the suite's. -->
+    {#if azureLoaded}
+      <div class="azure-slot">
+        <AzureConnection
+          id="azure"
+          formId="cloud"
+          fieldId="azurekey"
+          regionId="azureregion"
+          saveId="azuresave"
+          forgetId="azureforget"
+          probeId="azureprobe"
+          hasKey={azure !== undefined}
+          hint={azure?.key.slice(-4) ?? ''}
+          region={azure?.region}
+          {regionName}
+          stored={async () => (await settings()).azure?.key}
+          probe={askAzure}
+          save={keepKey}
+          forget={forgetKey}
+          words={azureWords}
+          announce={say}
+        >
+          <p class="sub says">{t('azure_body')}</p>
+          <p class="notice bad warn">{t('azure_warn')}</p>
+        </AzureConnection>
+      </div>
+    {/if}
 
-         Here rather than in „Wo alles liegt", because what it is about is
-         speech and not files, and because this is the panel somebody is
-         already in when they wonder why a Sammlung is silent. The number is
-         on the button rather than beside it: it is the whole reason to press
-         it, and a button offering to record nothing should say so before it
-         is pressed. -->
+    <!-- The library, brought up to date with its own voices. Here because what
+         it is about is speech, and because this is the panel somebody is
+         already in when they wonder why a Sammlung is silent. The number is on
+         the button: it is the whole reason to press it. -->
     <hr class="hair" />
     <p class="subhead">{t('record_all_title')}</p>
-    <!-- `hint` and not `notice`: notice is a tinted callout, and a secondary
-         action at the foot of a panel asking for that much attention reads as
-         the panel's subject rather than its afterthought. A picture showed it
-         — see the baseline this commit re-recorded. -->
     <p class="hint">{t('record_all_hint')}</p>
     <button class="btn sm" id="recordall" disabled={!waiting}
       onclick={() => void recordEverything()}
     >{t('record_all')}{waiting ? ` · ${t('record_all_waiting', { n: waiting })}` : ''}</button>
-  </Panel>
-
-  <!-- Which key, not merely that there is one: the last four characters tell
-       two keys apart without giving either away. It sits in the panel's
-       heading, so the answer is there before the panel is opened. -->
-  <Panel id="p-azure" stateId="azurestate" section="Azure Speech"
-    state={!azureLoaded ? t('loading')
-      : azure ? t('key_hint', { hint: azure.key.slice(-4) }) : t('key_none')}
-    bind:open={folded.azure}>
-    <!-- No head and no card: the panel's summary names this and says whether
-         Azure holds a key, which is the whole point of a heading that carries
-         its state.
-
-         ## The ids, and what happened to the class names
-
-         The bare class names that used to be in here — `.probe`, `.says`,
-         `.save`, `.forget`, `.region` — were hooks for the suite rather than
-         components, under one invariant: none of them could be a name
-         components.css owns. That invariant inverts the moment the package
-         starts emitting the markup, so §6.9 turns them into ids and they come
-         back as props. `#cloud` is the panel's own box now rather than a div
-         around it; every e2e use of `#cloud` was a descendant selector and
-         still lands, and `#azuresave`, `#azureforget` and `#azureprobe` are
-         what replace the three class hooks. `#azurekey` and `#azureregion`
-         were already ids and are unchanged.
-
-         The two paragraphs that stayed here stayed for §6.0's reason: a
-         provider package may not emit a product's rule. `azure_warn` is
-         `.notice.bad.warn` and `warn` is this file's, so it arrives as the
-         `warning` snippet; `azure_body` is prose nobody else says and arrives
-         as the children. `.sub` was `sub body` once, which the shared
-         `.sheet .body` region rule reached and quietly took from 15px to
-         14px — v1.4.1 made those rules child combinators and handed it back,
-         and the rename is so it cannot be caught again.
-
-         The probe line is a live region and it is never hidden — §3.8. It used
-         to be toggled with `[hidden]`, which is one of the two ways that
-         section names for getting silence: the element leaves the
-         accessibility tree and comes back carrying its next message. The panel
-         empties the text instead and guards the margin with `:empty`, which is
-         the same arrangement under a new name. -->
-    <AzurePanel
-      id="cloud"
-      fieldId="azurekey"
-      regionId="azureregion"
-      hintId="azurehint"
-      saveId="azuresave"
-      forgetId="azureforget"
-      probeId="azureprobe"
-      hasKey={azure !== undefined}
-      placeholder={azure ? `••••${azure.key.slice(-4)}` : ''}
-      region={azure?.region}
-      stored={async () => (await settings()).azure?.key}
-      probe={askAzure}
-      save={keepKey}
-      forget={forgetKey}
-      words={azureWords}
-      announce={say}
-    >
-      <p class="sub says">{t('azure_body')}</p>
-      {#snippet warning()}<p class="notice bad warn">{t('azure_warn')}</p>{/snippet}
-    </AzurePanel>
-  </Panel>
-
-  <!-- Beside the language, because both are what this page is rather than what
-       is in it. The three answers are one control: "follows the OS" is an
-       answer too, and the default one — a two-state switch has to open in light
-       or dark and so has to guess, which is how a tablet that dims itself at
-       dusk ends up pinned bright. -->
-  <Panel id="p-theme" stateId="themestate" section={t('panel_theme')}
-    state={themeLabel(theme)} bind:open={folded.theme}>
-    <!-- conventions.md §6.10. This was the shared component's own `pick()`
-         body and the same role=group comment, word for word — including the
-         argument that §6.10 calls the strongest evidence in the audit that a
-         control is ready to be shared, which three of the four products were
-         still each carrying their own copy of. It is in ThemePicker.svelte
-         now, with the reasoning, and `#theme` is a prop because e2e/theme.spec.ts
-         names it four times. -->
-    <ThemePicker
-      id="theme"
-      key={THEME_KEY}
-      label={themeLabel}
-      ariaLabel={t('panel_theme')}
-      bind:theme
-    />
-    <p class="hint">{t('theme_hint')}</p>
   </Panel>
 
   <!-- „Deine Daten", @lautstark/sicherung/svelte/DatenPanel: the same panel in

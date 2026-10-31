@@ -13,8 +13,11 @@ test('the page loads and is used without saying anything to the console', async 
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.fill('#t', 'Eine Zeile.');
   await page.click('#gear');
-  for (const panel of ['p-voice', 'p-azure', 'p-lang', 'p-data'])
+  for (const panel of ['p-voice', 'p-data', 'p-look'])
     await page.click(`#${panel} > summary`);
+  // Azure's fields, which used to be a panel of their own.
+  await page.click('#p-voice > summary');
+  await page.click('#azure > .acts button');
   await page.click('#setupclose');
   await page.click('#newcol');
   await page.waitForTimeout(300);

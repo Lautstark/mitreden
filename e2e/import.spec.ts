@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAzureForm, openVoicePanel } from './settings.ts';
 
 /**
  * Bringing a file in, and what happens to the voice it names.
@@ -113,7 +114,9 @@ test('the same file keeps its Azure voice on a browser that has the key', async 
   await page.route(VOICE_LIST, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openData(page);
-  await page.click('#p-azure > summary');
+  // Azure is the box under the voices, in „Standardstimme".
+  await openVoicePanel(page);
+  await openAzureForm(page);
   await page.fill('#azurekey', '0'.repeat(32));
   await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });
@@ -160,7 +163,9 @@ test('the same sentence in two files lands in each Sammlung, in each voice', asy
   await page.route(VOICE_LIST, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VOICES) }));
   await openData(page);
-  await page.click('#p-azure > summary');
+  // Azure is the box under the voices, in „Standardstimme".
+  await openVoicePanel(page);
+  await openAzureForm(page);
   await page.fill('#azurekey', '0'.repeat(32));
   await page.click('#azuresave');
   await expect(page.locator('#s')).toContainText('freigeschaltet', { timeout: 10_000 });

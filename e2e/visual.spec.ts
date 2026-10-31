@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { openVoicePanel, unfoldVoices } from './settings.ts';
 
 /**
  * What the settings sheet looks like, kept as pictures.
@@ -152,7 +153,6 @@ test.use({ viewport: { width: 1280, height: 900 } });
  */
 const varies = (page: import('@playwright/test').Page) => [
   page.locator('#voicestate'),
-  page.locator('#azurestate'),
   page.locator('#datastate'),
   page.locator('#wherebox p.standing span:not(.dot)'),
 ];
@@ -160,10 +160,10 @@ const varies = (page: import('@playwright/test').Page) => [
 /**
  * The sheet, open and settled.
  *
- * „Settled" is the whole of the setup. Two of the headings answer late — the
- * Azure one from the database, which is why openSetup() writes „Wird geladen …"
- * into it rather than leaving it blank, and the voice one from a list fetched at
- * start-up — and a picture taken in between holds the interim answer. That
+ * „Settled" is the whole of the setup. Two things answer late — the Azure box
+ * under the voices, from the database, which is why it is not drawn until the
+ * key has been read, and the voice heading, from a list fetched at start-up —
+ * and a picture taken in between holds the interim answer. That
  * answer is a real state and correctly drawn, and it would make this file go red
  * whenever the machine is a little slower than it was on the day the baseline
  * was taken. Waited for rather than masked-and-hoped: a mask hides the words, it
@@ -174,8 +174,8 @@ async function openSetup(page: import('@playwright/test').Page): Promise<void> {
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);
   await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
-  // The key is read from the database, so this is the last heading to answer.
-  await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
+  // The key is read from the database, so this is the last box to answer.
+  await expect(page.locator('#azure .where')).toHaveAttribute('data-state', 'off');
   // And the voice list is fetched at start-up: „Keine Stimme" until it lands,
   // then a name, a source and a language, separated by dots.
   await expect(page.locator('#voicestate')).toContainText('·');
@@ -215,9 +215,10 @@ test.beforeEach(async ({}, testInfo) => {
 
 test('the settings sheet, whole', async ({ page }) => {
   await openSetup(page);
-  // Panels folded as they arrive, with only „Sprache" open — which is a
-  // decision index.html argues for at length, and therefore a thing worth
-  // having a picture of.
+  // Panels folded as they arrive, with only „Sprache & Aussehen" open — which
+  // is a decision index.html argues for at length, and therefore a thing worth
+  // having a picture of. Three panels since 2026-10-31: the language and the
+  // scheme are one, and Azure is a box in „Standardstimme".
   await expect(page.locator('#setup')).toHaveScreenshot('einstellungen.png', { mask: varies(page) });
 });
 
@@ -261,29 +262,31 @@ test('the „Standardstimme" panel, with the picker the package draws', async ({
      purpose — so the 12px faint facts line under each name is components.css's
      `.voice__facts` and nothing else, and it goes grey-on-grey or 13.5px the
      moment a token or a rule stops reaching it. */
-  await page.locator('#p-voice summary').click();
-  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+  await openVoicePanel(page);
   /* And the pointer taken off the panel, which is not fussiness. The panels are
      one exclusive group (`<details name="settings">`), so opening this one
-     folds „Sprache" above it and the whole panel slides up under a mouse that
+     folds „Sprache & Aussehen" above it and the whole panel slides up under a mouse that
      is still parked where the summary used to be — which landed it on the
      second row and baked that row's :hover into the first baseline recorded
      here. It would have been stable, and it would have been a picture of a
      hover state nobody chose, hiding what that row actually looks like. */
   await page.mouse.move(0, 0);
   /* Settled before it is measured, for openSetup's reason and one more of its
-     own: the rows come from the catalogue fetched at start-up, and a picture
-     taken with none of them is a picture of an empty list that would go on
-     passing. Asserting a checked row is what makes it the *settled* list —
-     `current()` has an answer, so the accent tint is in the shot. */
-  await expect(page.locator('#voices .voice[aria-checked="true"]')).toBeVisible();
-  /* And the list is not a scroll box. The module took the nested scroller out
-     — a wheel gesture latches to the list and the sheet under it stops moving
-     — which is a change no picture can state, because "not clipped" and "short
-     enough not to be" look the same. The panel is 700px of unclipped list in
-     the shot below, so this says out loud what the picture only implies. */
-  await expect(page.locator('#voices .voices')).toHaveCSS('max-height', 'none');
+     own: the voice comes from the catalogue fetched at start-up. Since
+     2026-10-31 the picker is `folded` — the chosen voice alone, „Andere
+     Stimme …" under it, then the Azure box and „Alles aufnehmen, was fehlt" —
+     and that is the picture, because it is what a person meets. The voice's
+     facts line is what says the catalogue has landed. */
+  await expect(page.locator('#voices .voice[aria-current="true"] .voice__facts')).not.toBeEmpty();
+  await expect(page.locator('#azure .where')).toBeVisible();
   await expect(page.locator('#p-voice')).toHaveScreenshot('standardstimme.png', { mask: varies(page) });
+  /* And the list, unfolded, is not a scroll box. The module took the nested
+     scroller out — a wheel gesture latches to the list and the sheet under it
+     stops moving — which is a change no picture can state, because "not
+     clipped" and "short enough not to be" look the same. */
+  await unfoldVoices(page);
+  await expect(page.locator('#voices .voice[aria-checked="true"]')).toBeVisible();
+  await expect(page.locator('#voices .voices')).toHaveCSS('max-height', 'none');
 });
 
 

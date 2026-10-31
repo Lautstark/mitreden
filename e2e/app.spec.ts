@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openVoicePanel, unfoldVoices } from './settings.ts';
 
 /**
  * The page as somebody uses it. No recording happens here — that needs a 60 MB
@@ -66,7 +67,7 @@ test('every setting states itself in its own heading, before it is opened', asyn
   // component's rule is that "Wird geladen …" is a state and empty is not.
   const atOpen = await page.evaluate(() => {
     document.getElementById('gear')!.click();
-    return ['voicestate', 'azurestate', 'langstate', 'datastate']
+    return ['voicestate', 'lookstate', 'datastate']
       .map((id) => document.getElementById(id)!.textContent ?? '');
   });
   expect(atOpen.filter((text) => text.trim() === '')).toEqual([]);
@@ -76,35 +77,37 @@ test('every setting states itself in its own heading, before it is opened', asyn
   // The point of the shape: the headings answer the common questions without
   // anything being unfolded. A tab could not do this — it only promises.
   await expect(page.locator('#voicestate')).toContainText('Deutsch');
-  await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
-  await expect(page.locator('#langstate')).toHaveText('Deutsch');
+  await expect(page.locator('#lookstate')).toHaveText('Deutsch · Systemeinstellung');
   await expect(page.locator('#datastate')).toHaveText('nur in diesem Browser');
   await expect(page.locator('#p-data > summary .section')).toHaveText('Deine Daten');
 
   // And each one opens onto the controls it named. „Alles löschen" has no
   // panel of its own since 2026-10-31: it is the last row of the ⋯ in
-  // „Deine Daten", and app.spec's own test below opens it there.
+  // „Deine Daten", and app.spec's own test below opens it there. Azure is no
+  // panel either: it is the box under the voices, and says it is not connected.
   for (const [panel, marker] of [
-    ['p-azure', '#azurekey'], ['p-lang', '#lang'], ['p-data', '#wherebox .where'],
+    ['p-voice', '#azure .where'], ['p-look', '#lang'], ['p-look', '#theme'], ['p-data', '#wherebox .where'],
   ] as const) {
-    await page.click(`#${panel} > summary`);
+    if (!await page.locator(`#${panel}`).evaluate((el) => (el as HTMLDetailsElement).open))
+      await page.click(`#${panel} > summary`);
     await expect(page.locator(marker)).toBeVisible();
   }
-  // The one the compiler could not check: a sentence saying what the picker does.
-  await expect(page.locator('[data-i18n="language_hint"]')).not.toBeEmpty();
+  await expect(page.locator('#azure .where')).toContainText('nicht verbunden');
+  // The one the compiler could not check: a sentence saying what the two rows do.
+  await expect(page.locator('[data-i18n="look_note"]')).not.toBeEmpty();
 });
 
 test('opening a panel closes the one open before it', async ({ page }) => {
   await page.click('#gear');
-  // Sprache starts open, so a second panel is enough to show the group at work.
-  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
+  // Sprache & Aussehen starts open, so a second panel is enough to show the group at work.
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', true);
 
-  await page.click('#p-theme > summary');
-  await expect(page.locator('#p-theme')).toHaveJSProperty('open', true);
+  await page.click('#p-voice > summary');
+  await expect(page.locator('#p-voice')).toHaveJSProperty('open', true);
   // The browser does this, not us: the panels share a name, which makes them
   // one group with radio semantics. Asserting the effect rather than the
   // attribute, so a scripted accordion would keep this green.
-  await expect(page.locator('#p-lang')).toHaveJSProperty('open', false);
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', false);
 });
 
 /**
@@ -125,38 +128,38 @@ test('opening a panel closes the one open before it', async ({ page }) => {
  * nothing in the DOM — the panel would simply refuse to open, with nothing red
  * anywhere. design/docs/conventions.md §6.2.
  */
-test('the panels fold back to Sprache on every opening, not only the first', async ({ page }) => {
+test('the panels fold back to Sprache & Aussehen on every opening, not only the first', async ({ page }) => {
   await page.click('#gear');
-  await page.click('#p-azure > summary');
-  await expect(page.locator('#p-azure')).toHaveJSProperty('open', true);
+  await page.click('#p-voice > summary');
+  await expect(page.locator('#p-voice')).toHaveJSProperty('open', true);
 
   await page.click('#setupclose');
   await expect(page.locator('#setup')).not.toBeVisible();
   await page.click('#gear');
-  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
-  await expect(page.locator('#p-azure')).toHaveJSProperty('open', false);
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', true);
+  await expect(page.locator('#p-voice')).toHaveJSProperty('open', false);
 
   // And after an Escape, which closes the dialog without any of this page's
   // own code being asked first.
-  await page.click('#p-theme > summary');
+  await page.click('#p-data > summary');
   await page.keyboard.press('Escape');
   await expect(page.locator('#setup')).not.toBeVisible();
   await page.click('#gear');
-  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', true);
 
   // A panel the browser folded opens again.
-  await page.click('#p-theme > summary');
-  await expect(page.locator('#p-theme')).toHaveJSProperty('open', true);
+  await page.click('#p-data > summary');
+  await expect(page.locator('#p-data')).toHaveJSProperty('open', true);
 });
 
 test('the page language is offered the way the scheme beside it is', async ({ page }) => {
   await page.click('#gear');
   // No click: this panel is the one that opens on arrival.
-  await expect(page.locator('#p-lang')).toHaveJSProperty('open', true);
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', true);
   // It was the last native <select>, drawing its own chevron from a hex baked
   // into a data URI — the one control that could not follow the theme. Then a
   // button and a menu, which put the answers behind a press. Now the same
-  // segmented group as the scheme in the panel below, because both are facts
+  // segmented group as the scheme in the row below, because both are facts
   // about this page rather than lists of things to do.
   const group = page.locator('#lang');
   await expect(group).toHaveJSProperty('tagName', 'DIV');
@@ -176,7 +179,7 @@ test('the page language is offered the way the scheme beside it is', async ({ pa
 
   await group.getByText('English').click();
   await expect(group.locator('button[aria-pressed="true"]')).toHaveText('English');
-  await expect(page.locator('#langstate')).toHaveText('English');
+  await expect(page.locator('#lookstate')).toHaveText('English · System setting');
   await expect(page.locator('#setup > .head h2')).toHaveText('Settings');
   // Without the ?lang= these tests open with — an explicit URL outranks the
   // stored choice, and should — the page comes back in the language it was left.
@@ -385,11 +388,11 @@ test('the default voice is named beside the composer and chosen in the settings'
      routing. This is the default, which is Einstellungen's. */
   await page.click('#gear');
   await expect(page.locator('#setup')).toBeVisible();
-  // Sprache is the panel that opens on arrival now, so this one is opened the
-  // way a person opens it. See index.html, which says why that panel and not
-  // this one.
-  await page.locator('#p-voice summary').click();
-  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+  // Sprache & Aussehen is the panel that opens on arrival, so this one is
+  // opened the way a person opens it. With a voice chosen the list is folded
+  // to that voice and „Andere Stimme …", so that is pressed too.
+  await openVoicePanel(page);
+  await unfoldVoices(page);
   const rows = page.locator('#voices .voice');
   await expect(rows.first()).toBeVisible();
   const many = await rows.count();
@@ -410,9 +413,13 @@ test('the default voice is named beside the composer and chosen in the settings'
   const second = rows.nth(1);
   const name = await second.locator('.voice__name').innerText();
   await second.click();
-  await expect(second).toHaveAttribute('aria-checked', 'true');
+  // A row clicked is a choice made, and the list folds back to it.
+  await expect(page.locator('#voices .voice[aria-current="true"] .voice__name')).toHaveText(name);
+  await expect(page.locator(SEARCH)).toHaveCount(0);
   // The heading above the list names the voice in force, so it moves too.
   await expect(page.locator('#voicestate')).toContainText(name);
+  await unfoldVoices(page);
+  await expect(second).toHaveAttribute('aria-checked', 'true');
   await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'false');
   await expect(page.locator('#voices .voices')).toHaveAttribute('role', 'radiogroup');
   // A list this long has to be walkable without seventeen presses of Tab.
@@ -441,11 +448,11 @@ test('the picker offers a German woman and an English man', async ({ page }) => 
   // shared path. What this catches is the claim going missing from the
   // catalogue call, which is what empties both slots again.
   await page.click('#gear');
-  // Sprache is the panel that opens on arrival now, so this one is opened the
-  // way a person opens it. See index.html, which says why that panel and not
-  // this one.
-  await page.locator('#p-voice summary').click();
-  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+  // Sprache & Aussehen is the panel that opens on arrival, so this one is
+  // opened the way a person opens it. With a voice chosen the list is folded
+  // to that voice and „Andere Stimme …", so that is pressed too.
+  await openVoicePanel(page);
+  await unfoldVoices(page);
 
   await page.fill(SEARCH, 'kerstin');
   const kerstin = page.locator('#voices .voice').first();
@@ -476,11 +483,11 @@ test('a voice that rushes single words says so on its own row', async ({ page })
   // the screen, which is the failure mode a note has — being rendered nowhere,
   // or being rendered on every row, and both look like working software.
   await page.click('#gear');
-  // Sprache is the panel that opens on arrival now, so this one is opened the
-  // way a person opens it. See index.html, which says why that panel and not
-  // this one.
-  await page.locator('#p-voice summary').click();
-  await expect(page.locator('#p-voice')).toHaveAttribute('open', '');
+  // Sprache & Aussehen is the panel that opens on arrival, so this one is
+  // opened the way a person opens it. With a voice chosen the list is folded
+  // to that voice and „Andere Stimme …", so that is pressed too.
+  await openVoicePanel(page);
+  await unfoldVoices(page);
 
   await page.fill(SEARCH, 'kerstin');
   const kerstin = page.locator('#voices .voice').first();
@@ -527,11 +534,12 @@ test('the voice follows the words, until somebody has chosen one', async ({ page
   // either direction: a German voice on an English page is an arrangement
   // somebody made, not a mistake to be corrected on their behalf.
   await page.click('#gear');
-  await page.locator('#p-voice summary').click();
+  await openVoicePanel(page);
+  await unfoldVoices(page);
   await page.fill(SEARCH, 'Thorsten (emotional)');
   await page.locator('#voices .voice').first().click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
-  await page.click('#p-lang > summary');
+  await page.click('#p-look > summary');
   await page.locator('#lang').getByText('Deutsch').click();
   await expect(page.locator('#voicename')).toHaveText('Thorsten (emotional)');
 });

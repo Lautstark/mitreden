@@ -11,9 +11,11 @@ import { expect, test } from '@playwright/test';
  * would notice if it were deleted.
  */
 
+/* The scheme is the second row of „Sprache & Aussehen", the panel that opens
+   on arrival — so no click on its summary, which would fold it. */
 const open = async (page: import('@playwright/test').Page): Promise<void> => {
   await page.click('#gear');
-  await page.locator('#p-theme summary').click();
+  await expect(page.locator('#p-look')).toHaveJSProperty('open', true);
 };
 
 test.beforeEach(async ({ page }) => {
@@ -23,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 
 test('opens following the device, and says so in the heading', async ({ page }) => {
   await open(page);
-  await expect(page.locator('#themestate')).toHaveText('Systemeinstellung');
+  await expect(page.locator('#lookstate')).toHaveText('Deutsch · Systemeinstellung');
   // The absence of the attribute is what "follows the OS" is: a page that wrote
   // data-theme="light" here would have picked one, and picked it in the dark.
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
@@ -35,7 +37,7 @@ test('a chosen scheme is in force, named in the heading, and survives a reload',
   await page.click('#theme button:has-text("Dunkel")');
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('#themestate')).toHaveText('Dunkel');
+  await expect(page.locator('#lookstate')).toHaveText('Deutsch · Dunkel');
 
   await page.reload();
   await page.waitForFunction(() => document.querySelectorAll('#rows .collections__item').length > 0);

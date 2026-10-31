@@ -368,6 +368,11 @@ button,input,select,textarea{font:inherit;color:inherit}
    scoped to the dialog that takes it. #info and #colvoice are ordinary sheet
    bodies and are left alone. */
 #setup>.body{color:inherit;font-size:inherit}
+/* „Sprache & Aussehen": two rows, a `.subhead` caption over each control, and
+   the gap between them that a caption needs to belong to what is under it
+   rather than what is over it. Azure's box sits under the voice list by the
+   same gap. */
+#setup .opt+.opt,#setup .azure-slot{margin-top:14px}
 /* @lautstark/design/svelte/Legal draws a `<section>` per page and hides the two
    that are not showing, so that a locator under any of the three resolves
    whichever one is open (conventions.md §6.12). That box sits between

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAzureForm, openVoicePanel } from './settings.ts';
 
 /*
  * That what the page reports is reported out loud.
@@ -58,8 +59,10 @@ test('the Azure probe line is a region that is never hidden', async ({ page }) =
 
      No key is stored here, which is exactly the state that used to hide it. */
   await page.click('#gear');
-  const panel = page.locator('#p-azure');
-  if ((await panel.getAttribute('open')) === null) await panel.locator('> summary').click();
+  /* The fields are under „Verbinden …" in the Azure box since 2026-10-31,
+     which sits in „Standardstimme". */
+  await openVoicePanel(page);
+  await openAzureForm(page);
 
   /* `#azureprobe` rather than `.probe`: the panel is
      @lautstark/stimmquelle/svelte/AzurePanel since 2026-09-17 and §6.9 turns
