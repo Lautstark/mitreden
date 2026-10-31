@@ -81,7 +81,7 @@
   import AzurePanel from '@lautstark/stimmquelle/svelte/AzurePanel';
   import type { AzureAccess, AzureWords } from '@lautstark/stimmquelle/svelte/AzurePanel';
   import VoicePicker from '@lautstark/stimmquelle/svelte/VoicePicker';
-  import { ablage, isStore } from '../db/folder.ts';
+  import { ablage } from '../db/folder.ts';
   import { adoptFolder } from '../db/mirror.ts';
   import { saveAzure, settings } from '../db/repo.ts';
   import { probeAzure } from '../core/voices.ts';
@@ -605,7 +605,7 @@
         changed={() => void load()}
         {say}
         lang={reading}
-        backup={isStore() ? null : backup}
+        {backup}
         headline={(text) => { dataState = text; }}
         file={{ download: () => void exportAll(), read: (picked) => void importFile(picked), note: t('backup_file_note') }}
         wipe={() => void wipeEverything()}
