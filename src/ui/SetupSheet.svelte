@@ -76,8 +76,7 @@
   import { readTheme, type Theme } from '@lautstark/design/theme';
   import { languagePicker, NAMES } from '@lautstark/design/language';
   import Vanilla from '@lautstark/design/svelte/Vanilla';
-  import AblagePanel from '@lautstark/sicherung/svelte/AblagePanel';
-  import BackupPanel from '@lautstark/sicherung/svelte/BackupPanel';
+  import DatenPanel from '@lautstark/sicherung/svelte/DatenPanel';
   import type { Sicherung } from '@lautstark/sicherung';
   import AzurePanel from '@lautstark/stimmquelle/svelte/AzurePanel';
   import type { AzureAccess, AzureWords } from '@lautstark/stimmquelle/svelte/AzurePanel';
@@ -115,7 +114,7 @@
    * writes itself back from `ontoggle`, so this record is what the browser
    * actually did.
    */
-  const PANELS = ['lang', 'voice', 'azure', 'theme', 'data', 'danger'];
+  const PANELS = ['lang', 'voice', 'azure', 'theme', 'data'];
   /** §3.11: Sprache first, and the only one open. */
   const OPENS_WITH = 'lang';
   const arrival = (): Record<string, boolean> =>
@@ -352,25 +351,6 @@
      — but the reading is now a `$derived` the components depend on, so nothing
      here has to remember to repaint them. §6.8. */
 
-  /**
-   * Whether the standing copy is offered at all, read once and correctly so.
-   *
-   * Two conditions, and they were two before: no store folder — with one, the
-   * copies already go beside the work and a second picker would be the same
-   * offer under a name that reads almost the same — and a browser with a
-   * picker at all. `backupPanel()` answered `null` for the second; a component
-   * cannot answer null, so it draws nothing and the box around it would be an
-   * empty 32px of margin. Hence the flag, and hence it guards both.
-   *
-   * Neither can move while the page is up: there is one `Sicherung` for the
-   * life of the page, made in main.ts and handed down, and an unsupported
-   * browser has no other status to be in.
-   */
-  // svelte-ignore state_referenced_locally
-  const keeps = !isStore() && backup.status.kind !== 'unsupported';
-
-  let file: HTMLInputElement;
-
   // ------------------------------------------------------------ die Zustände
 
   /**
@@ -394,7 +374,10 @@
      that carries state has to carry it from the first frame. Reading the
      database here left this line blank at the moment somebody was reading it —
      which is the one thing this shape promises not to do. */
-  let dataState = $derived(ALL().length ? tn('count', ALL().length) : t('count_none'));
+  /* Told by „Deine Daten" itself — where the work is, the same words in every
+     Lautstark programme. It answers synchronously on its first paint, so the
+     heading is not blank when the sheet opens. */
+  let dataState = $state('');
   /* How much of the library does not sound like itself: never recorded, or
      changed since it was. The button below reads it, and so does whether there
      is anything to press. */
@@ -606,86 +589,27 @@
     <p class="hint">{t('theme_hint')}</p>
   </Panel>
 
-  <!-- Getting your work out and back, and nothing else. The id stays p-data;
-       the heading is „Wo alles liegt" because that is the one subject left in
-       here since the reset moved out below. -->
+  <!-- „Deine Daten", @lautstark/sicherung/svelte/DatenPanel: the same panel in
+       every Lautstark programme. One box says where the sentences are and
+       whether that is safe, at most one button sits under it, and the ⋯ in its
+       corner holds the rest — another folder, the file out and in, the dated
+       second copy while the work is in the browser, and „Alles löschen", which
+       was a panel of its own until 2026-10-31 and still asks first. The id
+       stays p-data. -->
   <Panel id="p-data" stateId="datastate" section={t('panel_backup')}
     state={dataState} bind:open={folded.data}>
-    <!-- The store: one panel for every Lautstark programme, drawn by
-         @lautstark/sicherung/svelte/AblagePanel so the words and the order are
-         the same wherever somebody meets them. Everything below it is what
-         mitreden offers besides the store.
-
-         `#wherebox` stays a box of this file's rather than becoming the
-         panel's `id`, and it is worth saying why in the one panel that has a
-         picture: wo-alles-liegt.png is the only baseline in this product that
-         photographs another repository's markup, and it exists to say whether
-         a Svelte twin has drifted from the vanilla original. Taking a div out
-         of the shot in the same commit would be a second reason for it to move
-         and would spend exactly the evidence it was taken for. -->
     <div id="wherebox">
-      <AblagePanel
+      <DatenPanel
         store={ablage}
         adopt={adoptFolder}
         changed={() => void load()}
         {say}
         lang={reading}
+        backup={isStore() ? null : backup}
+        headline={(text) => { dataState = text; }}
+        file={{ download: () => void exportAll(), read: (picked) => void importFile(picked), note: t('backup_file_note') }}
+        wipe={() => void wipeEverything()}
       />
     </div>
-    <hr class="hair" />
-    <p class="subhead">{t('panel_keep')}</p>
-    <!-- No „Sicherung." in front of it any more: the panel is called that
-         now, and a lead repeating its own heading is a word somebody reads
-         twice to learn nothing. -->
-    <p class="notice">{t('backup_intro')}</p>
-
-    <!-- The folder first, because it is the one that keeps working after
-         somebody stops thinking about it. Hidden outright where there is
-         nothing to offer. -->
-    <div id="folderbox" class="folderbox" hidden={!keeps}>{#if keeps}<BackupPanel
-      {backup} {say} lang={reading} />{/if}</div>
-
-    <!-- The two halves of the same subject, side by side. „Sicherung
-         einlesen" used to be „Importieren" in the sidebar, a screen away from
-         the button that makes the file it reads — history rather than intent,
-         since that button predates there being a backup format and quietly
-         gained a second job when one arrived. It still does both: importFile
-         routes on the file's own shape. -->
-    <div class="row">
-      <!-- Not primary. The panel above is @lautstark/sicherung's and its
-           „Ordner wählen" already carries the accent fill, which design.md
-           §4.3 gives to one thing per screen. Two filled buttons a few pixels
-           apart in one colour read as a single control — a visual baseline
-           showed it the moment one was taken. -->
-      <button class="btn sm" id="export" onclick={() => void exportAll()}>{t('backup_export')}</button>
-      <button class="btn sm" id="import2" onclick={() => file.click()}>{t('backup_import')}</button>
-    </div>
-    <p class="hint">{t('backup_hint')}</p>
-    <input type="file" id="importfile" accept="application/json,.json" hidden bind:this={file}
-      onchange={(event) => {
-        const input = event.currentTarget;
-        const picked = input.files?.[0];
-        input.value = '';
-        if (picked) void importFile(picked);
-      }}>
-  </Panel>
-
-  <!-- Its own panel. It was an <h3> inside „Daten", which is a second heading
-       level doing a panel's job: a destructive reset is not a data-management
-       chore filed under the same word as making a backup, and a column whose
-       last entry says „Alles löschen" is more honest than one where you have to
-       open „Daten" to find it. vorlaut never put the wipe in its Daten panel;
-       this is the other two catching up. §3.12.
-
-       `state` is left undefined rather than passed as `''`, and the difference
-       is measurable: Panel draws the `.state` span only when there is a state,
-       and below 560px the summary is a two-column grid where an empty span is
-       a second row and 2px of summary. This panel is the one whose state is
-       unknowable — "everything" is not a quantity worth restating — so it has
-       never carried a span and still does not. -->
-  <Panel id="p-danger" section={t('danger_title')} state={undefined}
-    bind:open={folded.danger}>
-    <p class="hint danger__body">{t('danger_body')}</p>
-    <button class="btn destructive sm" id="wipe" onclick={() => void wipeEverything()}>{t('danger_do')}</button>
   </Panel>
 </Sheet>

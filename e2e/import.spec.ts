@@ -32,9 +32,10 @@ async function openData(page: Page) {
   await page.click('#p-data > summary');
 }
 
-/** The file input is hidden behind a button; Playwright fills it directly. */
+/** The file input is „Deine Daten“'s own, behind its „Sicherung einlesen …“ row;
+ *  Playwright fills it directly. */
 async function importJson(page: Page, name: string, data: unknown) {
-  await page.setInputFiles('#importfile', {
+  await page.setInputFiles('#wherebox input[type=file]', {
     name, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data)),
   });
 }

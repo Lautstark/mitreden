@@ -154,7 +154,7 @@ const varies = (page: import('@playwright/test').Page) => [
   page.locator('#voicestate'),
   page.locator('#azurestate'),
   page.locator('#datastate'),
-  page.locator('.backup-panel p.standing span:not(.dot)'),
+  page.locator('#wherebox p.standing span:not(.dot)'),
 ];
 
 /**
@@ -221,18 +221,24 @@ test('the settings sheet, whole', async ({ page }) => {
   await expect(page.locator('#setup')).toHaveScreenshot('einstellungen.png', { mask: varies(page) });
 });
 
-test('the „Wo alles liegt" panel, with both package panels in it', async ({ page }) => {
+test('the „Deine Daten" panel, and its ⋯ open', async ({ page }) => {
   await openSetup(page);
   await page.click('#p-data > summary');
-  // The two panels from @lautstark/sicherung, and this product's own row of
-  // buttons under them. All three have to be there before the picture: the
-  // panels are appended at wiring time and the summary only unfolds them, but
-  // asserting it here is what makes a future null from backupPanel() a failure
+  // @lautstark/sicherung's DatenPanel: the box, and the one button a first
+  // visit gets. Asserted before the picture, so an empty panel is a failure
   // rather than a quietly different baseline.
-  await expect(page.locator('#wherebox .where-panel')).toBeVisible();
-  await expect(page.locator('#folderbox .backup-panel')).toBeVisible();
-  await expect(page.locator('#export')).toBeVisible();
-  await expect(page.locator('#p-data')).toHaveScreenshot('wo-alles-liegt.png', { mask: varies(page) });
+  await expect(page.locator('#wherebox .where-panel .where')).toBeVisible();
+  await expect(page.locator('#wherebox .acts button')).toHaveText(['Ordner wählen …']);
+  await expect(page.locator('#p-data')).toHaveScreenshot('deine-daten.png', { mask: varies(page) });
+
+  // The ⋯ holds everything else, „Alles löschen“ last and red — the one
+  // destructive control in this product, whose colour is a token that goes
+  // grey rather than absent if it stops resolving. The menu itself and not
+  // the sheet: it opens upward over the headings, and their masks would be
+  // laid across its rows.
+  await page.locator('#wherebox').getByRole('button', { name: 'Mehr' }).click();
+  await expect(page.locator('#wherebox').getByRole('menuitem').last()).toHaveClass('danger');
+  await expect(page.locator('#wherebox .menu')).toHaveScreenshot('deine-daten-menu.png');
 });
 
 test('the „Standardstimme" panel, with the picker the package draws', async ({ page }) => {
@@ -280,16 +286,6 @@ test('the „Standardstimme" panel, with the picker the package draws', async ({
   await expect(page.locator('#p-voice')).toHaveScreenshot('standardstimme.png', { mask: varies(page) });
 });
 
-test('the „Alles löschen" panel', async ({ page }) => {
-  await openSetup(page);
-  await page.click('#p-danger > summary');
-  // The only control in this product that destroys something, and the only
-  // .btn.destructive in the sheet. What its colour is made of is a token, and a
-  // token that stops resolving is grey rather than absent — which is the one
-  // regression here that no assertion about text or visibility would catch.
-  await expect(page.locator('#wipe')).toBeVisible();
-  await expect(page.locator('#p-danger')).toHaveScreenshot('alles-loeschen.png', { mask: varies(page) });
-});
 
 /* The two plain sheets. Both are `.sheet` with nothing else on it, which is the
    width the package draws — min(600px, 100% - 40px) — and which this product

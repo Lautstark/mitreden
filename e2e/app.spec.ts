@@ -78,17 +78,14 @@ test('every setting states itself in its own heading, before it is opened', asyn
   await expect(page.locator('#voicestate')).toContainText('Deutsch');
   await expect(page.locator('#azurestate')).toHaveText('Kein Schlüssel');
   await expect(page.locator('#langstate')).toHaveText('Deutsch');
-  await expect(page.locator('#datastate')).toHaveText('Noch keine Sätze');
-  await expect(page.locator('#p-data > summary .section')).toHaveText('Wo alles liegt');
+  await expect(page.locator('#datastate')).toHaveText('nur in diesem Browser');
+  await expect(page.locator('#p-data > summary .section')).toHaveText('Deine Daten');
 
-  // And each one opens onto the controls it named.
+  // And each one opens onto the controls it named. „Alles löschen" has no
+  // panel of its own since 2026-10-31: it is the last row of the ⋯ in
+  // „Deine Daten", and app.spec's own test below opens it there.
   for (const [panel, marker] of [
-    ['p-azure', '#azurekey'], ['p-lang', '#lang'], ['p-data', '#export'],
-    // Its own panel since 2026-08-29. The reset was an <h3> at the foot of
-    // „Daten", which asked somebody to open a panel about backups to find the
-    // one control here that destroys something. A column whose last entry
-    // says „Alles löschen" is the honest arrangement, and it is vorlaut's.
-    ['p-danger', '#wipe'],
+    ['p-azure', '#azurekey'], ['p-lang', '#lang'], ['p-data', '#wherebox .where'],
   ] as const) {
     await page.click(`#${panel} > summary`);
     await expect(page.locator(marker)).toBeVisible();
@@ -248,7 +245,20 @@ test('the headings follow what they describe', async ({ page }) => {
   await page.click('#add');
   await expect(page.locator('.item .line')).toHaveText('Ein Satz.');
   await page.click('#gear');
-  await expect(page.locator('#datastate')).toHaveText('1 Satz');
+  // „Deine Daten" says where the sentences are, not how many: the same words
+  // in every Lautstark programme. The count is in the work head.
+  await expect(page.locator('#datastate')).toHaveText('nur in diesem Browser');
+});
+
+test('„Alles löschen" is the last row of the ⋯ in „Deine Daten", red, and asks first', async ({ page }) => {
+  await page.click('#gear');
+  await page.click('#p-data > summary');
+  await page.locator('#wherebox').getByRole('button', { name: 'Mehr' }).click();
+  const last = page.locator('#wherebox').getByRole('menuitem').last();
+  await expect(last).toHaveText('Alles löschen …');
+  await expect(last).toHaveClass('danger');
+  await last.click();
+  await expect(page.getByRole('dialog', { name: 'Alles löschen' })).toBeVisible();
 });
 
 /* `#infobody` and `#infoclose` again. The dialog is
