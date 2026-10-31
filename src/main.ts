@@ -64,10 +64,21 @@ const backup = new Sicherung({
 // notifier in db.ts. Debounced inside Sicherung, so a burst is one file.
 onChanged(() => backup.schedule());
 
+/* The browser's list in the order its owner put it, regions stripped, and the
+   first one we have wins — "fr, de" is German, not the French it starts with.
+   English when it names neither, which more people read than German. */
+function preferredLang(): 'de' | 'en' {
+  for (const tag of navigator.languages ?? [navigator.language ?? '']) {
+    const base = String(tag).toLowerCase().split('-')[0];
+    if (base === 'de' || base === 'en') return base;
+  }
+  return 'en';
+}
+
 function chooseLang(): void {
   const asked = new URL(location.href).searchParams.get('lang');
   const saved = localStorage.getItem('mitreden.lang');
-  const wanted = asked ?? saved ?? navigator.language.slice(0, 2);
+  const wanted = asked ?? saved ?? preferredLang();
   setLang(wanted === 'en' ? 'en' : 'de');
 }
 
