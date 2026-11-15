@@ -24,12 +24,12 @@
     "@lautstark/design": "github:Lautstark/design#v1.43.0",
     "@lautstark/sicherung": "github:Lautstark/sicherung#v1.20.0",
     "@lautstark/stimmquelle": "github:Lautstark/stimmquelle#v2.15.0",
-    "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v2.0.1",
+    "@lautstark/werkzeuge": "github:Lautstark/werkzeuge#v2.1.0",
     "idb": "^8.0.3",
     "onnxruntime-web": "1.18.0"
   },
   "devDependencies": {
-    "@lautstark/toolchain": "github:Lautstark/toolchain#v4.0.0",
+    "@lautstark/toolchain": "github:Lautstark/toolchain#v4.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^24.19.0",
     "fake-indexeddb": "^6.0.0",
